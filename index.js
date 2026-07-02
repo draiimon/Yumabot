@@ -2290,7 +2290,8 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
       console.log(`[VOICE 24/7] âœ… Ready in guild ${guildId}! Nandito na ako, 24/7 mode!`);
       try {
         const channel = client.channels.cache.get(channelId);
-        liveVoiceStream.attach(connection, guildId, channel?.name || null);
+        const guild = client.guilds.cache.get(guildId);
+        liveVoiceStream.attach(connection, guildId, channel?.name || null, guild?.name || null);
       } catch (err) {
         console.warn('[LIVE-STREAM] attach failed:', err.message);
       }

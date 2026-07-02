@@ -110,12 +110,15 @@ function buildListenPageHtml() {
           const res = await fetch('/voice-status');
           const data = await res.json();
           knownStreams = data.streams || [];
-          if (knownStreams.length > 1) {
+          if (knownStreams.length > 0) {
             channelSelect.style.display = 'block';
             channelSelectLabel.style.display = 'block';
             const prevValue = channelSelect.value;
             channelSelect.innerHTML = knownStreams
-              .map((s) => '<option value="' + s.guildId + '">' + (s.channelName || s.guildId) + '</option>')
+              .map((s) => {
+                const label = (s.guildName ? s.guildName + ' — ' : '') + '#' + (s.channelName || s.guildId);
+                return '<option value="' + s.guildId + '">' + label + '</option>';
+              })
               .join('');
             if (prevValue && knownStreams.some((s) => s.guildId === prevValue)) {
               channelSelect.value = prevValue;

@@ -23,6 +23,7 @@ function createLiveVoiceStream() {
   function listStatus() {
     return Array.from(streams.values()).map((s) => ({
       guildId: s.guildId,
+      guildName: s.guildName,
       channelId: s.channelId,
       channelName: s.channelName,
       listeners: s.clients.size,
@@ -35,6 +36,7 @@ function createLiveVoiceStream() {
       return {
         active: Boolean(s),
         guildId: s ? s.guildId : null,
+        guildName: s ? s.guildName : null,
         channelId: s ? s.channelId : null,
         channelName: s ? s.channelName : null,
         listeners: s ? s.clients.size : 0,
@@ -46,6 +48,7 @@ function createLiveVoiceStream() {
     return {
       active: Boolean(first),
       guildId: first ? first.guildId : null,
+      guildName: first ? first.guildName : null,
       channelId: first ? first.channelId : null,
       channelName: first ? first.channelName : null,
       listeners: first ? first.listeners : 0,
@@ -58,6 +61,7 @@ function createLiveVoiceStream() {
       type: 'status',
       active: true,
       guildId: s.guildId,
+      guildName: s.guildName,
       channelId: s.channelId,
       channelName: s.channelName,
     });
@@ -132,12 +136,13 @@ function createLiveVoiceStream() {
     decoder.on('error', cleanup);
   }
 
-  function attach(connection, guildId, channelName) {
+  function attach(connection, guildId, channelName, guildName) {
     // Replace any existing stream for this same guild (e.g. rejoin).
     detach(guildId);
 
     const s = {
       guildId,
+      guildName: guildName || null,
       channelId: connection?.joinConfig?.channelId || null,
       channelName: channelName || null,
       speakingSubs: new Map(),
