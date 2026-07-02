@@ -1,18 +1,11 @@
 /**
  * Bot-command channel enforcer.
  *
- * Restricts ALL bot prefix commands (other bots: !, ?, ,, ., >, $, m!, etc.)
- * to a single designated channel. Outside that channel, the user's command
- * message is deleted before the other bot can respond.
+ * Only restricts USER-sent prefix commands (!, ?, ,, ., >, $, m!, etc.)
+ * to the designated channel. Bot/webhook outputs (Dyno, MEE6, etc.) are
+ * left alone — they can post anywhere.
  *
- * Our own bot's commands (j!*) are exempt — those can be issued in any
- * channel because j!view etc. are useful contextually (e.g. checking
- * intro progress in #introduction).
- *
- * Other bots are not technically "muted" — they'll still respond if their
- * message reaches them first. But by deleting fast, we usually win the
- * race. The end-user experience is: the bot's response also gets orphaned
- * or never sent, and our notice tells them to use the designated channel.
+ * Our own bot's commands (j!*) are exempt everywhere.
  */
 
 const { Events, PermissionFlagsBits } = require('discord.js');
@@ -68,41 +61,8 @@ function registerCommandChannelEnforcer(client) {
         .permissionsFor(me)
         ?.has(PermissionFlagsBits.ManageMessages);
 
-      // CASE A: message from a FOREIGN BOT (any bot/webhook that isn't us)
-      // Auto-delete in any channel except the allowed one.
-      if (message.author?.bot) {
-        if (message.author.id === client.user.id) return; // our bot user — exempt
-
-        // Webhook message? Verify ownership before deciding.
-        // Our own webhooks (intro guide, welcome, leave log, invite
-        // counter, verify reminder, ticketing) MUST NOT be deleted —
-        // they're our own outputs even though the author.id is the
-        // webhook's, not the bot user's.
-        if (message.webhookId) {
-          try {
-            const hook = await message.fetchWebhook();
-            if (hook?.owner?.id === client.user.id) {
-              return; // our own webhook — exempt
-            }
-          } catch {
-            // Could not verify — name-based heuristic fallback
-            const name = String(message.author?.username || '').toLowerCase();
-            if (name.includes('yuma') || name.includes('playground') || name.includes('ᴘʟᴀʏ ɢʀᴏᴜɴᴅ')) {
-              return;
-            }
-          }
-        }
-
-        if (!canManage) {
-          console.warn(`[CMD-CHANNEL] Lacking ManageMessages in #${message.channel.name}`);
-          return;
-        }
-        await message.delete().catch(() => {});
-        console.log(
-          `[CMD-CHANNEL] Deleted foreign bot msg from ${message.author.tag} in #${message.channel.name}`,
-        );
-        return;
-      }
+      // Skip all bot/webhook messages — Dyno, MEE6, etc. can post anywhere.
+      if (message.author?.bot) return;
 
       // CASE B: message from a user — only delete if it looks like a bot command
       if (!looksLikeForeignBotCommand(message.content)) return;
