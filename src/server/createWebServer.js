@@ -44,7 +44,107 @@ function buildHealthPayload({ runtimeState, client, getDiagnostics }) {
   };
 }
 
-function createWebServer({ config, runtimeState, client, getDiagnostics }) {
+function buildListenPageHtml() {
+  return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Yuma — Listen Live</title>
+    <style>
+      :root { color-scheme: dark; --bg:#0d1117; --panel:rgba(255,255,255,0.06); --text:#f4f7fb; --muted:#9fb0c3; --accent:#ff6b8a; --ok:#5ee6a8; --bad:#ff6b6b; }
+      * { box-sizing: border-box; }
+      body { margin:0; min-height:100vh; font-family:"Segoe UI",sans-serif; background:radial-gradient(circle at top, rgba(255,107,138,0.32), transparent 40%), linear-gradient(160deg,#081018 0%,#0d1117 48%,#151a24 100%); color:var(--text); display:grid; place-items:center; padding:24px; }
+      main { width:min(520px,100%); background:var(--panel); border:1px solid rgba(255,255,255,0.08); border-radius:24px; padding:28px; backdrop-filter:blur(14px); box-shadow:0 28px 80px rgba(0,0,0,0.35); text-align:center; }
+      h1 { margin:0 0 8px; font-size:clamp(1.6rem,4vw,2.2rem); }
+      p { margin:8px 0 0; color:var(--muted); }
+      .status { margin:20px 0; display:inline-flex; align-items:center; gap:10px; padding:10px 14px; border-radius:999px; background:rgba(94,230,168,0.12); color:var(--ok); font-weight:700; }
+      .status.off { background:rgba(255,107,107,0.12); color:var(--bad); }
+      button { margin-top:18px; padding:14px 28px; font-size:1rem; font-weight:700; border:none; border-radius:999px; background:var(--accent); color:#1a0a10; cursor:pointer; }
+      button:disabled { opacity:0.5; cursor:not-allowed; }
+      .dot { width:8px; height:8px; border-radius:50%; background:currentColor; display:inline-block; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>🎧 Yuma — Listen Live</h1>
+      <p id="channelInfo">Kinukuha ang status ng voice channel...</p>
+      <div class="status off" id="statusPill"><span class="dot"></span><span id="statusText">Offline</span></div>
+      <br>
+      <button id="listenBtn" disabled>▶ Listen Live</button>
+    </main>
+    <script>
+      const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const ws = new WebSocket(proto + '//' + location.host + '/voice-stream');
+      ws.binaryType = 'arraybuffer';
+
+      const statusPill = document.getElementById('statusPill');
+      const statusText = document.getElementById('statusText');
+      const channelInfo = document.getElementById('channelInfo');
+      const listenBtn = document.getElementById('listenBtn');
+
+      const SAMPLE_RATE = 48000;
+      const CHANNELS = 2;
+      const FRAME_SAMPLES = 960;
+
+      let audioCtx = null;
+      let nextStartTime = 0;
+      let listening = false;
+
+      function setStatus(active, channelName) {
+        statusPill.classList.toggle('off', !active);
+        statusText.textContent = active ? 'Live' : 'Offline';
+        channelInfo.textContent = active
+          ? ('Naka-connect ang bot sa: ' + (channelName || 'voice channel'))
+          : 'Wala pang bot sa voice channel ngayon.';
+        listenBtn.disabled = !active;
+      }
+
+      ws.onmessage = (ev) => {
+        if (typeof ev.data === 'string') {
+          try {
+            const msg = JSON.parse(ev.data);
+            if (msg.type === 'status') setStatus(msg.active, msg.channelName);
+          } catch {}
+          return;
+        }
+        if (!listening || !audioCtx) return;
+        const pcm = new Int16Array(ev.data);
+        const frames = pcm.length / CHANNELS;
+        const buffer = audioCtx.createBuffer(CHANNELS, frames, SAMPLE_RATE);
+        for (let ch = 0; ch < CHANNELS; ch++) {
+          const channelData = buffer.getChannelData(ch);
+          for (let i = 0; i < frames; i++) {
+            channelData[i] = pcm[i * CHANNELS + ch] / 32768;
+          }
+        }
+        const source = audioCtx.createBufferSource();
+        source.buffer = buffer;
+        source.connect(audioCtx.destination);
+        const now = audioCtx.currentTime;
+        if (nextStartTime < now + 0.05) nextStartTime = now + 0.08;
+        source.start(nextStartTime);
+        nextStartTime += frames / SAMPLE_RATE;
+      };
+
+      listenBtn.addEventListener('click', async () => {
+        if (!listening) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          nextStartTime = audioCtx.currentTime + 0.1;
+          listening = true;
+          listenBtn.textContent = '⏸ Stop';
+        } else {
+          listening = false;
+          if (audioCtx) { await audioCtx.close(); audioCtx = null; }
+          listenBtn.textContent = '▶ Listen Live';
+        }
+      });
+    </script>
+  </body>
+</html>`;
+}
+
+function createWebServer({ config, runtimeState, client, getDiagnostics, liveVoiceStream }) {
   const server = http.createServer((req, res) => {
     const requestUrl = new URL(req.url || '/', `http://${req.headers.host || '127.0.0.1'}`);
 
@@ -158,8 +258,29 @@ function createWebServer({ config, runtimeState, client, getDiagnostics }) {
       return;
     }
 
+    if (requestUrl.pathname === '/listen') {
+      sendHtml(res, 200, buildListenPageHtml());
+      return;
+    }
+
+    if (requestUrl.pathname === '/voice-status') {
+      sendJson(res, 200, liveVoiceStream ? liveVoiceStream.getStatus() : { active: false });
+      return;
+    }
+
     sendText(res, 404, 'Not found');
   });
+
+  if (liveVoiceStream) {
+    server.on('upgrade', (req, socket, head) => {
+      const requestUrl = new URL(req.url || '/', `http://${req.headers.host || '127.0.0.1'}`);
+      if (requestUrl.pathname === '/voice-stream') {
+        liveVoiceStream.handleUpgrade(req, socket, head);
+      } else {
+        socket.destroy();
+      }
+    });
+  }
 
   return {
     start() {

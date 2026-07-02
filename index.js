@@ -15,6 +15,7 @@ const { createRuntimeState } = require('./src/runtime/state');
 const { createWebServer } = require('./src/server/createWebServer');
 const { registerProcessLifecycle } = require('./src/runtime/processLifecycle');
 const { startSelfPing } = require('./src/runtime/startSelfPing');
+const { createLiveVoiceStream } = require('./src/voice/liveVoiceStream');
 
 const config = loadConfig(process.env);
 const runtimeState = createRuntimeState(config);
@@ -268,12 +269,15 @@ const {
   let scheduledVoiceRejoin = null;
   let isVoiceRejoinInProgress = false;
 
+  const liveVoiceStream = createLiveVoiceStream();
+
   const webServer = config.webEnabled
     ? createWebServer({
         config,
         runtimeState,
         client,
-        getDiagnostics: () => ({})
+        getDiagnostics: () => ({}),
+        liveVoiceStream
       })
     : null;
 
@@ -2261,6 +2265,12 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
       runtimeState.voice.lastReadyAt = new Date().toISOString();
       clearScheduledVoiceRejoin();
       console.log(`[VOICE 24/7] âœ… Ready in guild ${guildId}! Nandito na ako, 24/7 mode!`);
+      try {
+        const channel = client.channels.cache.get(channelId);
+        liveVoiceStream.attach(connection, guildId, channel?.name || null);
+      } catch (err) {
+        console.warn('[LIVE-STREAM] attach failed:', err.message);
+      }
     });
 
     // Disconnected: let Discord auto-reconnect. NO manual rejoin scheduling (avoids connect loop).
@@ -2279,6 +2289,7 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
     connection.on(VoiceConnectionStatus.Destroyed, () => {
       runtimeState.voice.connectionStatus = VoiceConnectionStatus.Destroyed;
       console.log(`[VOICE 24/7] Connection destroyed for guild ${guildId}`);
+      liveVoiceStream.detachIfGuild(guildId);
     });
 
     return connection;
