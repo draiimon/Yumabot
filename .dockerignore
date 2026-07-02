@@ -1,13 +1,41 @@
+# Dependencies (rebuilt inside Docker)
 node_modules
 npm-debug.log*
-.dockerignore
+package-lock.json.bak
+
+# Git
 .git
 .gitignore
+
+# Secrets / env
 .env
 .env.*
 *.render.env
+
+# Replit-specific (not needed at runtime)
+.replit
+replit.nix
+.cache
+.pythonlibs
+.upm
+.agents
+main.py
+pyproject.toml
+uv.lock
+
+# Dev / docs
+attached_assets
+docs
+*.md
+render.fast.yaml
+
+# Logs / temp
 logs
 startup.out
 startup.err
+data/*.json
+data/*.log
+
+# Old / unused
 .codex
 discord-js-lavalink-Music-Bot-erela-js
