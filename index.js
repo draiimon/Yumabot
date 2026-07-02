@@ -1701,11 +1701,13 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
       });
 
       connection.subscribe(player);
+      setVoiceSelfState(guildId, { selfMute: false, selfDeaf: true }); // unmute to speak
       player.play(resource);
       console.log('[TTS] Playing audio...');
 
       player.once(AudioPlayerStatus.Idle, async () => {
         console.log('[TTS] Playback finished');
+        setVoiceSelfState(guildId, { selfMute: true, selfDeaf: true }); // remute when done
         const nextQueue = ttsQueues.get(guildId);
         if (nextQueue && nextQueue.length > 0) {
           await processTTSQueue(guildId);
@@ -1714,6 +1716,7 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
 
     } catch (err) {
       console.error('[TTS] Error:', err.message || err);
+      setVoiceSelfState(guildId, { selfMute: true, selfDeaf: true }); // remute on error
       const nextQueue = ttsQueues.get(guildId);
       if (nextQueue && nextQueue.length > 0) {
         await processTTSQueue(guildId);
@@ -2283,6 +2286,29 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
   // discord.py's voice_channel.connect() handles internal reconnect via the
   // voice gateway; @discordjs/voice's state machine does the same.
   let voiceReconnectAttempts = 0;
+
+  /**
+   * Send a self voice state update (op 4) so the bot can appear
+   * fake-muted / fake-deafened while still functioning normally.
+   * selfDeaf: true  → shows 🎧 deafen icon (Discord still sends audio to bot)
+   * selfMute: true  → shows 🔇 mute icon (bot unmutes only while TTS is playing)
+   */
+  function setVoiceSelfState(guildId, { selfMute, selfDeaf }) {
+    const state = savedVoiceStates.get(guildId);
+    if (!state) return;
+    const guild = client.guilds.cache.get(guildId);
+    if (!guild) return;
+    guild.shard.send({
+      op: 4,
+      d: {
+        guild_id: guildId,
+        channel_id: state.channelId,
+        self_mute: selfMute,
+        self_deaf: selfDeaf,
+      }
+    });
+  }
+
   function joinAndWatch(channelId, guildId, adapterCreator) {
     console.log(`[VOICE 24/7] Joining channel ${channelId} in guild ${guildId}`);
 
@@ -2290,8 +2316,8 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
       channelId,
       guildId,
       adapterCreator,
-      selfDeaf: false,
-      selfMute: false
+      selfDeaf: true,   // fake deafen — shows 🎧 but Discord still sends audio to bot
+      selfMute: true    // fake mute  — shows 🔇 but we unmute right before TTS plays
     });
 
     // Log state changes
