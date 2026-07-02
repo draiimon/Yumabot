@@ -27,11 +27,8 @@ const davePreloadPromise = import('@snazzah/davey').catch((e) => {
 // prism-media caches FFmpeg.getInfo() on first call — if FFMPEG_PATH is set
 // after that, the cached "not found" sticks and all TTS playback fails with
 // "FFmpeg/avconv not found".
-try {
-  process.env.FFMPEG_PATH = require('ffmpeg-static');
-} catch {
-  // ffmpeg-static missing — prism-media will fall back to system PATH.
-}
+// Use system ffmpeg (installed via apt-get in Docker / available on PATH)
+if (!process.env.FFMPEG_PATH) process.env.FFMPEG_PATH = 'ffmpeg';
 
 const { loadConfig } = require('./src/config');
 const { createRuntimeState } = require('./src/runtime/state');
@@ -182,8 +179,8 @@ const {
     console.warn('[VOICE] libsodium-wrappers init:', sodiumErr.message);
   }
 
-  process.env.FFMPEG_PATH = require('ffmpeg-static');
-  console.log(`[TTS] FFmpeg path: ${process.env.FFMPEG_PATH || 'not set'}`);
+  if (!process.env.FFMPEG_PATH) process.env.FFMPEG_PATH = 'ffmpeg';
+  console.log(`[TTS] FFmpeg path: ${process.env.FFMPEG_PATH}`);
 
   probeTtsEngines()
     .then((probe) => {
@@ -2083,7 +2080,6 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
   // 24/7 VOICE PERSISTENCE â€” saves to DB so bot survives restarts
   // =====================================================================
   const savedVoiceStates = new Map(); // guildId -> { channelId, guildId }
-  const suspendedVoiceStates = new Map();
 
   function setSavedVoiceState(state) {
     if (state && state.guildId) {

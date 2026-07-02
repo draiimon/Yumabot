@@ -12,19 +12,25 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 FROM base AS deps
 WORKDIR /app
 COPY package.json package-lock.json* ./
-RUN npm ci --omit=dev --no-fund --no-audit
+RUN npm ci --omit=dev --no-fund --no-audit \
+    # prism-media optionally depends on ffmpeg-static, but we use system ffmpeg
+    && rm -rf /app/node_modules/ffmpeg-static
 
 FROM base AS runtime
 WORKDIR /app
 
 COPY --from=deps /app/node_modules ./node_modules
-COPY package.json package-lock.json* ./
+COPY package.json ./
 COPY . .
 
-RUN mkdir -p /app/data
+RUN mkdir -p /app/data \
+    && chown -R node:node /app
+
+USER node
 
 ENV NODE_ENV=production
+ENV FFMPEG_PATH=ffmpeg
 
 EXPOSE 10000
 
-CMD ["node", "/app/index.js"]
+CMD ["node", "--max-old-space-size=384", "--expose-gc", "/app/index.js"]
