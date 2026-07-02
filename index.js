@@ -2167,6 +2167,17 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
   }
 
   /** Load voice state from database */
+  /** Parse VOICE_CHANNELS env var: "guildId:channelId,guildId:channelId" */
+  function loadVoiceStateFromEnv() {
+    const raw = process.env.VOICE_CHANNELS || '';
+    const states = [];
+    for (const pair of raw.split(',')) {
+      const [guildId, channelId] = pair.trim().split(':');
+      if (guildId && channelId) states.push({ guildId, channelId });
+    }
+    return states;
+  }
+
   async function loadVoiceStateFromDB() {
     try {
       // Load all per-guild states (voice_state_<guildId>) plus legacy key (voice_state)
@@ -2439,18 +2450,31 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
     startVerifyReminderScheduler(client);
 
     // =====================================================================
-    // 24/7 AUTO-JOIN ON STARTUP — load all saved voice states from DB
+    // 24/7 AUTO-JOIN ON STARTUP — merge DB states + VOICE_CHANNELS env fallback
     // =====================================================================
     try {
       await davePreloadPromise;
       const dbStates = await loadVoiceStateFromDB();
-      if (dbStates.length > 0) {
-        console.log(`[VOICE 24/7] 🚀 Auto-joining ${dbStates.length} saved voice channel(s) on startup...`);
-        for (const dbState of dbStates) {
-          if (dbState.guildId && dbState.channelId) {
-            setSavedVoiceState({ guildId: dbState.guildId, channelId: dbState.channelId });
-            scheduleVoiceRejoin('startup', 3000, { guildId: dbState.guildId, channelId: dbState.channelId });
-          }
+      const envStates = loadVoiceStateFromEnv();
+
+      // Build merged map: DB wins per guild (more up-to-date), env fills missing guilds
+      const merged = new Map();
+      for (const s of envStates) merged.set(s.guildId, s);
+      for (const s of dbStates)  merged.set(s.guildId, s); // DB overrides env
+
+      // Persist any env-only guilds to DB so they survive across restarts
+      for (const s of envStates) {
+        if (!dbStates.find(d => d.guildId === s.guildId)) {
+          console.log(`[VOICE 24/7] Saving env fallback channel to DB: guild ${s.guildId} -> ${s.channelId}`);
+          await saveVoiceStateToDB(s.guildId, s.channelId).catch(() => {});
+        }
+      }
+
+      if (merged.size > 0) {
+        console.log(`[VOICE 24/7] 🚀 Auto-joining ${merged.size} voice channel(s) on startup...`);
+        for (const state of merged.values()) {
+          setSavedVoiceState({ guildId: state.guildId, channelId: state.channelId });
+          scheduleVoiceRejoin('startup', 3000, { guildId: state.guildId, channelId: state.channelId });
         }
       } else {
         console.log('[VOICE 24/7] No saved voice states found. Waiting for j!join command.');
