@@ -117,13 +117,16 @@ function createLiveVoiceStream() {
     const outBuf = Buffer.alloc(OUT_FRAME_BYTES);
     for (let j = 0; j < OUT_FRAME_SAMPLES; j++) {
       const base = j * DOWNSAMPLE * CHANNELS;
-      // Sum DOWNSAMPLE stereo pairs → mono (anti-alias + downmix in one pass)
-      let acc = 0;
-      for (let k = 0; k < DOWNSAMPLE; k++) {
-        const i = base + k * CHANNELS;
-        acc += (out[i] + out[i + 1]) >> 1; // average L+R for each pair
-      }
-      let sample = Math.round(acc / DOWNSAMPLE);
+      // Triangular weighted average [0.25, 0.50, 0.25] across 3 stereo pairs.
+      // Better than uniform 1/3 weighting: attenuates high-frequency sidelobes
+      // more aggressively (Hann-like shape), producing cleaner voice after decimation.
+      const i0 = base + 0 * CHANNELS;
+      const i1 = base + 1 * CHANNELS;
+      const i2 = base + 2 * CHANNELS;
+      const m0 = (out[i0] + out[i0 + 1]) >> 1;
+      const m1 = (out[i1] + out[i1 + 1]) >> 1;
+      const m2 = (out[i2] + out[i2 + 1]) >> 1;
+      let sample = Math.round(m0 * 0.25 + m1 * 0.50 + m2 * 0.25);
       // Soft-clip: reduce gain when signal is loud (keeps voice intelligible
       // even when multiple speakers are active simultaneously).
       if (sample > 24576) {

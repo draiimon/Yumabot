@@ -93,7 +93,7 @@ function buildListenPageHtml() {
       const BUFFER_AHEAD_SEC = 0.25;
 
       let audioCtx = null;
-      let gainNode = null;
+      let audioChainInput = null; // first node in the processing chain
       let nextStartTime = 0;
       let listening = false;
       let ws = null;
@@ -209,8 +209,7 @@ function buildListenPageHtml() {
 
           const source = audioCtx.createBufferSource();
           source.buffer = buffer;
-          // Route through gain node so volume can be adjusted in future.
-          source.connect(gainNode || audioCtx.destination);
+          source.connect(audioChainInput || audioCtx.destination);
 
           const now = audioCtx.currentTime;
           // If playback has fallen behind (e.g. after a gap), reset the
@@ -245,10 +244,45 @@ function buildListenPageHtml() {
         if (!listening) {
           manuallyDisconnected = false;
           audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: SAMPLE_RATE });
-          // GainNode: slight boost to compensate for soft-clip headroom reduction.
-          gainNode = audioCtx.createGain();
-          gainNode.gain.value = 1.15;
-          gainNode.connect(audioCtx.destination);
+
+          // ── Audio processing chain (browser-side, zero server CPU cost) ──
+          //
+          // source → [highpass] → [presence EQ] → [compressor] → [gain] → out
+          //
+          // 1. High-pass @ 100 Hz  — removes low rumble / mic handling noise
+          // 2. Peaking EQ @ 2 kHz +5 dB — boosts the speech presence band so
+          //    voices cut through clearly (Q=1.2 = gentle, musical shape)
+          // 3. DynamicsCompressor — auto-levels quiet and loud speakers so
+          //    nobody sounds muffled or distorted; standard "voice chat" settings
+          // 4. Output gain x1.1 — recover headroom lost in compression
+
+          const hpf = audioCtx.createBiquadFilter();
+          hpf.type = 'highpass';
+          hpf.frequency.value = 100;
+          hpf.Q.value = 0.7;
+
+          const presence = audioCtx.createBiquadFilter();
+          presence.type = 'peaking';
+          presence.frequency.value = 2000;
+          presence.gain.value = 5;
+          presence.Q.value = 1.2;
+
+          const compressor = audioCtx.createDynamicsCompressor();
+          compressor.threshold.value = -24;  // start compressing at -24 dBFS
+          compressor.knee.value = 10;         // soft knee for natural feel
+          compressor.ratio.value = 4;         // 4:1 ratio — good for voice
+          compressor.attack.value = 0.003;    // 3 ms attack (catches peaks fast)
+          compressor.release.value = 0.25;    // 250 ms release (natural breath)
+
+          const outputGain = audioCtx.createGain();
+          outputGain.gain.value = 1.1;
+
+          hpf.connect(presence);
+          presence.connect(compressor);
+          compressor.connect(outputGain);
+          outputGain.connect(audioCtx.destination);
+
+          audioChainInput = hpf;
           nextStartTime = audioCtx.currentTime + BUFFER_AHEAD_SEC;
           listening = true;
           listenBtn.textContent = '⏸ Stop';
@@ -265,7 +299,7 @@ function buildListenPageHtml() {
           listening = false;
           nextStartTime = 0;
           if (ws) { ws._noReconnect = true; try { ws.close(); } catch {} ws = null; }
-          if (audioCtx) { try { await audioCtx.close(); } catch {} audioCtx = null; gainNode = null; }
+          if (audioCtx) { try { await audioCtx.close(); } catch {} audioCtx = null; audioChainInput = null; }
           listenBtn.textContent = '▶ Listen Live';
         }
       });
