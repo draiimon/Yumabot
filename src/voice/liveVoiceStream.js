@@ -147,18 +147,34 @@ function createLiveVoiceStream() {
   }
 
   function attach(connection, guildId, channelName, guildName) {
-    // Harvest any existing browser WebSocket clients before detaching so we
-    // can migrate them into the new stream (avoids orphaning them on reconnect).
-    const survivingClients = new Set();
+    const receiver = connection.receiver;
     const existing = streams.get(guildId);
+
+    // DAVE renegotiation reuses the same VoiceConnection/receiver object.
+    // Detect this case and skip the full tear-down/rebuild — just update
+    // metadata and rebroadcast status so browser clients see the correct
+    // channel name. This prevents accumulating a new speaking listener
+    // (and new AudioReceiveStream subscriptions) on every renegotiation cycle.
+    if (existing && existing.receiver === receiver) {
+      existing.channelId = connection?.joinConfig?.channelId || null;
+      existing.channelName = channelName || null;
+      existing.guildName = guildName || null;
+      broadcastStatusFor(existing);
+      console.log(`[LIVE-STREAM] Re-attached (same connection) to guild ${guildId}${channelName ? ` (#${channelName})` : ''}`);
+      return;
+    }
+
+    // New or replaced connection — harvest surviving browser WS clients so we
+    // can migrate them and avoid an "Offline" flash during reconnects.
+    const survivingClients = new Set();
     if (existing) {
       for (const ws of existing.clients) {
         if (ws.readyState === ws.OPEN) survivingClients.add(ws);
       }
     }
 
-    // Replace the old stream silently — migrated clients must not see an
-    // Offline flash; they'll get the new Live status from broadcastStatusFor below.
+    // Tear down the old stream silently when there are migrated clients so
+    // they never see a false Offline status during the handover.
     detach(guildId, { silent: survivingClients.size > 0 });
 
     const s = {
@@ -169,6 +185,8 @@ function createLiveVoiceStream() {
       speakingSubs: new Map(),
       tickTimer: null,
       clients: survivingClients, // migrate surviving browser connections
+      receiver,                  // stored so detach() can remove the speaking listener
+      speakingListener: null,    // filled in below
     };
     streams.set(guildId, s);
 
@@ -181,12 +199,15 @@ function createLiveVoiceStream() {
       ws.on('error', migratedCleanup);
     }
 
-    const receiver = connection.receiver;
-    receiver.speaking.on('start', (userId) => {
+    // Store the listener so detach() can remove it precisely — prevents
+    // listener accumulation when the connection object is replaced.
+    const speakingListener = (userId) => {
       try { subscribeUser(s, receiver, userId); } catch (err) {
         console.warn('[LIVE-STREAM] subscribe failed:', err.message);
       }
-    });
+    };
+    s.speakingListener = speakingListener;
+    receiver.speaking.on('start', speakingListener);
 
     s.tickTimer = setInterval(() => mixTick(s), TICK_MS);
     broadcastStatusFor(s);
@@ -198,6 +219,13 @@ function createLiveVoiceStream() {
     if (!s) return;
 
     if (s.tickTimer) clearInterval(s.tickTimer);
+
+    // Remove the speaking listener we registered — prevents accumulation across
+    // DAVE renegotiations where a new connection replaces the old one.
+    if (s.receiver && s.speakingListener) {
+      try { s.receiver.speaking.off('start', s.speakingListener); } catch { /* ignore */ }
+    }
+
     for (const sub of s.speakingSubs.values()) {
       try { sub.stream.destroy(); } catch { /* ignore */ }
       try { sub.decoder.destroy(); } catch { /* ignore */ }
