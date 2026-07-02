@@ -5464,7 +5464,7 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
         const msg = await buildBatchVCAnnouncement(guildId, batch);
         if (msg) {
           console.log(`[VOICE STATE] batched ${batch.length} events -> "${msg}"`);
-          speakMessage(guildId, msg, null);
+          // TTS join/leave announcements disabled
         }
       } catch (err) {
         console.error('[VOICE STATE] queue flush error:', err.message);
