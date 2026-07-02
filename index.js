@@ -630,8 +630,8 @@ MASTER DNA (apply to chat, voice/TTS text, STT replies, greetings):
   }
 
   const styleSlangWords = [
-    'beh', 'te', 'teh', 'gagi', 'awit', 'char', 'charot', 'eme', 'luh', 'weh',
-    'omsim', 'yarn', 'ganern', 'mhie', 'ante', 'accla', 'baks', 'ghorl'
+    'beh', 'te', 'teh', 'gagi', 'awit', 'char', 'char', 'eme', 'luh', 'weh',
+    'omsim', 'yarn', 'ganern', 'pre', 'ante', 'pre', 'baks', 'bro'
   ];
 
   function detectStyle(text = '') {
@@ -720,7 +720,7 @@ MASTER DNA (apply to chat, voice/TTS text, STT replies, greetings):
       .replace(/\b(OSA (?:portal|transaction guide))\b/gi, '');
     const repeated = getRecentPhraseList(scopeKey).slice(-16);
     const softRepeatWords = new Set([
-      'beh', 'teh', 'ghorl', 'mhie', 'accla', 'baks', 'charot', 'eme', 'chos',
+      'beh', 'teh', 'bro', 'pre', 'pre', 'baks', 'char', 'eme', 'chos',
       'hala', 'luh', 'jusko', 'kaloka', 'delulu', 'anuna'
     ]);
     for (const word of repeated) {
@@ -863,7 +863,7 @@ MASTER DNA (apply to chat, voice/TTS text, STT replies, greetings):
     const highEnergy = hasStrongProfanity || exclamations >= 2;
 
     const lowEnergyLines = [
-      'Ay teh, ang cheap ng tanong mo. Ayusin mo yan kung gusto mo patulan.',
+      'Ay pre, ang cheap ng tanong mo. Ayusin mo yan kung gusto mo patulan.',
       'Beh, mema ka lang. Linawin mo muna bago ka bumalik.',
       'Kaloka ka, walang sense. Next ka agad.',
       'Teh, hindi ko keri yang ganyang energy. Ayusin mo context mo.'
@@ -872,7 +872,7 @@ MASTER DNA (apply to chat, voice/TTS text, STT replies, greetings):
     const highEnergyLines = [
       'Teh, ang ingay mo pero waley laman. Ayusin mo tanong mo ngayon.',
       'Beh, g na g ka pero ligwak ka naman. Linawin mo yan, bilis.',
-      'Ay mhie, sabog ka ba? Ayusin mo sinasabi mo bago ka mag-angas.',
+      'Ay pre, sabog ka ba? Ayusin mo sinasabi mo bago ka mag-angas.',
       'Teh naman, ang tapang ng aura mo pero walang utak. Ayusin mo sarili mo.'
     ];
     const pool = highEnergy ? highEnergyLines : lowEnergyLines;
@@ -906,12 +906,12 @@ MASTER DNA (apply to chat, voice/TTS text, STT replies, greetings):
       'bobo amp, context muna bago ngawa. hindi ako manghuhula, tanga.',
       'tarantado ka, wag kang pa-main character kung lutang ka naman.',
       'putangina, kung murahan gusto mo, kaya kitang tapatan doble.',
-      'ulul ka teh, kalma ka. ang tapang mo pero ligwak sagot mo.',
+      'ulul ka pre, kalma ka. ang tapang mo pero ligwak sagot mo.',
       'gago, di ako issue machine. linaw muna bago ka kumuda.',
       'tanga ka today, pero sige. ayusin mo point mo para may mapala tayo.',
       'bwisit ka, wag mo kong ginagawang punching bag, mema ka lang.',
       'putangina mo, respeto muna bago bibig. kung hindi, bardagulan tayo.',
-      'gaga ka beh, ang daldal mo pero wala ka namang punto.'
+      'gaga ka pre, ang daldal mo pero wala ka namang punto.'
     ];
     const picked = pickNonRepeatingLine(scopeKey, lines);
     return picked || lines[Math.floor(Math.random() * lines.length)];
@@ -955,18 +955,18 @@ MASTER DNA (apply to chat, voice/TTS text, STT replies, greetings):
       'teh, wag kang maangas kung sabog ka naman. ayusin mo punto mo.',
       'luh, dami mong satsat pero ligwak logic mo. linaw, dali.',
       'jusq ka, wag mo kong ginagawang tanga. diretsuhin mo sinasabi mo.',
-      'accla, kung bastos ka sakin, mas bastos balik ko sayo.',
+      'pre, kung bastos ka sakin, mas bastos balik ko sayo.',
       'beh, mag-context ka muna bago ka kumuda nang kumuda.',
       'teh, wag kang pasabog kung wala ka namang laman.',
       'mataray ako, oo. at hindi ako takot sumupalpal pag mema ka.',
       'huy, ayusin mo bibig mo. di ako laruan mo dito.',
-      'gago ka ba, teh? kung ganyan ka magsalita, mas lulupitan kita.',
-      'putangina mo teh, linawin mo point mo bago ka magwala.',
+      'gago ka ba, pre? kung ganyan ka magsalita, mas lulupitan kita.',
+      'putangina mo pre, linawin mo point mo bago ka magwala.',
       'tarantado ka ba? ayusin mo context mo, hindi yung puro yabang.',
       'gago ka ba today? puro angas ka pero sablay naman sinasabi mo.',
-      'putangina, teh. hindi ka kawalan kung puro kalat lang dala mo.',
+      'putangina, pre. hindi ka kawalan kung puro kalat lang dala mo.',
       'ulol ka ba? kaunting utak gamitin mo bago ka pumutak.',
-      'gaga ka beh, wag mo kong ina-underestimate, mas maasim bunganga ko.',
+      'gaga ka pre, wag mo kong ina-underestimate, mas maasim bunganga ko.',
       'tanga ka ba? diretsuhin mo para di tayo parehong bwisit.'
     ];
     const picked = pickNonRepeatingLine(scopeKey, lines);
@@ -1344,7 +1344,7 @@ MASTER DNA (apply to chat, voice/TTS text, STT replies, greetings):
     //   return 'oo kilala ko si Hans. mahal ko siya at partner ko siya, klaro na yan.';
     // }
     if (asksWhoAmI && authorId) {
-      return `ikaw si ${authorDisplay}. kilala kita, wag ka na magpa-quiz pa, teh.`;
+      return `ikaw si ${authorDisplay}. kilala kita, wag ka na magpa-quiz pa, pre.`;
     }
     const botIdentityReply = buildBotIdentityDeterministicReply(content);
     if (botIdentityReply) return botIdentityReply;
@@ -1376,9 +1376,9 @@ MASTER DNA (apply to chat, voice/TTS text, STT replies, greetings):
       return 'teh, pang-apat na "yung ano" mo. ayusin mo context mo para di ligwak usapan.';
     }
     const lines = [
-      'alin dun, teh? wag ka mema. drop mo 1 keyword or oras para di tayo hulaan.',
-      'bitin sinabi mo, beh. tao ba, topic ba, o anong oras? linawin mo, dali.',
-      'alin ba talaga, accla? one keyword lang para exact at walang sabog.'
+      'alin dun, pre? wag ka mema. drop mo 1 keyword or oras para di tayo hulaan.',
+      'bitin sinabi mo, pre. tao ba, topic ba, o anong oras? linawin mo, dali.',
+      'alin ba talaga, pre? one keyword lang para exact at walang sabog.'
     ];
     return pickNonRepeatingLine(`vague-recall:${scopeKey}`, lines) || lines[0];
   }
@@ -1390,7 +1390,7 @@ MASTER DNA (apply to chat, voice/TTS text, STT replies, greetings):
       /\b(what\s+is\s+pika|ano\s+ang\s+pika|ano\s+yung\s+pika|anong\s+pika|pika\s+meaning|meaning\s+ng\s+pika)\b/i
         .test(lower);
     if (!asksPika) return '';
-    return 'pika = pikon, teh. ibig sabihin badtrip na ko at ubos na pasensya ko.';
+    return 'pika = pikon, pre. ibig sabihin badtrip na ko at ubos na pasensya ko.';
   }
 
   function enqueueChannelAI(channelId, task) {
@@ -1524,7 +1524,7 @@ MASTER DNA (apply to chat, voice/TTS text, STT replies, greetings):
       await message.reply(`Sige na, lilipat na ako sa **${target.name}**. Nainis ka na eh, kalma ka lang.`);
     } catch (err) {
       console.error('[VOICE MOVE] natural move failed:', err.message);
-      await message.reply('Hindi ako nakalipat, may sabit. Try mo ulit, teh.');
+      await message.reply('Hindi ako nakalipat, may sabit. Try mo ulit, pre.');
     }
     return true;
   }
@@ -1974,7 +1974,7 @@ MASTER DNA (apply to chat, voice/TTS text, STT replies, greetings):
           const researchMode = (!isBackreadLike && voiceResearchEnabled) ? shouldUseResearchMode(transcript) : false;
           const tavilyResults = researchMode ? await searchWithTavily(transcript, 3) : [];
 
-          let aiReply = 'Hindi ko nasagot, ghorl.';
+          let aiReply = 'Hindi ko nasagot, bro.';
           if (researchMode && tavilyResults.length === 0) {
             aiReply = 'Teh latest yan pero walang source ngayon. Wag hula-hula, ulit ka mamaya.';
           } else {
@@ -2504,7 +2504,7 @@ MASTER DNA (apply to chat, voice/TTS text, STT replies, greetings):
       const mentions =
         members.length > 0
           ? members.map((m) => `<@${m.id}>`).join(' ')
-          : 'Walang naka-online na ghorl ngayon.';
+          : 'Walang naka-online na bro ngayon.';
       const text = await generateScheduledGreetingText({ type, channel, members, nowParts });
       if (!text) {
         console.warn(`[GREET] Empty AI greeting text for type=${type} in channel=${targetChannelId}`);
@@ -2657,7 +2657,7 @@ MASTER DNA (apply to chat, voice/TTS text, STT replies, greetings):
     const authorDisplay =
       options.authorDisplayName ||
       options.displayName ||
-      'ghorl';
+      'bro';
 
     // ═══ HUMAN MEMORY (per kausap) — ALWAYS on chat, NOT OSA FAQ ═══
     let humanMemoryContext = '';
@@ -3154,14 +3154,14 @@ MASTER DNA (apply to chat, voice/TTS text, STT replies, greetings):
             : null;
 
           if (!voiceChannel) {
-            await message.reply('Sumali ka muna sa isang voice channel, tapos tawagin mo ko ulit, ghorl.');
+            await message.reply('Sumali ka muna sa isang voice channel, tapos tawagin mo ko ulit, bro.');
             return;
           }
 
           const existing = getVoiceConnection(message.guild.id);
           if (existing) {
             if (existing.joinConfig.channelId === voiceChannel.id) {
-              await message.reply('Nasa call na kita ghorl, nandito na ako.');
+              await message.reply('Nasa call na kita bro, nandito na ako.');
               return;
             } else {
               try { existing.destroy(); } catch { }
@@ -3174,19 +3174,19 @@ MASTER DNA (apply to chat, voice/TTS text, STT replies, greetings):
           voiceReconnectAttempts = 0;
           joinAndWatch(voiceChannel.id, voiceChannel.guild.id, voiceChannel.guild.voiceAdapterCreator);
 
-          await message.reply(`O ayan, pumasok na ako sa ${voiceChannel.name}. Nandito na ako, ghorl.`);
+          await message.reply(`O ayan, pumasok na ako sa ${voiceChannel.name}. Nandito na ako, bro.`);
           return;
         }
 
         // j!leave
         if (command === 'leave') {
           if (!message.guild) {
-            await message.reply('Wala naman tayong server dito, ghorl.');
+            await message.reply('Wala naman tayong server dito, bro.');
             return;
           }
           const connection = getVoiceConnection(message.guild.id);
           if (!connection) {
-            await message.reply('Wala naman ako sa kahit anong voice channel ngayon, mare.');
+            await message.reply('Wala naman ako sa kahit anong voice channel ngayon, bro.');
             return;
           }
           setSavedVoiceState(null);
@@ -3212,7 +3212,7 @@ MASTER DNA (apply to chat, voice/TTS text, STT replies, greetings):
             member = await message.guild.members.fetch(message.author.id).catch(() => null);
           }
           if (!member?.voice?.channel) {
-            await message.reply('Sumali ka muna sa voice bago mo ko pagalitain, mare!');
+            await message.reply('Sumali ka muna sa voice bago mo ko pagalitain, bro!');
             return;
           }
 
@@ -3247,7 +3247,7 @@ MASTER DNA (apply to chat, voice/TTS text, STT replies, greetings):
         // j!autotts â€” Toggle auto tts in current channel
         if (command === 'autotts') {
           if (!message.guild || !message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-            return message.reply('Admins lang ang bida-bida dito, ghorl.');
+            return message.reply('Admins lang ang bida-bida dito, bro.');
           }
 
           const guildId = message.guild.id;
@@ -3258,7 +3258,7 @@ MASTER DNA (apply to chat, voice/TTS text, STT replies, greetings):
 
           if (channels.has(channelId)) {
             channels.delete(channelId);
-            await message.reply('AUTO TTS DISABLED na para sa channel na to, sis.');
+            await message.reply('AUTO TTS DISABLED na para sa channel na to, bro.');
           } else {
             channels.add(channelId);
             await message.reply('AUTO TTS ENABLED! Bawat chat niyo dito, babasahin ko (kung nasa voice ako).');
@@ -3299,8 +3299,8 @@ MASTER DNA (apply to chat, voice/TTS text, STT replies, greetings):
             }
             if (getVoiceConnection(message.guild.id)) {
               const sample = genderName === 'male'
-                ? `Ito na ang bagong boses ko, ghorl! Macho na macho na! Ayan, lalaki na boses ko! Slay!`
-                : `Ito na ang bagong boses ko, ghorl! Dyosa energy na! Blessica vibes, charot!`;
+                ? `Ito na ang bagong boses ko, bro! `
+                : `Ito na ang bagong boses ko, bro! Game. `;
               speakMessage(message.guild.id, sample, message.author.id);
             }
           }
@@ -3315,7 +3315,7 @@ MASTER DNA (apply to chat, voice/TTS text, STT replies, greetings):
 
           const member = message.member;
           if (!member || !member.voice.channel) {
-            await message.reply('Sumali ka muna sa voice channel, ghorl.');
+            await message.reply('Sumali ka muna sa voice channel, bro.');
             return;
           }
 
@@ -3346,7 +3346,7 @@ MASTER DNA (apply to chat, voice/TTS text, STT replies, greetings):
             // === MODE 2: j!ask (no args) â†’ start STT listening mode ===
             // Exactly like gnslgbot2's g!ask without args
             if (activeVoiceUsers.has(message.guild.id) && activeVoiceUsers.get(message.guild.id) !== message.author.id) {
-              await message.reply('May nagpaparinig na ngayon! Hintayin mo muna mag-`j!stop`, sis.');
+              await message.reply('May nagpaparinig na ngayon! Hintayin mo muna mag-`j!stop`, bro.');
               return;
             }
             listeningGuilds.add(message.guild.id);
@@ -3364,11 +3364,11 @@ MASTER DNA (apply to chat, voice/TTS text, STT replies, greetings):
           if (!message.guild) return;
           const member = message.member;
           if (!member || !member.voice.channel) {
-            await message.reply('Sumali ka muna sa voice channel para makinig ako, ghorl.');
+            await message.reply('Sumali ka muna sa voice channel para makinig ako, bro.');
             return;
           }
           if (activeVoiceUsers.has(message.guild.id) && activeVoiceUsers.get(message.guild.id) !== message.author.id) {
-            await message.reply('May nagpaparinig na ngayon! Hintayin mo muna mag-`j!stop`, sis.');
+            await message.reply('May nagpaparinig na ngayon! Hintayin mo muna mag-`j!stop`, bro.');
             return;
           }
           try {
@@ -3396,7 +3396,7 @@ MASTER DNA (apply to chat, voice/TTS text, STT replies, greetings):
         if (command === 'stop' || command === 'stoplisten' || command === 'tigil') {
           if (!message.guild) return;
           if (!listeningGuilds.has(message.guild.id)) {
-            await message.reply('Hindi naman ako nakikinig ng voice ngayon, ghorl.');
+            await message.reply('Hindi naman ako nakikinig ng voice ngayon, bro.');
             return;
           }
           listeningGuilds.delete(message.guild.id);
@@ -3404,7 +3404,7 @@ MASTER DNA (apply to chat, voice/TTS text, STT replies, greetings):
           // Call cleanup to remove speaking event listener
           const cleanup = listeningCleanup.get(message.guild.id);
           if (cleanup) { cleanup(); listeningCleanup.delete(message.guild.id); }
-          await message.reply('TUMIGIL NA AKO. Naupong na ang tenga ko, mare.');
+          await message.reply('TUMIGIL NA AKO. Naupong na ang tenga ko, bro.');
           return;
         }
         // j!view — introduction + role menu + verify progress
@@ -3461,7 +3461,7 @@ MASTER DNA (apply to chat, voice/TTS text, STT replies, greetings):
 
           if (!targetId || !customMessage) {
             try {
-              await authorUser.send(`j!chat: Kulang ang info, beshie! Format: j!chat <id> <message>\nID na binigay mo: ${targetId || 'wala'}\nMessage: ${customMessage || 'wala'}`);
+              await authorUser.send(`j!chat: Kulang ang info, bro! Format: j!chat <id> <message>\nID na binigay mo: ${targetId || 'wala'}\nMessage: ${customMessage || 'wala'}`);
             } catch { }
             return;
           }
@@ -3544,7 +3544,7 @@ MASTER DNA (apply to chat, voice/TTS text, STT replies, greetings):
           }
           const isAdmin = message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator);
           if (!isAdmin) {
-            await message.reply('Admins lang pwede magpatulog sakin, ghorl.');
+            await message.reply('Admins lang pwede magpatulog sakin, bro.');
             return;
           }
 
@@ -3578,7 +3578,7 @@ MASTER DNA (apply to chat, voice/TTS text, STT replies, greetings):
           }
           const isAdmin = message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator);
           if (!isAdmin) {
-            await message.reply('Admins lang pwede mag toggle ng research, ghorl.');
+            await message.reply('Admins lang pwede mag toggle ng research, bro.');
             return;
           }
 
@@ -3608,7 +3608,7 @@ MASTER DNA (apply to chat, voice/TTS text, STT replies, greetings):
             message.member &&
             message.member.permissions.has(PermissionsBitField.Flags.Administrator);
           if (!isAdmin) {
-            await message.reply('Admins lang pwede mag ragseed, ghorl.');
+            await message.reply('Admins lang pwede mag ragseed, bro.');
             return;
           }
           await message.reply(
@@ -3651,7 +3651,7 @@ MASTER DNA (apply to chat, voice/TTS text, STT replies, greetings):
           }
           const isAdmin = message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator);
           if (!isAdmin) {
-            await message.reply('Admins lang pwede mag-permcheck dito, ghorl.');
+            await message.reply('Admins lang pwede mag-permcheck dito, bro.');
             return;
           }
 
@@ -3760,7 +3760,7 @@ MASTER DNA (apply to chat, voice/TTS text, STT replies, greetings):
           }
           const isAdmin = message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator);
           if (!isAdmin) {
-            await message.reply('Admins lang pwede mag-checkdb dito, ghorl.');
+            await message.reply('Admins lang pwede mag-checkdb dito, bro.');
             return;
           }
 
@@ -3825,7 +3825,7 @@ MASTER DNA (apply to chat, voice/TTS text, STT replies, greetings):
           }
 
           try {
-            await leonardoGenerateAndSend({ channel: message.channel, replyToMessage: message, prompt, caption: `ayan na beh: **${prompt.slice(0, 140)}**` });
+            await leonardoGenerateAndSend({ channel: message.channel, replyToMessage: message, prompt, caption: `ayan na pre: **${prompt.slice(0, 140)}**` });
           } catch (e) {
             await message.reply(`Teh, di ko magawa yung pic ngayon. ${e.message}`);
           }
@@ -4029,14 +4029,14 @@ MASTER DNA (apply to chat, voice/TTS text, STT replies, greetings):
         // j!setupverify — create verify channel + lock server behind Verified role
         if (command === 'setupverify' || command === 'verifysetup') {
           if (!message.guild) {
-            await message.reply('Server lang, ghorl.');
+            await message.reply('Server lang, bro.');
             return;
           }
           const isAdmin =
             message.member?.permissions?.has(PermissionsBitField.Flags.Administrator) ||
             message.member?.permissions?.has(PermissionsBitField.Flags.ManageGuild);
           if (!isAdmin) {
-            await message.reply('Admin / Manage Server lang pwede mag-setup ng verify, teh.');
+            await message.reply('Admin / Manage Server lang pwede mag-setup ng verify, pre.');
             return;
           }
           const roleId = args[0] || '1426746102903738432';
@@ -4048,7 +4048,7 @@ MASTER DNA (apply to chat, voice/TTS text, STT replies, greetings):
               lockServer: true,
             });
             await message.reply(
-              `Tapos na, mare! Verify: <#${result.channel.id}> | Role: <@&${result.verifiedRoleId}> | Locked **${result.lockedChannels}** channels.\n` +
+              `Tapos na, bro! Verify: <#${result.channel.id}> | Role: <@&${result.verifiedRoleId}> | Locked **${result.lockedChannels}** channels.\n` +
                 'React ✅ sa verify message para makapasok. Hindi verified = verify channel lang makikita.',
             );
           } catch (err) {
@@ -4224,12 +4224,12 @@ MASTER DNA (apply to chat, voice/TTS text, STT replies, greetings):
         // Manual trigger for scheduled greetings for quick diagnostics.
         if (command === 'greetnow') {
           if (!message.guild) {
-            await message.reply('Pang-server lang to, ghorl.');
+            await message.reply('Pang-server lang to, bro.');
             return;
           }
           const isAdmin = message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator);
           if (!isAdmin) {
-            await message.reply('Admins lang puwedeng mag-force greet, mhie.');
+            await message.reply('Admins lang puwedeng mag-force greet, pre.');
             return;
           }
 
@@ -4315,7 +4315,7 @@ MASTER DNA (apply to chat, voice/TTS text, STT replies, greetings):
             .setThumbnail(client.user.displayAvatarURL({ dynamic: true }))
             .setDescription(
               '**about me**\n' +
-              '- mention/reply ka teh replyan kita\n' +
+              '- mention/reply ka pre replyan kita\n' +
               '- minsan sasabat ako kahit di ako tinatanong, pake mo ba\n' +
               '- default ko latest-chat focus (hindi ako hukay ng old issue)\n' +
               '- memory recall ko on-demand: `naalala mo ba...`, `kanina...`, `balikan natin...`\n' +
@@ -4372,7 +4372,7 @@ MASTER DNA (apply to chat, voice/TTS text, STT replies, greetings):
                 name: 'MUSIC PLAYER',
                 value:
                   '```' +
-                  'j!play <link/name>  - tugtog na teh!\n' +
+                  'j!play <link/name>  - tugtog na pre!\n' +
                   'j!mstop             - tigil ang kanta\n' +
                   'j!skip              - next song na, chaka\n' +
                   'j!pause / j!resume  - hold muna / go tuloy\n' +
@@ -4608,7 +4608,7 @@ MASTER DNA (apply to chat, voice/TTS text, STT replies, greetings):
             const caption = `sorry, my bad. ${saidGender} nga si ${lastPortray.displayName}. ayan ulit, inayos ko na.`;
             await leonardoGenerateAndSend({ channel: message.channel, replyToMessage: message, prompt: finalPrompt, caption });
           } catch (e) {
-            await message.reply(`teh, fail ulit. ${e.message}`);
+            await message.reply(`pre, fail ulit. ${e.message}`);
           }
           return;
         }
@@ -4622,7 +4622,7 @@ MASTER DNA (apply to chat, voice/TTS text, STT replies, greetings):
         const prompt = (imgMatch[4] || '').trim();
         if (prompt.length >= 3) {
           try {
-            await leonardoGenerateAndSend({ channel: message.channel, replyToMessage: message, prompt, caption: `ayan mhie: **${prompt.slice(0, 140)}**` });
+            await leonardoGenerateAndSend({ channel: message.channel, replyToMessage: message, prompt, caption: `ayan pre: **${prompt.slice(0, 140)}**` });
           } catch (e) {
             await message.reply(`Teh, fail yung pic. ${e.message}`);
           }
@@ -4770,7 +4770,7 @@ MASTER DNA (apply to chat, voice/TTS text, STT replies, greetings):
           content =
             `${content}\n\n[NATURAL CHAT GUARD]:\n` +
             `- bawal paulit-ulit (opener, punchline, brag, tanong)\n` +
-            `- wag laging "WAHAHAHA" opener; mix it up (hala/luh/jusko/kaloka/sige/teh)\n` +
+            `- wag laging "WAHAHAHA" opener; mix it up (hala/luh/jusko/kaloka/sige/pre)\n` +
             `- wag ikaw lagi ang topic; reply to user's latest point\n` +
             `- 1 main point + 1 follow-up question max\n` +
             `- if user says "paulit ulit", acknowledge and switch topic\n` +
@@ -4935,7 +4935,7 @@ MASTER DNA (apply to chat, voice/TTS text, STT replies, greetings):
         content =
           `AUTO-INTERACT MODE (NOT SPAM): You decided to join the conversation because your name was mentioned ("${rawContent}"). ` +
           `Backread the last messages in the channel first (use the conversation history). ` +
-          `Then do a natural chat-interaction: react in a varied way (wag laging WAHAHAHA; pwede hala/luh/jusko/kaloka/sige/teh). ` +
+          `Then do a natural chat-interaction: react in a varied way (wag laging WAHAHAHA; pwede hala/luh/jusko/kaloka/sige/pre). ` +
           `Reply to ONE specific point/person you saw in the backread (use their nickname), and keep it as normal conversation with a clear agree/disagree stance when bagay sa usapan. ` +
           `Do not force a follow-up question every time and never use canned line like "ano ng chika mo today". ` +
           `Optional: mini-story minsan lang, and dapat related + hindi ikaw lagi ang topic. ` +
@@ -4946,7 +4946,7 @@ MASTER DNA (apply to chat, voice/TTS text, STT replies, greetings):
 
       if (researchMode && tavilyResults.length === 0) {
         const noSourceReply =
-          'Teh, latest yan pero wala akong ma-pull na fresh sources ngayon gusto mo mag research ka nalang beh! tanong ka ng tanong sakin bobayta ka tlga. ' +
+          'Teh, latest yan pero wala akong ma-pull na fresh sources ngayon gusto mo mag research ka nalang pre! tanong ka ng tanong sakin bobayta ka tlga. ' +
           'Pa-try ulit in a bit or pakilinaw yung query para di tayo hula-hula.';
         await message.reply(noSourceReply);
         try {
@@ -5120,7 +5120,7 @@ MASTER DNA (apply to chat, voice/TTS text, STT replies, greetings):
       const previousKey = `${guildId}:${type}:${rageMode ? 'rage' : 'normal'}`;
       const previous = lastVCAnnouncementByGuild.get(previousKey) || '';
       const style = mergeStyleProfile(
-        detectStyle(`${displayName} ${type} ${rageMode ? 'gagi bwisit' : 'uy mhie'}`),
+        detectStyle(`${displayName} ${type} ${rageMode ? 'gagi bwisit' : 'uy pre'}`),
         await loadStyleProfile(userId)
       );
       const dynamicStyleContext = buildDynamicContext(
@@ -5190,13 +5190,13 @@ MASTER DNA (apply to chat, voice/TTS text, STT replies, greetings):
       if (ev.type === 'join') {
         const fallbackJoin = ev.rageMode
           ? [
-            `Hoy ${ev.displayName}, labas-pasok ka na naman?.... Ano ba talaga trip mo, teh?`,
+            `Hoy ${ev.displayName}, labas-pasok ka na naman?.... Ano ba talaga trip mo, pre?`,
             `${ev.displayName}, pumirme ka nga.... VC to, hindi ito revolving door, gago ka ba?`,
-            `Ayan si ${ev.displayName}, balik na naman.... Desisyonan mo buhay mo, teh.`
+            `Ayan si ${ev.displayName}, balik na naman.... Desisyonan mo buhay mo, pre.`
           ]
           : [
             `Ayan na si ${ev.displayName}, ang ${ev.complimentWord} naman neto bes.`,
-            `${ev.displayName} joined. Gulo mode ulit, mga accla.`,
+            `${ev.displayName} joined. Gulo mode ulit, mga pre.`,
             `Uy ${ev.displayName}, sa wakas dumating ka rin.`
           ];
         const aiJoin = await generateVCAnnouncement('join', ev.displayName, ev.userId, guildId, ev.complimentWord, ev.rageMode);
@@ -5207,7 +5207,7 @@ MASTER DNA (apply to chat, voice/TTS text, STT replies, greetings):
         ? [
           `Labas ulit si ${ev.displayName}. Teh, ano ba yan, pasok-labas ka parang sirang pinto bobo amputa.`,
           `${ev.displayName} umalis nanaman si gago  Kalmahan mo, hindi ka makukulong dito, bwisit.`,
-          `Ayan na, umalis na naman si ${ev.displayName}. Gulo mo today, teh. may asin ba pwerta mo?`
+          `Ayan na, umalis na naman si ${ev.displayName}. Gulo mo today, pre. may asin ba pwerta mo?`
         ]
         : [
           `Umalis si ${ev.displayName}. Pwede na mag-backstab, kasi tanga talaga yon.`,
@@ -5274,13 +5274,13 @@ MASTER DNA (apply to chat, voice/TTS text, STT replies, greetings):
     }
 
     if (rageMode) {
-      if (joins.length && leaves.length) return `Ano ba 'to, nalilito na ko kung sino babatiin: pasok si ${joinList}, labas si ${leaveList}, gulo nyo, mga teh.`;
-      if (joins.length) return `Sabay-sabay kayong pumasok: ${joinList}. Nalilito na ko kung sino uunahin, kalma kayo, accla.`;
+      if (joins.length && leaves.length) return `Ano ba 'to, nalilito na ko kung sino babatiin: pasok si ${joinList}, labas si ${leaveList}, gulo nyo, mga pre.`;
+      if (joins.length) return `Sabay-sabay kayong pumasok: ${joinList}. Nalilito na ko kung sino uunahin, kalma kayo, pre.`;
       return `Sabay-sabay din kayong umalis: ${leaveList}. Nalilito na ko sa inyo, walkout challenge ba 'to, bwisit?`;
     }
 
     if (joins.length && leaves.length) return `Update lang, nalilito na ko kung sino babatiin: pumasok si ${joinList}, umalis si ${leaveList}.`;
-    if (joins.length) return `Ayan, sabay pumasok sina ${joinList}. Nalilito na ko kung sino uunahin batiin, beshies.`;
+    if (joins.length) return `Ayan, sabay pumasok sina ${joinList}. Nalilito na ko kung sino uunahin batiin, mga bro.`;
     return `Sabay umalis sina ${leaveList}. Nalito na rin ako sa flow nyo, tahimik na ulit for now.`;
   }
 
