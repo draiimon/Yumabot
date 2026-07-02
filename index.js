@@ -2320,10 +2320,35 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
       selfMute: true    // fake mute  — shows 🔇 but we unmute right before TTS plays
     });
 
-    // Log state changes
+    // Watchdog: fires 30s after the last time we STARTED a connection attempt.
+    // - Armed once on initial join.
+    // - Re-armed ONLY when dropping from Ready → Signalling (post-Ready reconnect).
+    //   NOT re-armed on Signalling→Connecting→Signalling cycles — otherwise the
+    //   rapid cycling resets the 30s timer indefinitely and it never fires.
+    let reconnectWatchdog = null;
+    function armWatchdog() {
+      clearTimeout(reconnectWatchdog);
+      reconnectWatchdog = setTimeout(() => {
+        if (connection.state.status !== VoiceConnectionStatus.Ready) {
+          console.log('[VOICE 24/7] Stuck in signalling >30s — force-destroying and scheduling rejoin');
+          try { connection.destroy(); } catch { }
+          scheduleVoiceRejoin('stuck-signalling', 2000, { guildId, channelId });
+        }
+      }, 30000);
+    }
+    armWatchdog(); // arm for the initial join attempt
+
+    // Log state changes; re-arm watchdog only on Ready → Signalling drops.
     connection.on('stateChange', (oldState, newState) => {
       console.log(`[VOICE 24/7] Connection state: ${oldState.status} -> ${newState.status}`);
       runtimeState.voice.connectionStatus = newState.status;
+      if (
+        oldState.status === VoiceConnectionStatus.Ready &&
+        newState.status === VoiceConnectionStatus.Signalling
+      ) {
+        // Post-Ready drop — start a fresh 30s rescue window for this reconnect.
+        armWatchdog();
+      }
     });
 
     // Catch errors so the process does NOT crash
@@ -2332,25 +2357,15 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
       console.error('[VOICE 24/7] Connection error:', err.message);
     });
 
-    // On Ready â€” reset reconnect counter
-    // Watchdog: if not Ready within 30s, destroy and force a fresh rejoin
-    const stuckTimer = setTimeout(() => {
-      if (connection.state.status !== VoiceConnectionStatus.Ready) {
-        console.log('[VOICE 24/7] Stuck in signalling >30s - force-destroying and scheduling rejoin');
-        try { connection.destroy(); } catch { }
-        scheduleVoiceRejoin('stuck-signalling', 2000, { guildId, channelId });
-      }
-    }, 30000);
-
-    // On Ready - reset reconnect counter
+    // On Ready - reset reconnect counter + attach live stream
     connection.on(VoiceConnectionStatus.Ready, () => {
-      clearTimeout(stuckTimer);
-      voiceReconnectAttempts = 0; // reset on successful connection
+      clearTimeout(reconnectWatchdog);
+      voiceReconnectAttempts = 0;
       runtimeState.voice.reconnectAttempts = 0;
       runtimeState.voice.connectionStatus = VoiceConnectionStatus.Ready;
       runtimeState.voice.lastReadyAt = new Date().toISOString();
       clearScheduledVoiceRejoin(guildId);
-      console.log(`[VOICE 24/7] âœ… Ready in guild ${guildId}! Nandito na ako, 24/7 mode!`);
+      console.log(`[VOICE 24/7] ✅ Ready in guild ${guildId}! Nandito na ako, 24/7 mode!`);
       try {
         const channel = client.channels.cache.get(channelId);
         const guild = client.guilds.cache.get(guildId);
@@ -2360,7 +2375,7 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
       }
     });
 
-    // Disconnected: let Discord auto-reconnect. NO manual rejoin scheduling (avoids connect loop).
+    // Disconnected: let Discord auto-reconnect first; destroy only if it can't.
     connection.on(VoiceConnectionStatus.Disconnected, async () => {
       console.log(`[VOICE 24/7] Disconnected from ${guildId}; waiting for Discord auto-reconnect.`);
       try {
@@ -2373,10 +2388,15 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
       }
     });
 
+    // Destroyed: always schedule a rejoin so /listen comes back online.
     connection.on(VoiceConnectionStatus.Destroyed, () => {
+      clearTimeout(reconnectWatchdog);
       runtimeState.voice.connectionStatus = VoiceConnectionStatus.Destroyed;
       console.log(`[VOICE 24/7] Connection destroyed for guild ${guildId}`);
       liveVoiceStream.detachIfGuild(guildId);
+      if (savedVoiceStates.has(guildId)) {
+        scheduleVoiceRejoin('destroyed', 5000, { guildId, channelId });
+      }
     });
 
     return connection;

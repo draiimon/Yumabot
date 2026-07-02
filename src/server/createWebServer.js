@@ -95,6 +95,7 @@ function buildListenPageHtml() {
       let ws = null;
       let currentGuildId = null;
       let knownStreams = [];
+      let streamWasOffline = false; // tracks when WS told us active:false
 
       function setStatus(active, channelName) {
         statusPill.classList.toggle('off', !active);
@@ -128,7 +129,14 @@ function buildListenPageHtml() {
             channelSelectLabel.style.display = 'none';
           }
           if (!currentGuildId && knownStreams.length > 0) {
+            // First connection ever — auto-connect to first stream.
             connect(knownStreams[0].guildId);
+          } else if (currentGuildId && streamWasOffline && knownStreams.length > 0) {
+            // Bot reconnected after a drop — WS told us offline, poll sees it's
+            // back. Reconnect to the same (or first available) guild stream.
+            const target = knownStreams.find((s) => s.guildId === currentGuildId) || knownStreams[0];
+            streamWasOffline = false;
+            connect(target.guildId);
           } else if (knownStreams.length === 0) {
             setStatus(false, null);
           }
@@ -148,7 +156,10 @@ function buildListenPageHtml() {
           if (typeof ev.data === 'string') {
             try {
               const msg = JSON.parse(ev.data);
-              if (msg.type === 'status') setStatus(msg.active, msg.channelName);
+              if (msg.type === 'status') {
+                setStatus(msg.active, msg.channelName);
+                streamWasOffline = !msg.active; // track so poll can reconnect
+              }
             } catch {}
             return;
           }

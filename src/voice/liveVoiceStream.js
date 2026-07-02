@@ -137,8 +137,19 @@ function createLiveVoiceStream() {
   }
 
   function attach(connection, guildId, channelName, guildName) {
-    // Replace any existing stream for this same guild (e.g. rejoin).
-    detach(guildId);
+    // Harvest any existing browser WebSocket clients before detaching so we
+    // can migrate them into the new stream (avoids orphaning them on reconnect).
+    const survivingClients = new Set();
+    const existing = streams.get(guildId);
+    if (existing) {
+      for (const ws of existing.clients) {
+        if (ws.readyState === ws.OPEN) survivingClients.add(ws);
+      }
+    }
+
+    // Replace the old stream silently — migrated clients must not see an
+    // Offline flash; they'll get the new Live status from broadcastStatusFor below.
+    detach(guildId, { silent: survivingClients.size > 0 });
 
     const s = {
       guildId,
@@ -147,9 +158,18 @@ function createLiveVoiceStream() {
       channelName: channelName || null,
       speakingSubs: new Map(),
       tickTimer: null,
-      clients: new Set(),
+      clients: survivingClients, // migrate surviving browser connections
     };
     streams.set(guildId, s);
+
+    // Re-wire cleanup for migrated clients so they properly leave this stream.
+    for (const ws of survivingClients) {
+      ws.removeAllListeners('close');
+      ws.removeAllListeners('error');
+      const migratedCleanup = () => s.clients.delete(ws);
+      ws.on('close', migratedCleanup);
+      ws.on('error', migratedCleanup);
+    }
 
     const receiver = connection.receiver;
     receiver.speaking.on('start', (userId) => {
@@ -163,7 +183,7 @@ function createLiveVoiceStream() {
     console.log(`[LIVE-STREAM] Attached to guild ${guildId}${channelName ? ` (#${channelName})` : ''}`);
   }
 
-  function detach(guildId) {
+  function detach(guildId, { silent = false } = {}) {
     const s = streams.get(guildId);
     if (!s) return;
 
@@ -173,11 +193,14 @@ function createLiveVoiceStream() {
       try { sub.decoder.destroy(); } catch { /* ignore */ }
     }
 
-    // Tell any listeners on this specific guild's stream that it's gone.
-    const payload = JSON.stringify({ type: 'status', active: false, guildId, channelId: null, channelName: null });
-    for (const ws of s.clients) {
-      if (ws.readyState === ws.OPEN) {
-        try { ws.send(payload); } catch { /* ignore */ }
+    // Notify listeners the stream is gone — skip when called from attach()
+    // so migrated clients never see an Offline flash during DAVE renegotiation.
+    if (!silent) {
+      const payload = JSON.stringify({ type: 'status', active: false, guildId, channelId: null, channelName: null });
+      for (const ws of s.clients) {
+        if (ws.readyState === ws.OPEN) {
+          try { ws.send(payload); } catch { /* ignore */ }
+        }
       }
     }
 
@@ -199,6 +222,21 @@ function createLiveVoiceStream() {
       s = streams.values().next().value || null;
     }
 
+    // Keepalive ping every 25s — prevents Render's proxy from dropping
+    // idle WebSocket connections when nobody is speaking (no binary frames flowing).
+    const pingTimer = setInterval(() => {
+      if (ws.readyState === ws.OPEN) {
+        try { ws.ping(); } catch { /* ignore */ }
+      } else {
+        clearInterval(pingTimer);
+      }
+    }, 25000);
+
+    const cleanup = () => {
+      clearInterval(pingTimer);
+      if (s) s.clients.delete(ws);
+    };
+
     if (s) {
       s.clients.add(ws);
       ws.send(JSON.stringify({
@@ -208,11 +246,12 @@ function createLiveVoiceStream() {
         channelId: s.channelId,
         channelName: s.channelName,
       }));
-      ws.on('close', () => s.clients.delete(ws));
-      ws.on('error', () => s.clients.delete(ws));
+      ws.on('close', cleanup);
+      ws.on('error', cleanup);
     } else {
       ws.send(JSON.stringify({ type: 'status', active: false, guildId: requestedGuildId || null, channelName: null }));
-      ws.on('close', () => {});
+      ws.on('close', cleanup);
+      ws.on('error', cleanup);
     }
   });
 
