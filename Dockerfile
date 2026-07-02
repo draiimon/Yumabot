@@ -1,8 +1,6 @@
 # syntax=docker/dockerfile:1
-# ↑ Enables BuildKit cache mounts — apt & npm packages are cached between builds
-#   so only changed layers re-run. First build is full; every push after is fast.
 
-# ── Stage 1: shared runtime base ───────────────────────────────────────────────
+# ── Stage 1: runtime base ──────────────────────────────────────────────────────
 FROM node:22-bookworm-slim AS base
 
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
@@ -23,8 +21,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 
 RUN pip3 install --no-cache-dir edge-tts --break-system-packages
 
-# ── Stage 2: build native Node addons ─────────────────────────────────────────
-# Build tools + *-dev headers stay here — never land in the final image.
+# ── Stage 2: install deps ──────────────────────────────────────────────────────
 FROM base AS deps
 WORKDIR /app
 
@@ -34,9 +31,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         build-essential \
         python3-dev \
         pkg-config \
-        cmake \
         libopus-dev \
-        libsodium-dev \
         libpixman-1-dev \
         libcairo2-dev \
         libpango1.0-dev \
@@ -44,27 +39,28 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         libgif-dev \
         librsvg2-dev
 
+# Must set BEFORE any npm command — applies to npm install -g too
+ENV NODE_OPTIONS="--max-old-space-size=3072"
+
+# npm 11 uses far less memory than npm 10 on constrained hosts
+RUN npm install -g npm@11 --no-fund --no-audit
+
 COPY package.json package-lock.json* ./
 
-# --mount=type=cache keeps downloaded tarballs across builds → huge speed win
-# NODE_OPTIONS prevents OOM crash from heavy native packages (sharp, @napi-rs/canvas)
+# npm install (not ci) — lower peak memory, still respects lockfile
 RUN --mount=type=cache,target=/root/.npm,sharing=locked \
-    NODE_OPTIONS="--max-old-space-size=4096" \
-    npm ci --omit=dev --no-fund --no-audit
+    npm install --omit=dev --no-fund --no-audit
 
-# ── Stage 3: lean production image ────────────────────────────────────────────
+# ── Stage 3: production image ──────────────────────────────────────────────────
 FROM base AS runtime
 WORKDIR /app
 
 COPY --from=deps /app/node_modules ./node_modules
-COPY package.json package-lock.json* ./
+COPY package.json ./
 COPY . .
 
-RUN mkdir -p /app/data && chmod 755 /app/data
+RUN mkdir -p /app/data
 
 ENV NODE_ENV=production
-
-# Render injects PORT; 10000 is the default for Docker services
 EXPOSE 10000
-
 CMD ["node", "/app/index.js"]
