@@ -2281,7 +2281,18 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
     });
 
     // On Ready â€” reset reconnect counter
+    // Watchdog: if not Ready within 30s, destroy and force a fresh rejoin
+    const stuckTimer = setTimeout(() => {
+      if (connection.state.status !== VoiceConnectionStatus.Ready) {
+        console.log('[VOICE 24/7] Stuck in signalling >30s - force-destroying and scheduling rejoin');
+        try { connection.destroy(); } catch { }
+        scheduleVoiceRejoin('stuck-signalling', 2000, { guildId, channelId });
+      }
+    }, 30000);
+
+    // On Ready - reset reconnect counter
     connection.on(VoiceConnectionStatus.Ready, () => {
+      clearTimeout(stuckTimer);
       voiceReconnectAttempts = 0; // reset on successful connection
       runtimeState.voice.reconnectAttempts = 0;
       runtimeState.voice.connectionStatus = VoiceConnectionStatus.Ready;
