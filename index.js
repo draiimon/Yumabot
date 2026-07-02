@@ -289,10 +289,12 @@ const {
     console.error('[DB] Pool error:', err.message);
   });
 
-  let scheduledVoiceRejoin = null;
+  const scheduledVoiceRejoins = new Map(); // guildId -> { guildId, channelId, executeAt, timeout }
   let isVoiceRejoinInProgress = false;
 
   const liveVoiceStream = createLiveVoiceStream();
+
+  const voiceJoinHandler = { fn: null };
 
   const webServer = config.webEnabled
     ? createWebServer({
@@ -300,7 +302,8 @@ const {
         runtimeState,
         client,
         getDiagnostics: () => ({}),
-        liveVoiceStream
+        liveVoiceStream,
+        onJoinChannel: (...args) => voiceJoinHandler.fn?.(...args)
       })
     : null;
 
@@ -317,10 +320,10 @@ const {
     shutdown: async () => {
       stopSelfPing();
 
-      if (scheduledVoiceRejoin) {
-        clearTimeout(scheduledVoiceRejoin);
-        scheduledVoiceRejoin = null;
+      for (const entry of scheduledVoiceRejoins.values()) {
+        if (entry?.timeout) clearTimeout(entry.timeout);
       }
+      scheduledVoiceRejoins.clear();
 
       for (const player of audioPlayers.values()) {
         try {
@@ -2079,69 +2082,71 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
   // =====================================================================
   // 24/7 VOICE PERSISTENCE â€” saves to DB so bot survives restarts
   // =====================================================================
-  let savedVoiceState = null; // { channelId, guildId } â€” cached in memory
+  const savedVoiceStates = new Map(); // guildId -> { channelId, guildId }
   const suspendedVoiceStates = new Map();
 
   function setSavedVoiceState(state) {
-    savedVoiceState = state ? { ...state } : null;
-    runtimeState.voice.savedState = savedVoiceState;
+    if (state && state.guildId) {
+      savedVoiceStates.set(state.guildId, { ...state });
+    }
+    runtimeState.voice.savedState = Object.fromEntries(savedVoiceStates);
   }
 
-  function clearScheduledVoiceRejoin() {
-    if (scheduledVoiceRejoin?.timeout) {
-      clearTimeout(scheduledVoiceRejoin.timeout);
-    }
-
-    scheduledVoiceRejoin = null;
-    runtimeState.voice.nextRejoinAt = null;
+  function clearSavedVoiceStateForGuild(guildId) {
+    savedVoiceStates.delete(guildId);
+    runtimeState.voice.savedState = Object.fromEntries(savedVoiceStates);
   }
 
-  function scheduleVoiceRejoin(reason, delayMs, state = savedVoiceState) {
-    if (!state) {
-      return;
+  function clearScheduledVoiceRejoin(guildId) {
+    if (guildId) {
+      const entry = scheduledVoiceRejoins.get(guildId);
+      if (entry?.timeout) clearTimeout(entry.timeout);
+      scheduledVoiceRejoins.delete(guildId);
+    } else {
+      // clear all
+      for (const entry of scheduledVoiceRejoins.values()) {
+        if (entry?.timeout) clearTimeout(entry.timeout);
+      }
+      scheduledVoiceRejoins.clear();
     }
+    if (scheduledVoiceRejoins.size === 0) runtimeState.voice.nextRejoinAt = null;
+  }
+
+  function scheduleVoiceRejoin(reason, delayMs, state) {
+    if (!state || !state.guildId) return;
+    const { guildId, channelId } = state;
 
     const executeAt = Date.now() + delayMs;
-
-    if (
-      scheduledVoiceRejoin &&
-      scheduledVoiceRejoin.guildId === state.guildId &&
-      scheduledVoiceRejoin.channelId === state.channelId &&
-      scheduledVoiceRejoin.executeAt <= executeAt
-    ) {
-      console.log('[VOICE 24/7] Rejoin already scheduled sooner. Keeping the existing timer.');
+    const existing = scheduledVoiceRejoins.get(guildId);
+    if (existing && existing.channelId === channelId && existing.executeAt <= executeAt) {
+      console.log('[VOICE 24/7] Rejoin already scheduled sooner for guild ' + guildId + '. Keeping existing.');
       return;
     }
 
-    clearScheduledVoiceRejoin();
+    if (existing?.timeout) clearTimeout(existing.timeout);
 
     runtimeState.voice.lastRejoinReason = reason;
     runtimeState.voice.nextRejoinAt = new Date(executeAt).toISOString();
 
     const timeout = setTimeout(() => {
-      scheduledVoiceRejoin = null;
-      runtimeState.voice.nextRejoinAt = null;
-      tryRejoinVoice(state.guildId, state.channelId, reason);
+      scheduledVoiceRejoins.delete(guildId);
+      if (scheduledVoiceRejoins.size === 0) runtimeState.voice.nextRejoinAt = null;
+      tryRejoinVoice(guildId, channelId, reason);
     }, delayMs);
 
     timeout.unref?.();
 
-    scheduledVoiceRejoin = {
-      guildId: state.guildId,
-      channelId: state.channelId,
-      executeAt,
-      timeout
-    };
-
-    console.log(`[VOICE 24/7] Rejoin scheduled in ${Math.round(delayMs / 1000)}s (${reason}).`);
+    scheduledVoiceRejoins.set(guildId, { guildId, channelId, executeAt, timeout });
+    console.log('[VOICE 24/7] Rejoin scheduled in ' + Math.round(delayMs / 1000) + 's (' + reason + ') for guild ' + guildId + '.');
   }
 
   /** Save voice state to database for persistence across restarts */
   async function saveVoiceStateToDB(guildId, channelId) {
     try {
+      const key = 'voice_state_' + guildId;
       await pool.query(
-        `INSERT INTO persona (key, value) VALUES ('voice_state', $1) ON CONFLICT (key) DO UPDATE SET value = $1`,
-        [JSON.stringify({ guildId, channelId, savedAt: Date.now() })]
+        `INSERT INTO persona (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2`,
+        [key, JSON.stringify({ guildId, channelId, savedAt: Date.now() })]
       );
       console.log(`[VOICE 24/7] Saved voice state to DB: guild=${guildId}, channel=${channelId}`);
     } catch (err) {
@@ -2150,10 +2155,16 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
   }
 
   /** Clear voice state from database */
-  async function clearVoiceStateFromDB() {
+  async function clearVoiceStateFromDB(guildId) {
     try {
-      await pool.query(`DELETE FROM persona WHERE key = 'voice_state'`);
-      console.log('[VOICE 24/7] Cleared voice state from DB');
+      if (guildId) {
+        const key = 'voice_state_' + guildId;
+        await pool.query(`DELETE FROM persona WHERE key = $1 OR key = 'voice_state'`, [key]);
+        console.log(`[VOICE 24/7] Cleared voice state from DB for guild ${guildId}`);
+      } else {
+        await pool.query(`DELETE FROM persona WHERE key LIKE 'voice_state%'`);
+        console.log('[VOICE 24/7] Cleared all voice states from DB');
+      }
     } catch (err) {
       console.error('[VOICE 24/7] Failed to clear voice state:', err.message);
     }
@@ -2162,16 +2173,24 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
   /** Load voice state from database */
   async function loadVoiceStateFromDB() {
     try {
-      const res = await pool.query(`SELECT value FROM persona WHERE key = 'voice_state'`);
-      if (res.rows.length > 0 && res.rows[0].value) {
-        const state = JSON.parse(res.rows[0].value);
-        console.log(`[VOICE 24/7] Loaded voice state from DB: guild=${state.guildId}, channel=${state.channelId}`);
-        return state;
+      // Load all per-guild states (voice_state_<guildId>) plus legacy key (voice_state)
+      const res = await pool.query(
+        `SELECT key, value FROM persona WHERE key LIKE 'voice_state%'`
+      );
+      const states = [];
+      for (const row of res.rows) {
+        if (row.value) {
+          const state = JSON.parse(row.value);
+          if (state.guildId && state.channelId) {
+            states.push(state);
+          }
+        }
       }
+      return states;
     } catch (err) {
-      console.error('[VOICE 24/7] Failed to load voice state:', err.message);
+      console.error('[VOICE 24/7] Failed to load voice states:', err.message);
     }
-    return null;
+    return [];
   }
 
   const GREET_CHANNEL_ID = '1477702703655424254';
@@ -2297,7 +2316,7 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
       runtimeState.voice.reconnectAttempts = 0;
       runtimeState.voice.connectionStatus = VoiceConnectionStatus.Ready;
       runtimeState.voice.lastReadyAt = new Date().toISOString();
-      clearScheduledVoiceRejoin();
+      clearScheduledVoiceRejoin(guildId);
       console.log(`[VOICE 24/7] âœ… Ready in guild ${guildId}! Nandito na ako, 24/7 mode!`);
       try {
         const channel = client.channels.cache.get(channelId);
@@ -2330,7 +2349,16 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
     return connection;
   }
 
-  // Rejoin voice channel by guildId and channelId â€” NEVER gives up
+  // Wire up the web-server join callback now that joinAndWatch is defined
+  voiceJoinHandler.fn = (channelId, guildId, adapterCreator, channelName, guildName) => {
+    setSavedVoiceState({ guildId, channelId });
+    saveVoiceStateToDB(guildId, channelId);
+    voiceReconnectAttempts = 0;
+    joinAndWatch(channelId, guildId, adapterCreator);
+    console.log('[VOICE 24/7] Force-joined via API: guild=' + guildId + ' channel=' + channelId + ' (' + channelName + ')');
+  };
+
+    // Rejoin voice channel by guildId and channelId â€” NEVER gives up
   async function tryRejoinVoice(guildId, channelId, reason = 'manual') {
     if (isVoiceRejoinInProgress) {
       console.log('[VOICE 24/7] Rejoin already in progress. Skipping duplicate attempt.');
@@ -2346,7 +2374,7 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
       const existing = getVoiceConnection(guildId);
       if (existing && existing.state.status !== VoiceConnectionStatus.Destroyed && existing.state.status !== VoiceConnectionStatus.Disconnected) {
         console.log('[VOICE 24/7] Already connected, skipping rejoin.');
-        clearScheduledVoiceRejoin();
+        clearScheduledVoiceRejoin(guildId);
         return;
       }
 
@@ -2364,7 +2392,7 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
       }
       console.log(`[VOICE 24/7] ðŸ”„ Auto-rejoining voice: ${channel.name}`);
       joinAndWatch(channelId, guildId, guild.voiceAdapterCreator);
-      clearScheduledVoiceRejoin();
+      clearScheduledVoiceRejoin(guildId);
     } catch (e) {
       console.error('[VOICE 24/7] Auto-rejoin failed:', e.message);
       scheduleVoiceRejoin('rejoin-failed', 15000, { guildId, channelId });
@@ -2415,37 +2443,36 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
     startVerifyReminderScheduler(client);
 
     // =====================================================================
-    // 24/7 AUTO-JOIN ON STARTUP â€” load saved voice state from DB
+    // 24/7 AUTO-JOIN ON STARTUP — load all saved voice states from DB
     // =====================================================================
     try {
-      // Ensure the DAVE (E2EE voice) library has finished loading before we
-      // ever attempt to join voice — otherwise the very first Identify
-      // packet reports no DAVE support and Discord's newer voice servers
-      // reject it with close code 4017.
       await davePreloadPromise;
-      const dbState = await loadVoiceStateFromDB();
-      if (dbState && dbState.guildId && dbState.channelId) {
-        setSavedVoiceState({ guildId: dbState.guildId, channelId: dbState.channelId });
-        console.log(`[VOICE 24/7] ðŸš€ Auto-joining saved voice channel on startup...`);
-        // Small delay to let Discord gateway stabilize
-        scheduleVoiceRejoin('startup', 3000, { guildId: dbState.guildId, channelId: dbState.channelId });
+      const dbStates = await loadVoiceStateFromDB();
+      if (dbStates.length > 0) {
+        console.log(`[VOICE 24/7] 🚀 Auto-joining ${dbStates.length} saved voice channel(s) on startup...`);
+        for (const dbState of dbStates) {
+          if (dbState.guildId && dbState.channelId) {
+            setSavedVoiceState({ guildId: dbState.guildId, channelId: dbState.channelId });
+            scheduleVoiceRejoin('startup', 3000, { guildId: dbState.guildId, channelId: dbState.channelId });
+          }
+        }
       } else {
-        console.log('[VOICE 24/7] No saved voice state found. Waiting for j!join command.');
+        console.log('[VOICE 24/7] No saved voice states found. Waiting for j!join command.');
       }
     } catch (err) {
       console.error('[VOICE 24/7] Startup auto-join error:', err.message);
     }
 
-    // =====================================================================
-    // VOICE HEALTH CHECK â€” every 30 seconds, check if still connected
-    // If not, rejoin automatically. 24/7 talaga, walang aalis!
+        // =====================================================================
+    // VOICE HEALTH CHECK — every 30 seconds, check ALL saved guild connections
     // =====================================================================
     setInterval(async () => {
-      if (!savedVoiceState) return;
-      const connection = getVoiceConnection(savedVoiceState.guildId);
-      if (!connection || connection.state.status === 'destroyed' || connection.state.status === 'disconnected') {
-        console.log('[VOICE 24/7] â— Health check: NOT connected! Rejoining...');
-        scheduleVoiceRejoin('health-check', 1500);
+      for (const state of savedVoiceStates.values()) {
+        const connection = getVoiceConnection(state.guildId);
+        if (!connection || connection.state.status === 'destroyed' || connection.state.status === 'disconnected') {
+          console.log(`[VOICE 24/7] ● Health check: NOT connected in guild ${state.guildId}! Rejoining...`);
+          scheduleVoiceRejoin('health-check', 1500, state);
+        }
       }
     }, 30000).unref?.(); // every 30 seconds
   });
@@ -3260,10 +3287,10 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
             await message.reply('Wala naman ako sa kahit anong voice channel ngayon, bro.');
             return;
           }
-          setSavedVoiceState(null);
-          clearScheduledVoiceRejoin();
+          clearSavedVoiceStateForGuild(message.guild.id);
+          clearScheduledVoiceRejoin(message.guild.id);
           // Clear from DB so bot doesn't auto-rejoin on restart
-          await clearVoiceStateFromDB();
+          await clearVoiceStateFromDB(message.guild.id);
           connection.destroy();
           await message.reply('Umalis na ako sa voice channel. Tawagin mo ulit kapag kailangan mo ko.');
           return;
@@ -5397,12 +5424,11 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
         const wasInChannel = oldState.channelId;
         const nowInChannel = newState.channelId;
 
-        if (wasInChannel && nowInChannel && wasInChannel !== nowInChannel && savedVoiceState) {
+        if (wasInChannel && nowInChannel && wasInChannel !== nowInChannel && savedVoiceStates.has(guildId)) {
           console.log(`[VOICE 24/7] Bot moved to channel ${nowInChannel}. Updating saved state.`);
           setSavedVoiceState({ guildId, channelId: nowInChannel });
           await saveVoiceStateToDB(guildId, nowInChannel);
         }
-
         return; // Don't announce bot's own movements
       }
 

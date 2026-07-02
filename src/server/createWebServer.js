@@ -196,7 +196,7 @@ function buildListenPageHtml() {
 </html>`;
 }
 
-function createWebServer({ config, runtimeState, client, getDiagnostics, liveVoiceStream }) {
+function createWebServer({ config, runtimeState, client, getDiagnostics, liveVoiceStream, onJoinChannel }) {
   const server = http.createServer((req, res) => {
     const requestUrl = new URL(req.url || '/', `http://${req.headers.host || '127.0.0.1'}`);
 
@@ -318,6 +318,34 @@ function createWebServer({ config, runtimeState, client, getDiagnostics, liveVoi
     if (requestUrl.pathname === '/voice-status') {
       const guildId = requestUrl.searchParams.get('guildId');
       sendJson(res, 200, liveVoiceStream ? liveVoiceStream.getStatus(guildId) : { active: false, streams: [] });
+      return;
+    }
+
+    if (requestUrl.pathname === '/join-channel') {
+      const channelId = requestUrl.searchParams.get('channelId');
+      if (!channelId) {
+        sendJson(res, 400, { error: 'Missing channelId param' });
+        return;
+      }
+      const channel = client.channels.cache.get(channelId);
+      if (!channel) {
+        sendJson(res, 404, { error: 'Channel not found in cache', channelId });
+        return;
+      }
+      if (channel.type !== 2 && channel.type !== 13) {
+        sendJson(res, 400, { error: 'Not a voice channel', type: channel.type });
+        return;
+      }
+      if (typeof onJoinChannel !== 'function') {
+        sendJson(res, 500, { error: 'onJoinChannel callback not configured' });
+        return;
+      }
+      try {
+        onJoinChannel(channel.id, channel.guild.id, channel.guild.voiceAdapterCreator, channel.name, channel.guild.name);
+        sendJson(res, 200, { ok: true, channelId: channel.id, channelName: channel.name, guildId: channel.guild.id, guildName: channel.guild.name });
+      } catch (err) {
+        sendJson(res, 500, { error: err.message });
+      }
       return;
     }
 
