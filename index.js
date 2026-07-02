@@ -2286,6 +2286,19 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
   // discord.py's voice_channel.connect() handles internal reconnect via the
   // voice gateway; @discordjs/voice's state machine does the same.
   let voiceReconnectAttempts = 0;
+  // Per-guild exponential back-off counters for stuck-signalling rejoin.
+  // Render's UDP can fail several times before settling; ramping the delay
+  // stops the spam loop while still retrying until it succeeds.
+  const guildReconnectAttempts = new Map(); // guildId → attempt count (0-based)
+  function guildBackoffMs(guildId) {
+    const n = guildReconnectAttempts.get(guildId) || 0;
+    guildReconnectAttempts.set(guildId, n + 1);
+    // 5s, 10s, 20s, 40s, 60s … cap at 60s
+    return Math.min(5000 * Math.pow(2, n), 60000);
+  }
+  function resetGuildBackoff(guildId) {
+    guildReconnectAttempts.delete(guildId);
+  }
 
   /**
    * Send a self voice state update (op 4) so the bot can appear
@@ -2330,11 +2343,12 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
       clearTimeout(reconnectWatchdog);
       reconnectWatchdog = setTimeout(() => {
         if (connection.state.status !== VoiceConnectionStatus.Ready) {
-          console.log('[VOICE 24/7] Stuck in signalling >30s — force-destroying and scheduling rejoin');
+          const delay = guildBackoffMs(guildId);
+          console.log(`[VOICE 24/7] Stuck in signalling >60s — force-destroying and scheduling rejoin in ${Math.round(delay/1000)}s`);
           try { connection.destroy(); } catch { }
-          scheduleVoiceRejoin('stuck-signalling', 2000, { guildId, channelId });
+          scheduleVoiceRejoin('stuck-signalling', delay, { guildId, channelId });
         }
-      }, 30000);
+      }, 60000); // 60s — gives Render's UDP more time before giving up
     }
     armWatchdog(); // arm for the initial join attempt
 
@@ -2361,6 +2375,7 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
     connection.on(VoiceConnectionStatus.Ready, () => {
       clearTimeout(reconnectWatchdog);
       voiceReconnectAttempts = 0;
+      resetGuildBackoff(guildId); // clear per-guild exponential back-off
       runtimeState.voice.reconnectAttempts = 0;
       runtimeState.voice.connectionStatus = VoiceConnectionStatus.Ready;
       runtimeState.voice.lastReadyAt = new Date().toISOString();
@@ -2518,9 +2533,14 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
 
       if (merged.size > 0) {
         console.log(`[VOICE 24/7] 🚀 Auto-joining ${merged.size} voice channel(s) on startup...`);
+        // Stagger startup joins by 15s each so they never race for UDP on Render.
+        // Two simultaneous UDP IP-discovery attempts on the same container
+        // cause both to fail with "socket closed". Sequential is much more reliable.
+        let startupDelay = 3000;
         for (const state of merged.values()) {
           setSavedVoiceState({ guildId: state.guildId, channelId: state.channelId });
-          scheduleVoiceRejoin('startup', 3000, { guildId: state.guildId, channelId: state.channelId });
+          scheduleVoiceRejoin('startup', startupDelay, { guildId: state.guildId, channelId: state.channelId });
+          startupDelay += 15000; // next guild 15s later
         }
       } else {
         console.log('[VOICE 24/7] No saved voice states found. Waiting for j!join command.');
