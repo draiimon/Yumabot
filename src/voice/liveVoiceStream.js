@@ -1,11 +1,18 @@
 const { EndBehaviorType } = require('@discordjs/voice');
 const { WebSocketServer } = require('ws');
 
+// Discord / Opus decode: 48kHz stereo 16-bit PCM (must stay 48kHz for prism decoder)
 const SAMPLE_RATE = 48000;
 const CHANNELS = 2;
 const FRAME_SAMPLES = 960; // 20ms @ 48kHz
-const FRAME_BYTES = FRAME_SAMPLES * CHANNELS * 2; // int16
 const TICK_MS = 20;
+
+// Output to browser: downmix to mono + decimate 48→16kHz (factor-3 decimation)
+// Bandwidth: 640 bytes/frame @ 50fps ≈ 32 KB/s per client  (was 3840 bytes, 192 KB/s)
+const OUT_CHANNELS = 1;
+const DOWNSAMPLE = 3; // 48000 / 3 = 16000 Hz
+const OUT_FRAME_SAMPLES = FRAME_SAMPLES / DOWNSAMPLE; // 320 samples (20ms @ 16kHz)
+const OUT_FRAME_BYTES = OUT_FRAME_SAMPLES * OUT_CHANNELS * 2; // 640 bytes
 
 function createLiveVoiceStream() {
   let prism = null;
@@ -81,6 +88,7 @@ function createLiveVoiceStream() {
   }
 
   function mixTick(s) {
+    // Mix incoming speakers into a 48kHz stereo int32 accumulator
     const out = new Int32Array(FRAME_SAMPLES * CHANNELS);
     let anyData = false;
 
@@ -94,16 +102,18 @@ function createLiveVoiceStream() {
       }
     }
 
-    if (!anyData && s.clients.size === 0) {
-      return; // nobody listening and nothing to send — skip work
-    }
+    // Skip silence entirely — saves bandwidth and CPU when nobody is speaking
+    if (!anyData) return;
 
-    const outBuf = Buffer.alloc(FRAME_BYTES);
-    for (let i = 0; i < out.length; i++) {
-      let sample = out[i];
+    // Downmix stereo→mono + decimate 48kHz→16kHz (factor-3 simple decimation).
+    // For each output sample j: average the L+R pair at position j*DOWNSAMPLE.
+    const outBuf = Buffer.alloc(OUT_FRAME_BYTES);
+    for (let j = 0; j < OUT_FRAME_SAMPLES; j++) {
+      const idx = j * DOWNSAMPLE * CHANNELS; // step 3 stereo pairs at a time
+      let sample = (out[idx] + out[idx + 1]) >> 1; // average L+R (downmix)
       if (sample > 32767) sample = 32767;
       else if (sample < -32768) sample = -32768;
-      outBuf.writeInt16LE(sample, i * 2);
+      outBuf.writeInt16LE(sample, j * 2);
     }
     broadcastFrame(s, outBuf);
   }

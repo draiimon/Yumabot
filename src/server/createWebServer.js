@@ -86,8 +86,8 @@ function buildListenPageHtml() {
       const channelSelect = document.getElementById('channelSelect');
       const channelSelectLabel = document.getElementById('channelSelectLabel');
 
-      const SAMPLE_RATE = 48000;
-      const CHANNELS = 2;
+      const SAMPLE_RATE = 16000; // server sends 16kHz mono (downsampled from 48kHz stereo)
+      const CHANNELS = 1;
 
       let audioCtx = null;
       let nextStartTime = 0;
