@@ -2326,7 +2326,7 @@ MASTER DNA (apply to chat, voice/TTS text, STT replies, greetings):
     await probeGroqKeysAtStartup().catch((err) => {
       console.warn('[GROQ] Startup key probe failed:', err.message);
     });
-    await setBotCustomStatus('BADING KABA ? BAWAL BADING DITO!');
+    await setBotCustomStatus('Miss ko na siya');
     startScheduledGreetings();
 
     // Permission diagnostics for priority auto-chat channels
