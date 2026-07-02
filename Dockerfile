@@ -1,27 +1,30 @@
+# syntax=docker/dockerfile:1
 FROM node:22-bookworm-slim AS base
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# Cache apt lists + debs between builds — reinstalls skip the download step
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     python3 \
     python3-pip \
     libopus-dev \
     libsodium-dev \
     libfontconfig1 \
-    && pip3 install --no-cache-dir edge-tts --break-system-packages \
-    && rm -rf /var/lib/apt/lists/*
+    && pip3 install --no-cache-dir edge-tts --break-system-packages
 
 FROM base AS deps
 WORKDIR /app
 COPY package.json package-lock.json* ./
-RUN npm ci --omit=dev --no-fund --no-audit \
-    # prism-media optionally depends on ffmpeg-static, but we use system ffmpeg
+# Cache npm tarball store — native modules (sodium, canvas, sharp) skip recompile on unchanged lockfile
+RUN --mount=type=cache,target=/root/.npm,sharing=locked \
+    npm ci --omit=dev --no-fund --no-audit \
     && rm -rf /app/node_modules/ffmpeg-static
 
 FROM base AS runtime
 WORKDIR /app
 
 COPY --from=deps /app/node_modules ./node_modules
-COPY package.json ./
 COPY . .
 
 RUN mkdir -p /app/data \
