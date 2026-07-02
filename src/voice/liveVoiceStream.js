@@ -105,12 +105,32 @@ function createLiveVoiceStream() {
     // Skip silence entirely — saves bandwidth and CPU when nobody is speaking
     if (!anyData) return;
 
-    // Downmix stereo→mono + decimate 48kHz→16kHz (factor-3 simple decimation).
-    // For each output sample j: average the L+R pair at position j*DOWNSAMPLE.
+    // Downmix stereo→mono + decimate 48kHz→16kHz with proper anti-aliasing.
+    // For each output sample j: average ALL DOWNSAMPLE (3) consecutive stereo
+    // pairs — this acts as a 3-tap moving-average low-pass filter that removes
+    // frequencies above the 8kHz Nyquist of the 16kHz output before decimation.
+    // Without this, frequencies 8kHz–24kHz alias back into the audible band and
+    // produce the "metallic / unclear" artefacts reported on Render.
+    //
+    // Additionally apply soft-clip (tanh-like knee) BEFORE the final clamp so
+    // that mixed multi-speaker peaks are rounded rather than hard-clipped.
     const outBuf = Buffer.alloc(OUT_FRAME_BYTES);
     for (let j = 0; j < OUT_FRAME_SAMPLES; j++) {
-      const idx = j * DOWNSAMPLE * CHANNELS; // step 3 stereo pairs at a time
-      let sample = (out[idx] + out[idx + 1]) >> 1; // average L+R (downmix)
+      const base = j * DOWNSAMPLE * CHANNELS;
+      // Sum DOWNSAMPLE stereo pairs → mono (anti-alias + downmix in one pass)
+      let acc = 0;
+      for (let k = 0; k < DOWNSAMPLE; k++) {
+        const i = base + k * CHANNELS;
+        acc += (out[i] + out[i + 1]) >> 1; // average L+R for each pair
+      }
+      let sample = Math.round(acc / DOWNSAMPLE);
+      // Soft-clip: reduce gain when signal is loud (keeps voice intelligible
+      // even when multiple speakers are active simultaneously).
+      if (sample > 24576) {
+        sample = 24576 + Math.round((sample - 24576) * 0.25);
+      } else if (sample < -24576) {
+        sample = -24576 + Math.round((sample + 24576) * 0.25);
+      }
       if (sample > 32767) sample = 32767;
       else if (sample < -32768) sample = -32768;
       outBuf.writeInt16LE(sample, j * 2);

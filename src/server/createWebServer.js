@@ -88,22 +88,42 @@ function buildListenPageHtml() {
 
       const SAMPLE_RATE = 16000; // server sends 16kHz mono (downsampled from 48kHz stereo)
       const CHANNELS = 1;
+      // Buffer ahead by 250ms — large enough to absorb Render's variable
+      // latency (jitter spikes) without causing audible gaps/stuttering.
+      const BUFFER_AHEAD_SEC = 0.25;
 
       let audioCtx = null;
+      let gainNode = null;
       let nextStartTime = 0;
       let listening = false;
       let ws = null;
       let currentGuildId = null;
       let knownStreams = [];
-      let streamWasOffline = false; // tracks when WS told us active:false
+      let streamWasOffline = false;
+      let reconnectTimer = null;
+      let reconnectDelay = 1000; // ms, doubles on each failure (exp back-off)
+      let manuallyDisconnected = false;
 
-      function setStatus(active, channelName) {
+      function setStatus(active, channelName, extra) {
         statusPill.classList.toggle('off', !active);
-        statusText.textContent = active ? 'Live' : 'Offline';
+        statusText.textContent = extra || (active ? 'Live' : 'Offline');
         channelInfo.textContent = active
           ? ('Naka-connect ang bot sa: ' + (channelName || 'voice channel'))
           : 'Wala pang bot sa voice channel ngayon.';
-        listenBtn.disabled = !active;
+        listenBtn.disabled = !active && extra !== 'Reconnecting…';
+      }
+
+      // Schedule a WebSocket reconnect with exponential back-off.
+      // Skipped if the user manually stopped listening.
+      function scheduleReconnect(guildId) {
+        if (manuallyDisconnected) return;
+        if (reconnectTimer) return; // already scheduled
+        setStatus(false, null, 'Reconnecting…');
+        reconnectTimer = setTimeout(() => {
+          reconnectTimer = null;
+          reconnectDelay = Math.min(reconnectDelay * 2, 30000);
+          connect(guildId || currentGuildId, { isReconnect: true });
+        }, reconnectDelay);
       }
 
       async function refreshStreamList() {
@@ -129,11 +149,8 @@ function buildListenPageHtml() {
             channelSelectLabel.style.display = 'none';
           }
           if (!currentGuildId && knownStreams.length > 0) {
-            // First connection ever — auto-connect to first stream.
             connect(knownStreams[0].guildId);
           } else if (currentGuildId && streamWasOffline && knownStreams.length > 0) {
-            // Bot reconnected after a drop — WS told us offline, poll sees it's
-            // back. Reconnect to the same (or first available) guild stream.
             const target = knownStreams.find((s) => s.guildId === currentGuildId) || knownStreams[0];
             streamWasOffline = false;
             connect(target.guildId);
@@ -141,29 +158,45 @@ function buildListenPageHtml() {
             setStatus(false, null);
           }
         } catch {
-          // ignore — health poll will retry
+          // ignore — poll will retry
         }
       }
 
-      function connect(guildId) {
-        if (ws) { try { ws.close(); } catch {} }
+      function connect(guildId, { isReconnect = false } = {}) {
+        // Close existing socket cleanly without triggering our reconnect handler.
+        if (ws) {
+          ws._noReconnect = true;
+          try { ws.close(); } catch {}
+          ws = null;
+        }
+        if (!isReconnect) {
+          // Fresh connect resets back-off.
+          reconnectDelay = 1000;
+        }
         currentGuildId = guildId || null;
         const qs = currentGuildId ? ('?guildId=' + encodeURIComponent(currentGuildId)) : '';
-        ws = new WebSocket(proto + '//' + location.host + '/voice-stream' + qs);
-        ws.binaryType = 'arraybuffer';
+        const socket = new WebSocket(proto + '//' + location.host + '/voice-stream' + qs);
+        socket.binaryType = 'arraybuffer';
+        ws = socket;
 
-        ws.onmessage = (ev) => {
+        socket.onopen = () => {
+          // Successful (re-)connect — reset back-off delay.
+          reconnectDelay = 1000;
+        };
+
+        socket.onmessage = (ev) => {
           if (typeof ev.data === 'string') {
             try {
               const msg = JSON.parse(ev.data);
               if (msg.type === 'status') {
                 setStatus(msg.active, msg.channelName);
-                streamWasOffline = !msg.active; // track so poll can reconnect
+                streamWasOffline = !msg.active;
               }
             } catch {}
             return;
           }
           if (!listening || !audioCtx) return;
+
           const pcm = new Int16Array(ev.data);
           const frames = pcm.length / CHANNELS;
           const buffer = audioCtx.createBuffer(CHANNELS, frames, SAMPLE_RATE);
@@ -173,29 +206,66 @@ function buildListenPageHtml() {
               channelData[i] = pcm[i * CHANNELS + ch] / 32768;
             }
           }
+
           const source = audioCtx.createBufferSource();
           source.buffer = buffer;
-          source.connect(audioCtx.destination);
+          // Route through gain node so volume can be adjusted in future.
+          source.connect(gainNode || audioCtx.destination);
+
           const now = audioCtx.currentTime;
-          if (nextStartTime < now + 0.05) nextStartTime = now + 0.08;
+          // If playback has fallen behind (e.g. after a gap), reset the
+          // schedule to BUFFER_AHEAD_SEC from now to re-sync cleanly.
+          if (nextStartTime < now + 0.05) {
+            nextStartTime = now + BUFFER_AHEAD_SEC;
+          }
           source.start(nextStartTime);
           nextStartTime += frames / SAMPLE_RATE;
+        };
+
+        // Auto-reconnect when Render drops the WebSocket (network hiccup,
+        // 55-second idle timeout gap, container restart, etc.).
+        socket.onclose = (ev) => {
+          if (socket._noReconnect || manuallyDisconnected) return;
+          console.warn('[listen] WS closed (code=' + ev.code + '), scheduling reconnect in ' + reconnectDelay + 'ms');
+          scheduleReconnect(currentGuildId);
+        };
+
+        socket.onerror = () => {
+          if (socket._noReconnect || manuallyDisconnected) return;
+          scheduleReconnect(currentGuildId);
         };
       }
 
       channelSelect.addEventListener('change', () => {
+        manuallyDisconnected = false;
         connect(channelSelect.value);
       });
 
       listenBtn.addEventListener('click', async () => {
         if (!listening) {
-          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-          nextStartTime = audioCtx.currentTime + 0.1;
+          manuallyDisconnected = false;
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: SAMPLE_RATE });
+          // GainNode: slight boost to compensate for soft-clip headroom reduction.
+          gainNode = audioCtx.createGain();
+          gainNode.gain.value = 1.15;
+          gainNode.connect(audioCtx.destination);
+          nextStartTime = audioCtx.currentTime + BUFFER_AHEAD_SEC;
           listening = true;
           listenBtn.textContent = '⏸ Stop';
+          // Resume WebSocket if it was closed by a previous Stop.
+          // Without this, pressing Listen again after Stop would never reconnect
+          // because manuallyDisconnected blocked the auto-reconnect path.
+          if (!ws || ws.readyState === WebSocket.CLOSED || ws.readyState === WebSocket.CLOSING) {
+            const targetGuild = currentGuildId || (knownStreams[0] && knownStreams[0].guildId) || null;
+            if (targetGuild) connect(targetGuild);
+          }
         } else {
+          manuallyDisconnected = true;
+          if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
           listening = false;
-          if (audioCtx) { await audioCtx.close(); audioCtx = null; }
+          nextStartTime = 0;
+          if (ws) { ws._noReconnect = true; try { ws.close(); } catch {} ws = null; }
+          if (audioCtx) { try { await audioCtx.close(); } catch {} audioCtx = null; gainNode = null; }
           listenBtn.textContent = '▶ Listen Live';
         }
       });
