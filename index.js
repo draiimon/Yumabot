@@ -1,5 +1,28 @@
 require('dotenv').config();
 
+// Force IPv4 DNS resolution first — Discord voice UDP media sockets can
+// fail to establish (stuck at "signalling") on hosts where IPv6 is
+// resolved but not actually routable for UDP traffic.
+try {
+  require('dns').setDefaultResultOrder('ipv4first');
+} catch {
+  // Older Node versions without setDefaultResultOrder — ignore.
+}
+
+// Pre-warm the DAVE (E2EE voice) library. @discordjs/voice lazily
+// dynamic-imports '@snazzah/davey' the first time it's needed, but if a
+// voice Identify packet is sent before that import resolves, it reports
+// max_dave_protocol_version: 0 (unsupported) — and Discord voice servers
+// that now require DAVE immediately close the socket with code 4017
+// ("E2EE/DAVE protocol required"), which looks like a connection that's
+// permanently stuck at "signalling". Importing it here at process start
+// means Node's module cache already has it ready well before we ever
+// call joinVoiceChannel.
+const davePreloadPromise = import('@snazzah/davey').catch((e) => {
+  console.warn('[VOICE] DAVE preload failed (voice will fall back to no-DAVE):', e.message);
+  return null;
+});
+
 // CRITICAL: set FFMPEG_PATH BEFORE @discordjs/voice / prism-media loads.
 // prism-media caches FFmpeg.getInfo() on first call — if FFMPEG_PATH is set
 // after that, the cached "not found" sticks and all TTS playback fails with
@@ -2383,6 +2406,11 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
     // 24/7 AUTO-JOIN ON STARTUP â€” load saved voice state from DB
     // =====================================================================
     try {
+      // Ensure the DAVE (E2EE voice) library has finished loading before we
+      // ever attempt to join voice — otherwise the very first Identify
+      // packet reports no DAVE support and Discord's newer voice servers
+      // reject it with close code 4017.
+      await davePreloadPromise;
       const dbState = await loadVoiceStateFromDB();
       if (dbState && dbState.guildId && dbState.channelId) {
         setSavedVoiceState({ guildId: dbState.guildId, channelId: dbState.channelId });

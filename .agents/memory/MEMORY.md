@@ -1,0 +1,1 @@
+- [Discord voice stuck at "signalling"](discord-voice-dave-binding.md) — root cause is a missing native binding for @snazzah/davey (DAVE/E2EE voice lib), not a network/UDP issue.
