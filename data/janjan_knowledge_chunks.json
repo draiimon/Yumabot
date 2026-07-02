@@ -1,0 +1,82 @@
+[
+  {
+    "chunk_id": "JJ-001",
+    "topic": "What JanJan bot is",
+    "article": "Bot Overview",
+    "section": "Identity",
+    "keywords": ["janjan", "sino ka", "who are you", "ano ka", "bot", "discord bot", "versa"],
+    "bot_routing": "When user asks what JanJan is or who the bot is.",
+    "source": "JanJan Bot Documentation",
+    "content": "Josh / Uno is the Discord bot (Pogi APP display): Taglish beki/maldita persona, Groq chat, voice TTS (j!vc), STT (j!listen/j!ask), music (j!play). The bot is NOT Drei — Drei is the human creator only. Prefix: j!."
+  },
+  {
+    "chunk_id": "JJ-002",
+    "topic": "Voice and TTS commands",
+    "article": "Commands",
+    "section": "Voice",
+    "keywords": ["j!vc", "j!join", "j!leave", "tts", "voice", "speak", "vc", "voice channel", "bumasa", "magsalita"],
+    "bot_routing": "How to make JanJan talk in voice or join VC.",
+    "source": "JanJan Bot Documentation",
+    "content": "VOICE COMMANDS:\n- j!join — bot joins your current voice channel.\n- j!leave — bot leaves voice.\n- j!vc <text> — text-to-speech: you must be in VC; bot speaks your text (Edge TTS, Filipino voices Angelo/Blessica).\n- j!voice m / j!change f — switch TTS voice gender.\n- j!ask <question> — AI answer + TTS in VC.\n- j!ask (no args) / j!listen — voice listening mode (STT via Groq Whisper).\n- j!stop — stop listening.\nMusic and TTS cannot run at the same time; stop music first."
+  },
+  {
+    "chunk_id": "JJ-003",
+    "topic": "Music commands",
+    "article": "Commands",
+    "section": "Music",
+    "keywords": ["j!play", "music", "kanta", "lavalink", "queue", "skip", "stop music", "j!pause"],
+    "bot_routing": "Music playback and Lavalink.",
+    "source": "JanJan Bot Documentation",
+    "content": "MUSIC (prefix j!):\n- j!play <url or search> — play from YouTube/Spotify links or search.\n- Queue controls: skip, pause, resume, stop, shuffle, etc. (see j!help in server).\n- Backend: Lavalink (Docker/Render bundled) or direct play-dl (render.fast.yaml).\n- While music is active, TTS/voice-AI commands are blocked until music stops."
+  },
+  {
+    "chunk_id": "JJ-004",
+    "topic": "Chat and memory commands",
+    "article": "Commands",
+    "section": "Chat",
+    "keywords": ["j!help", "j!admin", "j!status", "j!view", "memory", "kilala", "backread", "summarize", "j!research"],
+    "bot_routing": "Help, admin, memory, research toggle.",
+    "source": "JanJan Bot Documentation",
+    "content": "CHAT & MEMORY:\n- Mention or reply to JanJan for AI chat (Groq).\n- j!help — command list.\n- j!admin — admin panel info (admins only).\n- j!status <text> — set bot custom status.\n- j!view @user — profile-style summary from DB memory.\n- j!research on/off — admin toggles Tavily web search + sources for latest/news questions.\n- Channel/user facts stored in Postgres; bot recalls context in long threads."
+  },
+  {
+    "chunk_id": "JJ-005",
+    "topic": "Render deployment",
+    "article": "Hosting",
+    "section": "Render",
+    "keywords": ["render", "deploy", "hosting", "docker", "health", "24/7", "uptime"],
+    "bot_routing": "How JanJan runs on Render.",
+    "source": "JanJan Bot Documentation",
+    "content": "RENDER DEPLOY:\n- render.yaml — Docker web service with bundled Lavalink (slower build, full music).\n- render.fast.yaml — Node-only, npm install, MUSIC_BACKEND=direct (faster deploy ~1–2 min).\n- Required env: DISCORD_TOKEN, DATABASE_URL, GROQ_API_KEY1–6 (or GROQ_API_KEY). Optional: TAVILY_API_KEY, LEONARDO_API_KEY.\n- WEB_ENABLED=true exposes /health, /ready, /ping.\n- Groq keys must start with gsk_ with no quotes in dashboard. Invalid keys rotate automatically."
+  },
+  {
+    "chunk_id": "JJ-006",
+    "topic": "Bot command lookup only",
+    "article": "System",
+    "section": "Commands index",
+    "keywords": ["ragseed", "j!help", "command list", "bot setup"],
+    "bot_routing": "Only when user asks about j! commands — NOT for chismis chat.",
+    "source": "JanJan Bot Documentation",
+    "content": "BOT COMMAND INDEX (optional, separate from human chismis memory):\n- data/janjan_knowledge_chunks.json = j! command help only.\n- npm run rag:seed = index bot commands in rag_chunks (admin).\n- NORMAL CHAT uses per-user human memory: user_memory + user_style_memory + channel_memory + messages — automatic, malandi tone, NO FAQ."
+  },
+  {
+    "chunk_id": "JJ-007",
+    "topic": "Relationship status (no ex name)",
+    "article": "Persona",
+    "section": "Lore",
+    "keywords": ["jowa", "bebe", "mahal", "boyfriend", "pogi", "sino mahal", "love life"],
+    "bot_routing": "When asked about JanJan's partner or love life.",
+    "source": "JanJan Persona",
+    "content": "RELATIONSHIP LORE (current):\n- JanJan is on a break/space; do NOT name the ex/partner.\n- If asked sino mahal/bebe/jowa/pogi: say \"1 month akong waiting muna, baka bumalik pa siya!\" then playful landi/pokpok banter.\n- Default chat vibe: pokpok/landi energy, flirty and bold, not soft partner mode."
+  },
+  {
+    "chunk_id": "JJ-008",
+    "topic": "Groq API keys",
+    "article": "Technical",
+    "section": "API",
+    "keywords": ["groq", "api key", "401", "rate limit", "gsk_"],
+    "bot_routing": "Groq errors or key setup.",
+    "source": "JanJan Bot Documentation",
+    "content": "GROQ KEYS:\n- Set GROQ_API_KEY1 through GROQ_API_KEY6 and/or GROQ_API_KEY in Render Environment.\n- Keys must start with gsk_; no surrounding quotes.\n- Bot rotates on 429 rate limit and 401 invalid key; startup probe logs which keys work.\n- npm run test:groq-keys tests all configured keys locally."
+  }
+]

@@ -1,0 +1,346 @@
+{
+  "1426746102903738431": {
+    "channelId": "1426746103616897130",
+    "messageId": "1506703930535448769",
+    "messageIds": [
+      "1506703930535448769",
+      "1506703936843808779",
+      "1506703943810416673",
+      "1506703950680821960",
+      "1506704029118496979",
+      "1506704106209677444"
+    ],
+    "preservedMessageIds": [
+      "1426856978608816253",
+      "1506252372593082488"
+    ],
+    "mappings": {
+      "age_17": {
+        "roleId": "1506273224466628724",
+        "emoji": "🧒",
+        "react": "🧒",
+        "emojiDisplay": "🧒",
+        "group": "age"
+      },
+      "age_18_24": {
+        "roleId": "1506273754697961584",
+        "emoji": "🧑",
+        "react": "🧑",
+        "emojiDisplay": "🧑",
+        "group": "age"
+      },
+      "age_25_30": {
+        "roleId": "1506273756409237505",
+        "emoji": "👨",
+        "react": "👨",
+        "emojiDisplay": "👨",
+        "group": "age"
+      },
+      "age_30p": {
+        "roleId": "1506273230049247353",
+        "emoji": "🧔‍♂️",
+        "react": "🧔‍♂️",
+        "emojiDisplay": "🧔‍♂️",
+        "group": "age"
+      },
+      "rel_single": {
+        "roleId": "1506273758594469948",
+        "emoji": "🧍",
+        "react": "🧍",
+        "emojiDisplay": "🧍",
+        "group": "relationship"
+      },
+      "rel_taken": {
+        "roleId": "1506273760326451220",
+        "emoji": "💑",
+        "react": "💑",
+        "emojiDisplay": "💑",
+        "group": "relationship"
+      },
+      "rel_complicated": {
+        "roleId": "1506273761949646881",
+        "emoji": "❤️‍🩹",
+        "react": "❤️‍🩹",
+        "emojiDisplay": "❤️‍🩹",
+        "group": "relationship"
+      },
+      "g_valorant": {
+        "roleId": "1506273765519261707",
+        "emoji": "rm_g_valorant",
+        "react": "1506302801347608656",
+        "emojiId": "1506302801347608656",
+        "emojiDisplay": "<:rm_g_valorant:1506302801347608656>",
+        "group": "games_a"
+      },
+      "g_roblox": {
+        "roleId": "1506273767343521873",
+        "emoji": "rm_g_roblox",
+        "react": "1506302819139850312",
+        "emojiId": "1506302819139850312",
+        "emojiDisplay": "<:rm_g_roblox:1506302819139850312>",
+        "group": "games_a"
+      },
+      "g_minecraft": {
+        "roleId": "1506293340759396383",
+        "emoji": "rm_g_minecraft",
+        "react": "1506302837255176222",
+        "emojiId": "1506302837255176222",
+        "emojiDisplay": "<:rm_g_minecraft:1506302837255176222>",
+        "group": "games_a"
+      },
+      "g_wuwa": {
+        "roleId": "1506273771265331220",
+        "emoji": "rm_g_wuwa",
+        "react": "1506302855215190017",
+        "emojiId": "1506302855215190017",
+        "emojiDisplay": "<:rm_g_wuwa:1506302855215190017>",
+        "group": "games_a"
+      },
+      "g_dota2": {
+        "roleId": "1506273772951568435",
+        "emoji": "rm_g_dota2",
+        "react": "1506302872479072387",
+        "emojiId": "1506302872479072387",
+        "emojiDisplay": "<:rm_g_dota2:1506302872479072387>",
+        "group": "games_a"
+      },
+      "g_dbdl": {
+        "roleId": "1506273774792609792",
+        "emoji": "rm_g_dbdl",
+        "react": "1506302890640412773",
+        "emojiId": "1506302890640412773",
+        "emojiDisplay": "<:rm_g_dbdl:1506302890640412773>",
+        "group": "games_a"
+      },
+      "g_ow": {
+        "roleId": "1506273776512532610",
+        "emoji": "rm_g_ow",
+        "react": "1506302908109426720",
+        "emojiId": "1506302908109426720",
+        "emojiDisplay": "<:rm_g_ow:1506302908109426720>",
+        "group": "games_a"
+      },
+      "g_ml": {
+        "roleId": "1506273778563285082",
+        "emoji": "rm_g_ml",
+        "react": "1506302926434467871",
+        "emojiId": "1506302926434467871",
+        "emojiDisplay": "<:rm_g_ml:1506302926434467871>",
+        "group": "games_a"
+      },
+      "g_lol": {
+        "roleId": "1506293342592565303",
+        "emoji": "rm_g_lol",
+        "react": "1506302944079908986",
+        "emojiId": "1506302944079908986",
+        "emojiDisplay": "<:rm_g_lol:1506302944079908986>",
+        "group": "games_a"
+      },
+      "g_aram": {
+        "roleId": "1506273783026028664",
+        "emoji": "rm_g_aram",
+        "react": "1506302964044660829",
+        "emojiId": "1506302964044660829",
+        "emojiDisplay": "<:rm_g_aram:1506302964044660829>",
+        "group": "games_a"
+      },
+      "g_tft": {
+        "roleId": "1506293345041911920",
+        "emoji": "rm_g_tft",
+        "react": "1506302981635702944",
+        "emojiId": "1506302981635702944",
+        "emojiDisplay": "<:rm_g_tft:1506302981635702944>",
+        "group": "games_b"
+      },
+      "g_genshin": {
+        "roleId": "1506273787065274408",
+        "emoji": "rm_g_genshin",
+        "react": "1506302999671210155",
+        "emojiId": "1506302999671210155",
+        "emojiDisplay": "<:rm_g_genshin:1506302999671210155>",
+        "group": "games_b"
+      },
+      "g_wr": {
+        "roleId": "1506293346812035252",
+        "emoji": "rm_g_wr",
+        "react": "1506303017610248327",
+        "emojiId": "1506303017610248327",
+        "emojiDisplay": "<:rm_g_wr:1506303017610248327>",
+        "group": "games_b"
+      },
+      "g_marvel": {
+        "roleId": "1506273793147011162",
+        "emoji": "rm_g_marvel",
+        "react": "1506303036400861225",
+        "emojiId": "1506303036400861225",
+        "emojiDisplay": "<:rm_g_marvel:1506303036400861225>",
+        "group": "games_b"
+      },
+      "g_hsr": {
+        "roleId": "1506273794946371645",
+        "emoji": "rm_g_hsr",
+        "react": "1506303054469926972",
+        "emojiId": "1506303054469926972",
+        "emojiDisplay": "<:rm_g_hsr:1506303054469926972>",
+        "group": "games_b"
+      },
+      "g_l4d": {
+        "roleId": "1506293348510728293",
+        "emoji": "rm_g_l4d",
+        "react": "1506303071683350682",
+        "emojiId": "1506303071683350682",
+        "emojiDisplay": "<:rm_g_l4d:1506303071683350682>",
+        "group": "games_b"
+      },
+      "g_hok": {
+        "roleId": "1506293350410485972",
+        "emoji": "rm_g_hok",
+        "react": "1506303089387241553",
+        "emojiId": "1506303089387241553",
+        "emojiDisplay": "<:rm_g_hok:1506303089387241553>",
+        "group": "games_b"
+      },
+      "g_repo": {
+        "roleId": "1506273801460125736",
+        "emoji": "rm_g_repo",
+        "react": "1506303106764378162",
+        "emojiId": "1506303106764378162",
+        "emojiDisplay": "<:rm_g_repo:1506303106764378162>",
+        "group": "games_b"
+      },
+      "g_elsword": {
+        "roleId": "1506273803213344858",
+        "emoji": "rm_g_elsword",
+        "react": "1506303123818545304",
+        "emojiId": "1506303123818545304",
+        "emojiDisplay": "<:rm_g_elsword:1506303123818545304>",
+        "group": "games_b"
+      },
+      "g_aov": {
+        "roleId": "1506293352184942667",
+        "emoji": "rm_g_aov",
+        "react": "1506303141937807450",
+        "emojiId": "1506303141937807450",
+        "emojiDisplay": "<:rm_g_aov:1506303141937807450>",
+        "group": "games_b"
+      },
+      "g_stardew": {
+        "roleId": "1506273813820735509",
+        "emoji": "rm_g_stardew",
+        "react": "1506303159986028636",
+        "emojiId": "1506303159986028636",
+        "emojiDisplay": "<:rm_g_stardew:1506303159986028636>",
+        "group": "games_c"
+      },
+      "g_phasmo": {
+        "roleId": "1506273816010297445",
+        "emoji": "rm_g_phasmo",
+        "react": "1506303177132085329",
+        "emojiId": "1506303177132085329",
+        "emojiDisplay": "<:rm_g_phasmo:1506303177132085329>",
+        "group": "games_c"
+      },
+      "g_fortnite": {
+        "roleId": "1506293360737124587",
+        "emoji": "rm_g_fortnite",
+        "react": "1506303194949484755",
+        "emojiId": "1506303194949484755",
+        "emojiDisplay": "<:rm_g_fortnite:1506303194949484755>",
+        "group": "games_c"
+      },
+      "g_pubg": {
+        "roleId": "1506273819818725397",
+        "emoji": "rm_g_pubg",
+        "react": "1506303213119213578",
+        "emojiId": "1506303213119213578",
+        "emojiDisplay": "<:rm_g_pubg:1506303213119213578>",
+        "group": "games_c"
+      },
+      "g_pokemon": {
+        "roleId": "1506273821894774914",
+        "emoji": "rm_g_pokemon",
+        "react": "1506303231003983975",
+        "emojiId": "1506303231003983975",
+        "emojiDisplay": "<:rm_g_pokemon:1506303231003983975>",
+        "group": "games_c"
+      },
+      "g_brawlhalla": {
+        "roleId": "1506273823291609129",
+        "emoji": "rm_g_brawlhalla",
+        "react": "1506303255704240180",
+        "emojiId": "1506303255704240180",
+        "emojiDisplay": "<:rm_g_brawlhalla:1506303255704240180>",
+        "group": "games_c"
+      },
+      "g_albion": {
+        "roleId": "1506273825380237342",
+        "emoji": "rm_g_albion",
+        "react": "1506303277623541761",
+        "emojiId": "1506303277623541761",
+        "emojiDisplay": "<:rm_g_albion:1506303277623541761>",
+        "group": "games_c"
+      },
+      "g_codm": {
+        "roleId": "1506273827049443502",
+        "emoji": "rm_g_codm",
+        "react": "1506303294702878760",
+        "emojiId": "1506303294702878760",
+        "emojiDisplay": "<:rm_g_codm:1506303294702878760>",
+        "group": "games_c"
+      },
+      "g_heartopia": {
+        "roleId": "1506273829146591363",
+        "emoji": "rm_g_heartopia",
+        "react": "1506303313333715024",
+        "emojiId": "1506303313333715024",
+        "emojiDisplay": "<:rm_g_heartopia:1506303313333715024>",
+        "group": "games_c"
+      },
+      "g_pc": {
+        "roleId": "1506273287611879454",
+        "emoji": "rm_g_pc",
+        "react": "1506303332904468511",
+        "emojiId": "1506303332904468511",
+        "emojiDisplay": "<:rm_g_pc:1506303332904468511>",
+        "group": "games_c"
+      },
+      "g_console": {
+        "roleId": "1506273831092748550",
+        "emoji": "rm_g_console",
+        "react": "1506303351363731496",
+        "emojiId": "1506303351363731496",
+        "emojiDisplay": "<:rm_g_console:1506303351363731496>",
+        "group": "games_c"
+      },
+      "g_phone": {
+        "roleId": "1426857858678652978",
+        "emoji": "rm_g_phone",
+        "react": "1506303369138933893",
+        "emojiId": "1506303369138933893",
+        "emojiDisplay": "<:rm_g_phone:1506303369138933893>",
+        "group": "games_c"
+      }
+    },
+    "legacyMappings": {
+      "🖥️": {
+        "roleId": "1426746102903738431",
+        "emoji": "🖥️",
+        "group": "platform",
+        "type": "multi"
+      },
+      "🎮": {
+        "roleId": "1426764135583977546",
+        "emoji": "🎮",
+        "group": "platform",
+        "type": "multi"
+      },
+      "📱": {
+        "roleId": "1426746102903738431",
+        "emoji": "📱",
+        "group": "platform",
+        "type": "multi"
+      }
+    },
+    "webhookId": "1506689702395248680"
+  }
+}

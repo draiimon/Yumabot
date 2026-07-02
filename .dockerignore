@@ -1,0 +1,13 @@
+node_modules
+npm-debug.log*
+.dockerignore
+.git
+.gitignore
+.env
+.env.*
+*.render.env
+logs
+startup.out
+startup.err
+.codex
+discord-js-lavalink-Music-Bot-erela-js

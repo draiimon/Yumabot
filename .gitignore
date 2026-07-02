@@ -1,0 +1,43 @@
+# Node
+node_modules
+npm-debug.log*
+
+# Env / secrets
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.render.env
+JanJanBot.render.env
+
+# Local / tooling
+.codex
+startup.out
+startup.err
+discord-js-lavalink-Music-Bot-erela-js/
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Misc
+.DS_Store
+_playground-zip-extract/
+
+# Generated role-menu emoji export (run scripts/export-role-menu-emojis.mjs)
+exports/
+
+# Runtime member state (resync from Discord; do not commit)
+data/member-activity.json
+data/member-intros.json
+
+# Local boot diagnostics / services
+scripts/*boot*
+scripts/*asus*
+scripts/_apply-boot*
+scripts/_elevate-fix*
+
