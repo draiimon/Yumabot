@@ -1,7 +1,7 @@
 {
-  "name": "janjan-discord-ai-bot",
+  "name": "yuma-discord-ai-bot",
   "version": "1.1.0",
-  "description": "Discord AI voice/chat bot with Render health endpoints and persistent 24/7 voice recovery.",
+  "description": "Yuma Discord bot - AI chat, voice, and per-user memory, deployed on Render.",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",

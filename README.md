@@ -1,92 +1,83 @@
-# JanJan Discord AI Bot
+# Yuma
 
-JanJan is a Discord AI bot with:
+Discord bot na may AI chat, boses (TTS/STT), at memory per user gamit ang Postgres. Bad boy attitude, Taglish replies, medyo masungit pero helpful pag kailangan.
 
-- Groq-backed chat replies
-- text-to-speech and speech-to-text voice flows
-- Postgres-backed memory and saved voice state
-- Render-safe health endpoints and boot diagnostics
-- 24/7 voice rejoin scheduling that survives restarts
+## Ano meron
 
-## Requirements
+- AI replies gamit ang Groq
+- Voice: makikinig at makakausap sa VC (text-to-speech / speech-to-text)
+- Naka-save ang memory ng bawat user sa Postgres (di malilimutan pag nagpalit ka topic)
+- Health checks para sa Render
+- Auto rejoin sa VC pag na-disconnect o na-restart ang server
+
+## Kailangan bago patakbuhin
 
 - Node.js 22+
 - Python 3
 - FFmpeg
-- A Discord bot token
-- A Postgres database URL
-- At least one Groq API key
+- Discord bot token
+- Postgres database URL
+- Groq API key (isa man lang)
 
-## Environment
+## Setup
 
-Use [`.env.example`](/c:/Users/Aloof/Desktop/Andrei/JanJan/.env.example) as the template.
-
-Required:
+Kopyahin muna ang `.env.example` bilang `.env` tapos punuan:
 
 - `DISCORD_TOKEN`
 - `DATABASE_URL`
-- `GROQ_API_KEY` or `GROQ_API_KEY1` / `GROQ_API_KEY2`
+- `GROQ_API_KEY` (o `GROQ_API_KEY1`, `GROQ_API_KEY2`, ... kung marami ka)
 
-Optional:
+Optional na env vars:
 
 - `WEB_ENABLED`
 - `PUBLIC_BASE_URL`
 - `SELF_PING_ENABLED`
 - `SELF_PING_INTERVAL_MS`
 
-## Local Run
+## Patakbuhin sa local
 
 ```bash
 npm install
-npm run check
 npm start
 ```
 
-## Render Deploy
+## Deploy sa Render
 
-The simplest push-and-auto-deploy architecture for this repo is:
+May kasama nang `render.yaml` sa repo na ito para sa isang Docker web service.
 
-- one Docker `web service`
-
-This repo includes `render.yaml` for a single free Docker web service setup.
-
-Recommended flow:
-
-1. Create the service from `render.yaml`.
-2. Fill in the secret env vars on the `janjanbot` service:
+1. Gawa ng bagong service galing sa `render.yaml`.
+2. Punan ang env vars sa dashboard ng Render:
    - `DISCORD_TOKEN`
    - `DATABASE_URL`
-   - `GROQ_API_KEY*`
-   - optional API keys like `TAVILY_API_KEY`, `LEONARDO_API_KEY`, `DEEPSEEK_API_KEY`
-3. Deploy.
+   - `GROQ_API_KEY` (at extras kung meron)
+   - optional: `TAVILY_API_KEY`, iba pang API keys na ginagamit mo
+3. Deploy na.
 
-Render health endpoints when `WEB_ENABLED=true`:
+Kung `WEB_ENABLED=true`, meron health endpoints:
 
-- `/health` - runtime + Discord + DB + voice diagnostics
-- `/ready` - Discord client readiness
-- `/ping` - lightweight uptime target
+- `/health` — status ng bot, DB, at voice
+- `/ready` — kung ready na ang Discord client
+- `/ping` — pang-uptime lang
 
-## 24/7 Voice Behavior
+## Voice / VC behavior
 
-JanJan now stores the last joined VC in Postgres and will:
+- Naaalala kung saang VC huling sumali gamit ang Postgres
+- Babalik sa parehong VC pagkatapos ma-restart
+- Auto rejoin pag na-disconnect o na-kick
+- Makikita ang current voice state sa `/health`
 
-- reload the saved VC after restart
-- schedule deduplicated rejoin attempts
-- rejoin after disconnect, destroy, or forced move/kick
-- expose the current voice state in `/health`
-
-If `DATABASE_URL` is missing, this persistence does not work, so keep it configured in Render.
+Kung walang `DATABASE_URL`, hindi gagana ang mga naka-save na state na ito.
 
 ## Commands
 
-- `j!join`
-- `j!leave`
-- `j!vc <text>`
-- `j!ask [question]`
-- `j!listen`
-- `j!stop`
-- `j!voice <m|f>`
-- `j!view @user`
-- `j!status <text>`
-- `j!admin`
-- `j!help`
+- `j!join` — sumali sa VC
+- `j!leave` — umalis sa VC
+- `j!vc <text>` — magsalita sa VC
+- `j!ask <tanong>` — magtanong
+- `j!listen` — pakinggan ang boses
+- `j!stop` — itigil ang pagsasalita
+- `j!voice <m|f>` — palitan ang boses
+- `j!view @user` — tignan ang impormasyon ng user
+- `j!status <text>` — palitan ang status
+- `j!admin` — admin panel
+- `j!help` — listahan ng commands
