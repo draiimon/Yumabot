@@ -70,9 +70,9 @@ function buildListenPageHtml() {
   <body>
     <main>
       <h1>🎧 Yuma — Listen Live</h1>
-      <p id="channelInfo">Kinukuha ang status ng voice channel...</p>
+      <p id="channelInfo">Fetching voice channel status...</p>
       <div class="status off" id="statusPill"><span class="dot"></span><span id="statusText">Offline</span></div>
-      <label for="channelSelect" id="channelSelectLabel" style="display:none;">Piliin ang channel:</label>
+      <label for="channelSelect" id="channelSelectLabel" style="display:none;">Select channel:</label>
       <select id="channelSelect" style="display:none;"></select>
       <br>
       <button id="listenBtn" disabled>▶ Listen Live</button>
