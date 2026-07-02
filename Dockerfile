@@ -44,7 +44,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY package.json package-lock.json* ./
-RUN npm ci --omit=dev --no-fund --no-audit
+# Increase Node heap to prevent OOM crash during native addon compilation
+# (sharp, @napi-rs/canvas, sodium-native are memory-heavy at build time)
+RUN NODE_OPTIONS="--max-old-space-size=4096" npm ci --omit=dev --no-fund --no-audit
 
 # ── Stage 3: lean production image ────────────────────────────────────────────
 FROM base AS runtime
