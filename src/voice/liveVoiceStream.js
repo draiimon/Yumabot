@@ -16,51 +16,71 @@ function createLiveVoiceStream() {
   }
 
   const wss = new WebSocketServer({ noServer: true });
-  const clients = new Set();
 
-  let activeGuildId = null;
-  let activeChannelId = null;
-  let activeChannelName = null;
-  let speakingSubs = new Map(); // userId -> { stream, decoder, queue: Buffer[] }
-  let tickTimer = null;
+  // guildId -> { guildId, channelId, channelName, speakingSubs: Map, tickTimer, clients: Set }
+  const streams = new Map();
 
-  wss.on('connection', (ws) => {
-    clients.add(ws);
-    ws.send(JSON.stringify({
-      type: 'status',
-      active: Boolean(activeGuildId),
-      channelName: activeChannelName,
+  function listStatus() {
+    return Array.from(streams.values()).map((s) => ({
+      guildId: s.guildId,
+      channelId: s.channelId,
+      channelName: s.channelName,
+      listeners: s.clients.size,
     }));
-    ws.on('close', () => clients.delete(ws));
-    ws.on('error', () => clients.delete(ws));
-  });
+  }
 
-  function broadcastStatus() {
+  function getStatus(guildId) {
+    if (guildId) {
+      const s = streams.get(guildId);
+      return {
+        active: Boolean(s),
+        guildId: s ? s.guildId : null,
+        channelId: s ? s.channelId : null,
+        channelName: s ? s.channelName : null,
+        listeners: s ? s.clients.size : 0,
+        streams: listStatus(),
+      };
+    }
+    const all = listStatus();
+    const first = all[0] || null;
+    return {
+      active: Boolean(first),
+      guildId: first ? first.guildId : null,
+      channelId: first ? first.channelId : null,
+      channelName: first ? first.channelName : null,
+      listeners: first ? first.listeners : 0,
+      streams: all,
+    };
+  }
+
+  function broadcastStatusFor(s) {
     const payload = JSON.stringify({
       type: 'status',
-      active: Boolean(activeGuildId),
-      channelName: activeChannelName,
+      active: true,
+      guildId: s.guildId,
+      channelId: s.channelId,
+      channelName: s.channelName,
     });
-    for (const ws of clients) {
+    for (const ws of s.clients) {
       if (ws.readyState === ws.OPEN) {
         try { ws.send(payload); } catch { /* ignore */ }
       }
     }
   }
 
-  function broadcastFrame(buffer) {
-    for (const ws of clients) {
+  function broadcastFrame(s, buffer) {
+    for (const ws of s.clients) {
       if (ws.readyState === ws.OPEN) {
         try { ws.send(buffer, { binary: true }); } catch { /* ignore */ }
       }
     }
   }
 
-  function mixTick() {
+  function mixTick(s) {
     const out = new Int32Array(FRAME_SAMPLES * CHANNELS);
     let anyData = false;
 
-    for (const sub of speakingSubs.values()) {
+    for (const sub of s.speakingSubs.values()) {
       if (sub.queue.length === 0) continue;
       const chunk = sub.queue.shift();
       anyData = true;
@@ -70,7 +90,7 @@ function createLiveVoiceStream() {
       }
     }
 
-    if (!anyData && clients.size === 0) {
+    if (!anyData && s.clients.size === 0) {
       return; // nobody listening and nothing to send — skip work
     }
 
@@ -81,18 +101,18 @@ function createLiveVoiceStream() {
       else if (sample < -32768) sample = -32768;
       outBuf.writeInt16LE(sample, i * 2);
     }
-    broadcastFrame(outBuf);
+    broadcastFrame(s, outBuf);
   }
 
-  function subscribeUser(receiver, userId) {
-    if (speakingSubs.has(userId) || !prism) return;
+  function subscribeUser(s, receiver, userId) {
+    if (s.speakingSubs.has(userId) || !prism) return;
 
     const audioStream = receiver.subscribe(userId, {
       end: { behavior: EndBehaviorType.Silence, duration: 150 },
     });
     const decoder = new prism.opus.Decoder({ rate: SAMPLE_RATE, channels: CHANNELS, frameSize: FRAME_SAMPLES });
     const sub = { stream: audioStream, decoder, queue: [] };
-    speakingSubs.set(userId, sub);
+    s.speakingSubs.set(userId, sub);
 
     audioStream.pipe(decoder);
 
@@ -102,7 +122,7 @@ function createLiveVoiceStream() {
     });
 
     const cleanup = () => {
-      speakingSubs.delete(userId);
+      s.speakingSubs.delete(userId);
       try { audioStream.destroy(); } catch { /* ignore */ }
       try { decoder.destroy(); } catch { /* ignore */ }
     };
@@ -113,56 +133,83 @@ function createLiveVoiceStream() {
   }
 
   function attach(connection, guildId, channelName) {
-    detach();
+    // Replace any existing stream for this same guild (e.g. rejoin).
+    detach(guildId);
 
-    activeGuildId = guildId;
-    activeChannelId = connection?.joinConfig?.channelId || null;
-    activeChannelName = channelName || null;
+    const s = {
+      guildId,
+      channelId: connection?.joinConfig?.channelId || null,
+      channelName: channelName || null,
+      speakingSubs: new Map(),
+      tickTimer: null,
+      clients: new Set(),
+    };
+    streams.set(guildId, s);
 
     const receiver = connection.receiver;
     receiver.speaking.on('start', (userId) => {
-      try { subscribeUser(receiver, userId); } catch (err) {
+      try { subscribeUser(s, receiver, userId); } catch (err) {
         console.warn('[LIVE-STREAM] subscribe failed:', err.message);
       }
     });
 
-    tickTimer = setInterval(mixTick, TICK_MS);
-    broadcastStatus();
+    s.tickTimer = setInterval(() => mixTick(s), TICK_MS);
+    broadcastStatusFor(s);
     console.log(`[LIVE-STREAM] Attached to guild ${guildId}${channelName ? ` (#${channelName})` : ''}`);
   }
 
-  function detach() {
-    if (tickTimer) {
-      clearInterval(tickTimer);
-      tickTimer = null;
-    }
-    for (const sub of speakingSubs.values()) {
+  function detach(guildId) {
+    const s = streams.get(guildId);
+    if (!s) return;
+
+    if (s.tickTimer) clearInterval(s.tickTimer);
+    for (const sub of s.speakingSubs.values()) {
       try { sub.stream.destroy(); } catch { /* ignore */ }
       try { sub.decoder.destroy(); } catch { /* ignore */ }
     }
-    speakingSubs = new Map();
-    if (activeGuildId) {
-      console.log(`[LIVE-STREAM] Detached from guild ${activeGuildId}`);
+
+    // Tell any listeners on this specific guild's stream that it's gone.
+    const payload = JSON.stringify({ type: 'status', active: false, guildId, channelId: null, channelName: null });
+    for (const ws of s.clients) {
+      if (ws.readyState === ws.OPEN) {
+        try { ws.send(payload); } catch { /* ignore */ }
+      }
     }
-    activeGuildId = null;
-    activeChannelId = null;
-    activeChannelName = null;
-    broadcastStatus();
+
+    streams.delete(guildId);
+    console.log(`[LIVE-STREAM] Detached from guild ${guildId}`);
   }
 
   function detachIfGuild(guildId) {
-    if (activeGuildId === guildId) detach();
+    detach(guildId);
   }
 
-  function getStatus() {
-    return {
-      active: Boolean(activeGuildId),
-      guildId: activeGuildId,
-      channelId: activeChannelId,
-      channelName: activeChannelName,
-      listeners: clients.size,
-    };
-  }
+  wss.on('connection', (ws, req) => {
+    const requestUrl = new URL(req.url || '/', 'http://localhost');
+    const requestedGuildId = requestUrl.searchParams.get('guildId');
+
+    // Pick the requested guild's stream, or fall back to the first active one.
+    let s = requestedGuildId ? streams.get(requestedGuildId) : null;
+    if (!s && !requestedGuildId) {
+      s = streams.values().next().value || null;
+    }
+
+    if (s) {
+      s.clients.add(ws);
+      ws.send(JSON.stringify({
+        type: 'status',
+        active: true,
+        guildId: s.guildId,
+        channelId: s.channelId,
+        channelName: s.channelName,
+      }));
+      ws.on('close', () => s.clients.delete(ws));
+      ws.on('error', () => s.clients.delete(ws));
+    } else {
+      ws.send(JSON.stringify({ type: 'status', active: false, guildId: requestedGuildId || null, channelName: null }));
+      ws.on('close', () => {});
+    }
+  });
 
   function handleUpgrade(req, socket, head) {
     wss.handleUpgrade(req, socket, head, (ws) => {
@@ -170,7 +217,7 @@ function createLiveVoiceStream() {
     });
   }
 
-  return { attach, detach, detachIfGuild, getStatus, handleUpgrade };
+  return { attach, detach, detachIfGuild, getStatus, listStatus, handleUpgrade };
 }
 
 module.exports = { createLiveVoiceStream };

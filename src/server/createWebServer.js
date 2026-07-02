@@ -55,7 +55,7 @@ function buildListenPageHtml() {
       :root { color-scheme: dark; --bg:#0d1117; --panel:rgba(255,255,255,0.06); --text:#f4f7fb; --muted:#9fb0c3; --accent:#ff6b8a; --ok:#5ee6a8; --bad:#ff6b6b; }
       * { box-sizing: border-box; }
       body { margin:0; min-height:100vh; font-family:"Segoe UI",sans-serif; background:radial-gradient(circle at top, rgba(255,107,138,0.32), transparent 40%), linear-gradient(160deg,#081018 0%,#0d1117 48%,#151a24 100%); color:var(--text); display:grid; place-items:center; padding:24px; }
-      main { width:min(520px,100%); background:var(--panel); border:1px solid rgba(255,255,255,0.08); border-radius:24px; padding:28px; backdrop-filter:blur(14px); box-shadow:0 28px 80px rgba(0,0,0,0.35); text-align:center; }
+      main { width:min(560px,100%); background:var(--panel); border:1px solid rgba(255,255,255,0.08); border-radius:24px; padding:28px; backdrop-filter:blur(14px); box-shadow:0 28px 80px rgba(0,0,0,0.35); text-align:center; }
       h1 { margin:0 0 8px; font-size:clamp(1.6rem,4vw,2.2rem); }
       p { margin:8px 0 0; color:var(--muted); }
       .status { margin:20px 0; display:inline-flex; align-items:center; gap:10px; padding:10px 14px; border-radius:999px; background:rgba(94,230,168,0.12); color:var(--ok); font-weight:700; }
@@ -63,6 +63,8 @@ function buildListenPageHtml() {
       button { margin-top:18px; padding:14px 28px; font-size:1rem; font-weight:700; border:none; border-radius:999px; background:var(--accent); color:#1a0a10; cursor:pointer; }
       button:disabled { opacity:0.5; cursor:not-allowed; }
       .dot { width:8px; height:8px; border-radius:50%; background:currentColor; display:inline-block; }
+      select { margin-top:14px; padding:10px 14px; border-radius:12px; background:#111823; color:var(--text); border:1px solid rgba(255,255,255,0.12); font-size:0.95rem; width:100%; }
+      label { display:block; margin-top:16px; color:var(--muted); font-size:0.85rem; text-align:left; }
     </style>
   </head>
   <body>
@@ -70,26 +72,29 @@ function buildListenPageHtml() {
       <h1>🎧 Yuma — Listen Live</h1>
       <p id="channelInfo">Kinukuha ang status ng voice channel...</p>
       <div class="status off" id="statusPill"><span class="dot"></span><span id="statusText">Offline</span></div>
+      <label for="channelSelect" id="channelSelectLabel" style="display:none;">Piliin ang channel:</label>
+      <select id="channelSelect" style="display:none;"></select>
       <br>
       <button id="listenBtn" disabled>▶ Listen Live</button>
     </main>
     <script>
       const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const ws = new WebSocket(proto + '//' + location.host + '/voice-stream');
-      ws.binaryType = 'arraybuffer';
-
       const statusPill = document.getElementById('statusPill');
       const statusText = document.getElementById('statusText');
       const channelInfo = document.getElementById('channelInfo');
       const listenBtn = document.getElementById('listenBtn');
+      const channelSelect = document.getElementById('channelSelect');
+      const channelSelectLabel = document.getElementById('channelSelectLabel');
 
       const SAMPLE_RATE = 48000;
       const CHANNELS = 2;
-      const FRAME_SAMPLES = 960;
 
       let audioCtx = null;
       let nextStartTime = 0;
       let listening = false;
+      let ws = null;
+      let currentGuildId = null;
+      let knownStreams = [];
 
       function setStatus(active, channelName) {
         statusPill.classList.toggle('off', !active);
@@ -100,32 +105,73 @@ function buildListenPageHtml() {
         listenBtn.disabled = !active;
       }
 
-      ws.onmessage = (ev) => {
-        if (typeof ev.data === 'string') {
-          try {
-            const msg = JSON.parse(ev.data);
-            if (msg.type === 'status') setStatus(msg.active, msg.channelName);
-          } catch {}
-          return;
-        }
-        if (!listening || !audioCtx) return;
-        const pcm = new Int16Array(ev.data);
-        const frames = pcm.length / CHANNELS;
-        const buffer = audioCtx.createBuffer(CHANNELS, frames, SAMPLE_RATE);
-        for (let ch = 0; ch < CHANNELS; ch++) {
-          const channelData = buffer.getChannelData(ch);
-          for (let i = 0; i < frames; i++) {
-            channelData[i] = pcm[i * CHANNELS + ch] / 32768;
+      async function refreshStreamList() {
+        try {
+          const res = await fetch('/voice-status');
+          const data = await res.json();
+          knownStreams = data.streams || [];
+          if (knownStreams.length > 1) {
+            channelSelect.style.display = 'block';
+            channelSelectLabel.style.display = 'block';
+            const prevValue = channelSelect.value;
+            channelSelect.innerHTML = knownStreams
+              .map((s) => '<option value="' + s.guildId + '">' + (s.channelName || s.guildId) + '</option>')
+              .join('');
+            if (prevValue && knownStreams.some((s) => s.guildId === prevValue)) {
+              channelSelect.value = prevValue;
+            }
+          } else {
+            channelSelect.style.display = 'none';
+            channelSelectLabel.style.display = 'none';
           }
+          if (!currentGuildId && knownStreams.length > 0) {
+            connect(knownStreams[0].guildId);
+          } else if (knownStreams.length === 0) {
+            setStatus(false, null);
+          }
+        } catch {
+          // ignore — health poll will retry
         }
-        const source = audioCtx.createBufferSource();
-        source.buffer = buffer;
-        source.connect(audioCtx.destination);
-        const now = audioCtx.currentTime;
-        if (nextStartTime < now + 0.05) nextStartTime = now + 0.08;
-        source.start(nextStartTime);
-        nextStartTime += frames / SAMPLE_RATE;
-      };
+      }
+
+      function connect(guildId) {
+        if (ws) { try { ws.close(); } catch {} }
+        currentGuildId = guildId || null;
+        const qs = currentGuildId ? ('?guildId=' + encodeURIComponent(currentGuildId)) : '';
+        ws = new WebSocket(proto + '//' + location.host + '/voice-stream' + qs);
+        ws.binaryType = 'arraybuffer';
+
+        ws.onmessage = (ev) => {
+          if (typeof ev.data === 'string') {
+            try {
+              const msg = JSON.parse(ev.data);
+              if (msg.type === 'status') setStatus(msg.active, msg.channelName);
+            } catch {}
+            return;
+          }
+          if (!listening || !audioCtx) return;
+          const pcm = new Int16Array(ev.data);
+          const frames = pcm.length / CHANNELS;
+          const buffer = audioCtx.createBuffer(CHANNELS, frames, SAMPLE_RATE);
+          for (let ch = 0; ch < CHANNELS; ch++) {
+            const channelData = buffer.getChannelData(ch);
+            for (let i = 0; i < frames; i++) {
+              channelData[i] = pcm[i * CHANNELS + ch] / 32768;
+            }
+          }
+          const source = audioCtx.createBufferSource();
+          source.buffer = buffer;
+          source.connect(audioCtx.destination);
+          const now = audioCtx.currentTime;
+          if (nextStartTime < now + 0.05) nextStartTime = now + 0.08;
+          source.start(nextStartTime);
+          nextStartTime += frames / SAMPLE_RATE;
+        };
+      }
+
+      channelSelect.addEventListener('change', () => {
+        connect(channelSelect.value);
+      });
 
       listenBtn.addEventListener('click', async () => {
         if (!listening) {
@@ -139,6 +185,9 @@ function buildListenPageHtml() {
           listenBtn.textContent = '▶ Listen Live';
         }
       });
+
+      refreshStreamList();
+      setInterval(refreshStreamList, 5000);
     </script>
   </body>
 </html>`;
@@ -264,7 +313,8 @@ function createWebServer({ config, runtimeState, client, getDiagnostics, liveVoi
     }
 
     if (requestUrl.pathname === '/voice-status') {
-      sendJson(res, 200, liveVoiceStream ? liveVoiceStream.getStatus() : { active: false });
+      const guildId = requestUrl.searchParams.get('guildId');
+      sendJson(res, 200, liveVoiceStream ? liveVoiceStream.getStatus(guildId) : { active: false, streams: [] });
       return;
     }
 
