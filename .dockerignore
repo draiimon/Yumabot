@@ -27,13 +27,13 @@ uv.lock
 attached_assets
 docs
 *.md
+render.yaml
 render.fast.yaml
 
 # Logs / temp
 logs
 startup.out
 startup.err
-data/*.json
 data/*.log
 
 # Old / unused

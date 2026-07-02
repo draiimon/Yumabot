@@ -6,6 +6,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-pip \
     libopus-dev \
     libsodium-dev \
+    libfontconfig1 \
     && pip3 install --no-cache-dir edge-tts --break-system-packages \
     && rm -rf /var/lib/apt/lists/*
 
