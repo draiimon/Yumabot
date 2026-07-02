@@ -86,7 +86,7 @@ function buildListenPageHtml() {
       const channelSelect = document.getElementById('channelSelect');
       const channelSelectLabel = document.getElementById('channelSelectLabel');
 
-      const SAMPLE_RATE = 16000; // server sends 16kHz mono (downsampled from 48kHz stereo)
+      const SAMPLE_RATE = 48000; // server sends 48kHz mono (native Discord/Opus rate, no decimation)
       const CHANNELS = 1;
       // Buffer ahead by 250ms — large enough to absorb Render's variable
       // latency (jitter spikes) without causing audible gaps/stuttering.
@@ -243,7 +243,7 @@ function buildListenPageHtml() {
       listenBtn.addEventListener('click', async () => {
         if (!listening) {
           manuallyDisconnected = false;
-          audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: SAMPLE_RATE });
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
           // ── Audio processing chain (browser-side, zero server CPU cost) ──
           //

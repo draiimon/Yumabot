@@ -1,0 +1,254 @@
+[VOICE 24/7] Connection state: connecting -> signalling
+[VOICE 24/7] Connection state: signalling -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> signalling
+[VOICE 24/7] Connection state: signalling -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> signalling
+[VOICE 24/7] Connection state: signalling -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> signalling
+[VOICE 24/7] Connection state: signalling -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> signalling
+[VOICE 24/7] Connection state: signalling -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> signalling
+[VOICE 24/7] Connection state: signalling -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> signalling
+[VOICE 24/7] Connection state: signalling -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> signalling
+[VOICE 24/7] Connection state: signalling -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> ready
+[VOICE 24/7] ✅ Ready in guild 1433764004219584584! Nandito na ako, 24/7 mode!
+[LIVE-STREAM] Attached to guild 1433764004219584584 (#🪦・batcave ni yuma)
+[VOICE 24/7] Stuck in signalling >30s — force-destroying and scheduling rejoin
+[VOICE 24/7] Connection state: signalling -> destroyed
+[VOICE 24/7] Connection destroyed for guild 1490600627129286819
+[LIVE-STREAM] Detached from guild 1490600627129286819
+[VOICE 24/7] Rejoin scheduled in 5s (destroyed) for guild 1490600627129286819.
+[VOICE 24/7] Rejoin scheduled in 2s (stuck-signalling) for guild 1490600627129286819.
+[CMD-CHANNEL] Deleted foreign bot msg from Dyno#0000 in #memb-logs
+[VOICE 24/7] ðŸ”„ Auto-rejoining voice: tangina mo isa kang nigga
+[VOICE 24/7] Joining channel 1490600628211286059 in guild 1490600627129286819
+[VOICE STATE] batched 1 events -> "Ang ganda naman neto bes, 4 * 20 = 80 ba? Hahaha, siyempre galing ka na!"
+[VOICE 24/7] Connection state: signalling -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: ready -> signalling
+[VOICE 24/7] Connection state: connecting -> signalling
+[VOICE 24/7] Connection state: signalling -> connecting
+[VOICE 24/7] Connection state: signalling -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> signalling
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> signalling
+[VOICE 24/7] Connection state: signalling -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: signalling -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> signalling
+[VOICE 24/7] Connection error: Cannot perform IP discovery - socket closed
+[VOICE 24/7] Connection state: signalling -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> signalling
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> signalling
+[VOICE 24/7] Connection error: Cannot perform IP discovery - socket closed
+[VOICE 24/7] Connection state: signalling -> connecting
+[VOICE 24/7] Connection state: signalling -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> signalling
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> signalling
+[VOICE 24/7] Connection state: signalling -> connecting
+[VOICE 24/7] Connection state: signalling -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> signalling
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> signalling
+[VOICE 24/7] Connection error: Cannot perform IP discovery - socket closed
+[VOICE 24/7] Connection state: signalling -> connecting
+[VOICE 24/7] Connection state: signalling -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> signalling
+[VOICE 24/7] Connection error: Cannot perform IP discovery - socket closed
+[VOICE 24/7] Connection state: connecting -> signalling
+[VOICE 24/7] Connection state: signalling -> connecting
+[VOICE 24/7] Connection state: signalling -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> signalling
+[VOICE 24/7] Connection error: Cannot perform IP discovery - socket closed
+[VOICE 24/7] Connection state: connecting -> signalling
+[VOICE 24/7] Connection state: signalling -> connecting
+[VOICE 24/7] Connection state: signalling -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> signalling
+[VOICE 24/7] Connection state: connecting -> signalling
+[VOICE 24/7] Connection error: Cannot perform IP discovery - socket closed
+[VOICE 24/7] Connection state: signalling -> connecting
+[VOICE 24/7] Connection state: signalling -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> signalling
+[VOICE 24/7] Connection error: Cannot perform IP discovery - socket closed
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> signalling
+[VOICE 24/7] Connection state: signalling -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: signalling -> connecting
+[VOICE 24/7] Connection state: connecting -> signalling
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> signalling
+[VOICE 24/7] Connection state: signalling -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: signalling -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> signalling
+[VOICE 24/7] Connection error: Cannot perform IP discovery - socket closed
+[VOICE 24/7] Connection state: signalling -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> signalling
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> signalling
+[VOICE 24/7] Connection error: Cannot perform IP discovery - socket closed
+[VOICE 24/7] Connection state: signalling -> connecting
+[VOICE 24/7] Connection state: signalling -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> signalling
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> signalling
+[VOICE 24/7] Connection error: Cannot perform IP discovery - socket closed
+[VOICE 24/7] Connection state: signalling -> connecting
+[VOICE 24/7] Connection state: signalling -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> signalling
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> signalling
+[VOICE 24/7] Connection error: Cannot perform IP discovery - socket closed
+[VOICE 24/7] Connection state: signalling -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: signalling -> connecting
+[VOICE 24/7] Connection state: connecting -> signalling
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> signalling
+[VOICE 24/7] Connection error: Cannot perform IP discovery - socket closed
+[VOICE 24/7] Connection state: signalling -> connecting
+[VOICE 24/7] Connection state: signalling -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> signalling
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> ready
+[VOICE 24/7] ✅ Ready in guild 1433764004219584584! Nandito na ako, 24/7 mode!
+[LIVE-STREAM] Re-attached (same connection) to guild 1433764004219584584 (#🪦・batcave ni yuma)
+[VOICE 24/7] Connection state: ready -> signalling
+[VOICE 24/7] Connection state: signalling -> connecting
+[VOICE 24/7] Connection state: signalling -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> signalling
+[VOICE 24/7] Connection error: Cannot perform IP discovery - socket closed
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> signalling
+[VOICE 24/7] Connection state: signalling -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: signalling -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> signalling
+[VOICE 24/7] Connection error: Cannot perform IP discovery - socket closed
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> signalling
+[VOICE 24/7] Connection state: signalling -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: signalling -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> signalling
+[VOICE 24/7] Connection state: signalling -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> signalling
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> signalling
+[VOICE 24/7] Connection error: Cannot perform IP discovery - socket closed
+[VOICE 24/7] Connection state: signalling -> connecting
+[VOICE 24/7] Connection state: signalling -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> signalling
+[VOICE 24/7] Connection error: Cannot perform IP discovery - socket closed
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> signalling
+[VOICE 24/7] Connection state: signalling -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: signalling -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> signalling
+[VOICE 24/7] Connection error: Cannot perform IP discovery - socket closed
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> signalling
+[VOICE 24/7] Connection state: signalling -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> signalling
+[VOICE 24/7] Connection error: Cannot perform IP discovery - socket closed
+[VOICE 24/7] Connection state: signalling -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: signalling -> connecting
+[VOICE 24/7] Connection state: connecting -> signalling
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: signalling -> connecting
+[VOICE 24/7] Connection state: connecting -> signalling
+[VOICE 24/7] Connection error: Cannot perform IP discovery - socket closed
+[VOICE 24/7] Connection state: signalling -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> signalling
+[VOICE 24/7] Connection state: connecting -> signalling
+[VOICE 24/7] Connection error: Cannot perform IP discovery - socket closed
+[VOICE 24/7] Connection state: signalling -> connecting
+[VOICE 24/7] Connection state: signalling -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> signalling
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> signalling
+[VOICE 24/7] Connection error: Cannot perform IP discovery - socket closed
+[VOICE 24/7] Connection state: signalling -> connecting
+[VOICE 24/7] Connection state: signalling -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Connection state: connecting -> signalling
+[VOICE 24/7] Connection error: Cannot perform IP discovery - socket closed
+[VOICE 24/7] Connection state: connecting -> connecting
+[VOICE 24/7] Stuck in signalling >30s — force-destroying and scheduling rejoin
+[VOICE 24/7] Connection state: connecting -> destroyed
+[VOICE 24/7] Connection destroyed for guild 1490600627129286819
+[VOICE 24/7] Rejoin scheduled in 5s (destroyed) for guild 1490600627129286819.
+[VOICE 24/7] Rejoin scheduled in 2s (stuck-signalling) for guild 1490600627129286819.
+[VOICE 24/7] Connection state: signalling -> connecting
+[VOICE 24/7] Connection state: connecting -> connecting

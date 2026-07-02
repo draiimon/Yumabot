@@ -7,12 +7,13 @@ const CHANNELS = 2;
 const FRAME_SAMPLES = 960; // 20ms @ 48kHz
 const TICK_MS = 20;
 
-// Output to browser: downmix to mono + decimate 48→16kHz (factor-3 decimation)
-// Bandwidth: 640 bytes/frame @ 50fps ≈ 32 KB/s per client  (was 3840 bytes, 192 KB/s)
+// Output to browser: downmix stereo→mono at full 48kHz — no decimation.
+// 48kHz is the native Discord/Opus decode rate so no resampling artifacts.
+// Bandwidth: 1920 bytes/frame @ 50fps ≈ 96 KB/s per client (was 32 KB/s @ 16kHz)
 const OUT_CHANNELS = 1;
-const DOWNSAMPLE = 3; // 48000 / 3 = 16000 Hz
-const OUT_FRAME_SAMPLES = FRAME_SAMPLES / DOWNSAMPLE; // 320 samples (20ms @ 16kHz)
-const OUT_FRAME_BYTES = OUT_FRAME_SAMPLES * OUT_CHANNELS * 2; // 640 bytes
+const OUT_SAMPLE_RATE = 48000; // same as input — zero decimation loss
+const OUT_FRAME_SAMPLES = FRAME_SAMPLES;  // 960 samples (20ms @ 48kHz)
+const OUT_FRAME_BYTES = OUT_FRAME_SAMPLES * OUT_CHANNELS * 2; // 1920 bytes
 
 function createLiveVoiceStream() {
   let prism = null;
@@ -105,30 +106,15 @@ function createLiveVoiceStream() {
     // Skip silence entirely — saves bandwidth and CPU when nobody is speaking
     if (!anyData) return;
 
-    // Downmix stereo→mono + decimate 48kHz→16kHz with proper anti-aliasing.
-    // For each output sample j: average ALL DOWNSAMPLE (3) consecutive stereo
-    // pairs — this acts as a 3-tap moving-average low-pass filter that removes
-    // frequencies above the 8kHz Nyquist of the 16kHz output before decimation.
-    // Without this, frequencies 8kHz–24kHz alias back into the audible band and
-    // produce the "metallic / unclear" artefacts reported on Render.
-    //
-    // Additionally apply soft-clip (tanh-like knee) BEFORE the final clamp so
-    // that mixed multi-speaker peaks are rounded rather than hard-clipped.
+    // Downmix stereo→mono at full 48kHz — no decimation, no resampling.
+    // We stay at the native Discord/Opus decode rate so there are zero
+    // resampling artifacts (no aliasing, no triangular filter needed).
+    // Soft-clip before final clamp to handle multi-speaker peaks gracefully.
     const outBuf = Buffer.alloc(OUT_FRAME_BYTES);
     for (let j = 0; j < OUT_FRAME_SAMPLES; j++) {
-      const base = j * DOWNSAMPLE * CHANNELS;
-      // Triangular weighted average [0.25, 0.50, 0.25] across 3 stereo pairs.
-      // Better than uniform 1/3 weighting: attenuates high-frequency sidelobes
-      // more aggressively (Hann-like shape), producing cleaner voice after decimation.
-      const i0 = base + 0 * CHANNELS;
-      const i1 = base + 1 * CHANNELS;
-      const i2 = base + 2 * CHANNELS;
-      const m0 = (out[i0] + out[i0 + 1]) >> 1;
-      const m1 = (out[i1] + out[i1 + 1]) >> 1;
-      const m2 = (out[i2] + out[i2 + 1]) >> 1;
-      let sample = Math.round(m0 * 0.25 + m1 * 0.50 + m2 * 0.25);
-      // Soft-clip: reduce gain when signal is loud (keeps voice intelligible
-      // even when multiple speakers are active simultaneously).
+      const idx = j * CHANNELS;
+      let sample = (out[idx] + out[idx + 1]) >> 1; // average L+R → mono
+      // Soft-clip knee at 75% FS — rounds loud peaks instead of hard-clipping.
       if (sample > 24576) {
         sample = 24576 + Math.round((sample - 24576) * 0.25);
       } else if (sample < -24576) {
