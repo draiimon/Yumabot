@@ -1991,14 +1991,8 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
     const { text, userId } = queue.shift();
 
     try {
-      // Voice selection (Angelo male default, Blessica female)
-      let genderPref = "m";
-      if (userId && userVoicePrefs.has(userId)) {
-        const p = userVoicePrefs.get(userId);
-        if (p === "m" || p === "f") genderPref = p;
-      }
-      const voice =
-        genderPref === "m" ? "fil-PH-AngeloNeural" : "fil-PH-BlessicaNeural";
+      // Voice: Angelo (male) only
+      const voice = "fil-PH-AngeloNeural";
 
       console.log(
         `[TTS] Voice: ${voice} | Text: "${text.substring(0, 40)}..."`,
@@ -4172,47 +4166,9 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
           return;
         }
 
-        // j!voice / j!change <m/f> â€” Set voice (same as gnslgbot2's g!change m/f)
-        // After changing: speaks "Voice changed to X. This is how I sound now!" with new voice
+        // j!voice / j!change — male (Angelo) only
         if (command === "voice" || command === "change") {
-          const type = args[0]?.toLowerCase();
-
-          let genderName = null;
-          if (type === "m" || type === "male" || type === "angelo") {
-            userVoicePrefs.set(message.author.id, "m");
-            genderName = "male";
-          } else if (type === "f" || type === "female" || type === "blessica") {
-            userVoicePrefs.set(message.author.id, "f");
-            genderName = "female";
-          } else {
-            await message.reply(
-              "Gamitin: `j!change m` (Angelo) o `j!change f` (Blessica).",
-            );
-            return;
-          }
-
-          await message.reply(`VOICE CHANGED TO ${genderName.toUpperCase()}.`);
-
-          // Speak sample with the NEW voice â€” beki style, same as gnslgbot2
-          if (message.guild && message.member?.voice?.channel) {
-            try {
-              await ensureVoiceReady({
-                guild: message.guild,
-                member: message.member,
-                joinAndWatch,
-                client,
-              });
-            } catch {
-              return;
-            }
-            if (getVoiceConnection(message.guild.id)) {
-              const sample =
-                genderName === "male"
-                  ? `Ito na ang bagong boses ko, bro! `
-                  : `Ito na ang bagong boses ko, bro! Game. `;
-              speakMessage(message.guild.id, sample, message.author.id);
-            }
-          }
+          await message.reply("Angelo lang ang boses ko, lalake ako. 😤");
           return;
         }
 
@@ -5581,7 +5537,6 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
                   "j!ask <question>    - AI answer then speak\n" +
                   "j!listen            - start STT listening\n" +
                   "j!stop              - stop STT listening\n" +
-                  "j!voice / j!change m|f - change voice\n" +
                   "j!autotts           - toggle auto TTS in channel\n" +
                   "```",
                 inline: false,
