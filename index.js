@@ -223,24 +223,27 @@ const {
       GatewayIntentBits.GuildMembers,
       GatewayIntentBits.GuildVoiceStates,
       GatewayIntentBits.GuildMessageReactions,
-      GatewayIntentBits.GuildInvites,
+      // GatewayIntentBits.GuildInvites, // invite counter disabled
     ],
     partials: [Partials.Channel, Partials.Message, Partials.Reaction, Partials.User],
   });
 
-  registerVerifyHandlers(client);
-  registerIntroHandlers(client);
-  registerMemberLeaveCleanupHandlers(client);
-  registerPlaygroundWelcomeHandlers(client);
-  registerSapphireBlockHandlers(client);
-  registerInviteCounterHandlers(client);
-  registerMediaOnlyChannelHandlers(client);
-  registerCommandChannelEnforcer(client);
-  registerVerificationTicketHandlers(client);
-  client.once(Events.ClientReady, () => {
-    registerRoleMenuHandlers(client);
-    console.log('[ROLE-MENU] Ready — buttons add/remove roles; reactions add/remove roles.');
-  });
+  // NOTE: features below are commented out — they rely on hardcoded
+  // channel/guild/role IDs that haven't been configured yet.
+  // Keeping: AI chat + voice/listen only.
+  // registerVerifyHandlers(client);
+  // registerIntroHandlers(client);
+  // registerMemberLeaveCleanupHandlers(client);
+  // registerPlaygroundWelcomeHandlers(client);
+  // registerSapphireBlockHandlers(client);
+  // registerInviteCounterHandlers(client);
+  // registerMediaOnlyChannelHandlers(client);
+  // registerCommandChannelEnforcer(client);
+  // registerVerificationTicketHandlers(client);
+  // client.once(Events.ClientReady, () => {
+  //   registerRoleMenuHandlers(client);
+  //   console.log('[ROLE-MENU] Ready — buttons add/remove roles; reactions add/remove roles.');
+  // });
 
   client.on('error', (err) => {
     runtimeState.process.lastUnhandledError = {
@@ -2494,13 +2497,11 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
       console.warn('[PERM] Priority channel permission check failed:', e.message);
     }
 
-    // Backfill any intros posted while the bot was offline
-    scanIntroChannelOnStartup(client, { limit: 200 }).catch((err) => {
-      console.warn('[INTRO] Startup scan failed:', err.message);
-    });
+    // scanIntroChannelOnStartup(client, { limit: 200 }).catch((err) => {
+    //   console.warn('[INTRO] Startup scan failed:', err.message);
+    // });
 
-    // Start the daily verification reminder (07:00 + 22:00 Asia/Manila)
-    startVerifyReminderScheduler(client);
+    // startVerifyReminderScheduler(client);
 
     // =====================================================================
     // 24/7 AUTO-JOIN ON STARTUP — merge DB states + VOICE_CHANNELS env fallback
