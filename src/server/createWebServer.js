@@ -50,41 +50,108 @@ function buildListenPageHtml() {
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Yuma — Listen Live</title>
+    <title>Yuma · Listen Live</title>
     <style>
-      :root { color-scheme: dark; --bg:#0d1117; --panel:rgba(255,255,255,0.06); --text:#f4f7fb; --muted:#9fb0c3; --accent:#ff6b8a; --ok:#5ee6a8; --bad:#ff6b6b; }
-      * { box-sizing: border-box; }
-      body { margin:0; min-height:100vh; font-family:"Segoe UI",sans-serif; background:radial-gradient(circle at top, rgba(255,107,138,0.32), transparent 40%), linear-gradient(160deg,#081018 0%,#0d1117 48%,#151a24 100%); color:var(--text); display:grid; place-items:center; padding:24px; }
-      main { width:min(560px,100%); background:var(--panel); border:1px solid rgba(255,255,255,0.08); border-radius:24px; padding:28px; backdrop-filter:blur(14px); box-shadow:0 28px 80px rgba(0,0,0,0.35); text-align:center; }
-      h1 { margin:0 0 8px; font-size:clamp(1.6rem,4vw,2.2rem); }
-      p { margin:8px 0 0; color:var(--muted); }
-      .status { margin:20px 0; display:inline-flex; align-items:center; gap:10px; padding:10px 14px; border-radius:999px; background:rgba(94,230,168,0.12); color:var(--ok); font-weight:700; }
-      .status.off { background:rgba(255,107,107,0.12); color:var(--bad); }
-      button { margin-top:18px; padding:14px 28px; font-size:1rem; font-weight:700; border:none; border-radius:999px; background:var(--accent); color:#1a0a10; cursor:pointer; }
-      button:disabled { opacity:0.5; cursor:not-allowed; }
-      .dot { width:8px; height:8px; border-radius:50%; background:currentColor; display:inline-block; }
-      select { margin-top:14px; padding:10px 14px; border-radius:12px; background:#111823; color:var(--text); border:1px solid rgba(255,255,255,0.12); font-size:0.95rem; width:100%; }
-      label { display:block; margin-top:16px; color:var(--muted); font-size:0.85rem; text-align:left; }
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+      body {
+        min-height: 100vh;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: #0f1117;
+        color: #e8eaf0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      }
+      .card {
+        width: min(420px, 100%);
+        background: #181b24;
+        border: 1px solid #2a2d3a;
+        border-radius: 16px;
+        padding: 32px 28px;
+        text-align: center;
+      }
+      .icon { font-size: 2rem; margin-bottom: 12px; }
+      h1 { font-size: 1.4rem; font-weight: 600; color: #fff; letter-spacing: -0.02em; }
+      .subtitle { margin-top: 6px; font-size: 0.85rem; color: #6b7280; }
+      .divider { border: none; border-top: 1px solid #2a2d3a; margin: 24px 0; }
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 6px 14px;
+        border-radius: 999px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+      .badge.live { background: rgba(52,211,153,0.12); color: #34d399; }
+      .badge.offline { background: rgba(107,114,128,0.15); color: #6b7280; }
+      .badge.reconnecting { background: rgba(251,191,36,0.12); color: #fbbf24; }
+      .dot {
+        width: 7px; height: 7px;
+        border-radius: 50%;
+        background: currentColor;
+      }
+      .dot.pulse { animation: pulse 1.4s ease-in-out infinite; }
+      @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+      .channel-info { margin-top: 10px; font-size: 0.83rem; color: #6b7280; min-height: 1.2em; }
+      .select-wrap { margin-top: 20px; text-align: left; }
+      .select-wrap label { font-size: 0.75rem; color: #6b7280; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; display: block; }
+      select {
+        width: 100%;
+        padding: 9px 12px;
+        background: #0f1117;
+        color: #e8eaf0;
+        border: 1px solid #2a2d3a;
+        border-radius: 8px;
+        font-size: 0.875rem;
+        outline: none;
+        cursor: pointer;
+      }
+      select:focus { border-color: #4f6ef7; }
+      .btn {
+        margin-top: 24px;
+        width: 100%;
+        padding: 12px;
+        font-size: 0.95rem;
+        font-weight: 600;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: opacity .15s, transform .1s;
+        background: #4f6ef7;
+        color: #fff;
+        letter-spacing: -0.01em;
+      }
+      .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+      .btn:not(:disabled):hover { opacity: 0.88; }
+      .btn:not(:disabled):active { transform: scale(0.98); }
+      .btn.stop { background: #374151; }
     </style>
   </head>
   <body>
-    <main>
-      <h1>🎧 Yuma — Listen Live</h1>
-      <p id="channelInfo">Fetching voice channel status...</p>
-      <div class="status off" id="statusPill"><span class="dot"></span><span id="statusText">Offline</span></div>
-      <label for="channelSelect" id="channelSelectLabel" style="display:none;">Select channel:</label>
-      <select id="channelSelect" style="display:none;"></select>
-      <br>
-      <button id="listenBtn" disabled>▶ Listen Live</button>
-    </main>
+    <div class="card">
+      <div class="icon">🎧</div>
+      <h1>Listen Live</h1>
+      <p class="subtitle">Yuma · Voice Stream</p>
+      <hr class="divider">
+      <div id="statusBadge" class="badge offline"><span class="dot" id="dot"></span><span id="statusText">Offline</span></div>
+      <p class="channel-info" id="channelInfo">No active voice channel.</p>
+      <div class="select-wrap" id="selectWrap" style="display:none;">
+        <label for="channelSelect">Channel</label>
+        <select id="channelSelect"></select>
+      </div>
+      <button class="btn" id="listenBtn" disabled>Play</button>
+    </div>
     <script>
       const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const statusPill = document.getElementById('statusPill');
       const statusText = document.getElementById('statusText');
       const channelInfo = document.getElementById('channelInfo');
       const listenBtn = document.getElementById('listenBtn');
       const channelSelect = document.getElementById('channelSelect');
-      const channelSelectLabel = document.getElementById('channelSelectLabel');
+      const selectWrap = document.getElementById('selectWrap');
 
       const SAMPLE_RATE = 48000; // server sends 48kHz mono (native Discord/Opus rate, no decimation)
       const CHANNELS = 1;
@@ -105,11 +172,14 @@ function buildListenPageHtml() {
       let manuallyDisconnected = false;
 
       function setStatus(active, channelName, extra) {
-        statusPill.classList.toggle('off', !active);
+        const badge = document.getElementById('statusBadge');
+        const dot = document.getElementById('dot');
+        badge.className = 'badge ' + (extra === 'Reconnecting…' ? 'reconnecting' : active ? 'live' : 'offline');
+        dot.className = 'dot' + (active ? ' pulse' : '');
         statusText.textContent = extra || (active ? 'Live' : 'Offline');
         channelInfo.textContent = active
-          ? ('Naka-connect ang bot sa: ' + (channelName || 'voice channel'))
-          : 'Wala pang bot sa voice channel ngayon.';
+          ? 'Connected to: ' + (channelName || 'voice channel')
+          : 'No active voice channel.';
         listenBtn.disabled = !active && extra !== 'Reconnecting…';
       }
 
@@ -132,8 +202,7 @@ function buildListenPageHtml() {
           const data = await res.json();
           knownStreams = data.streams || [];
           if (knownStreams.length > 0) {
-            channelSelect.style.display = 'block';
-            channelSelectLabel.style.display = 'block';
+            selectWrap.style.display = 'block';
             const prevValue = channelSelect.value;
             channelSelect.innerHTML = knownStreams
               .map((s) => {
@@ -145,8 +214,7 @@ function buildListenPageHtml() {
               channelSelect.value = prevValue;
             }
           } else {
-            channelSelect.style.display = 'none';
-            channelSelectLabel.style.display = 'none';
+            selectWrap.style.display = 'none';
           }
           if (!currentGuildId && knownStreams.length > 0) {
             connect(knownStreams[0].guildId);
@@ -285,7 +353,8 @@ function buildListenPageHtml() {
           audioChainInput = hpf;
           nextStartTime = audioCtx.currentTime + BUFFER_AHEAD_SEC;
           listening = true;
-          listenBtn.textContent = '⏸ Stop';
+          listenBtn.textContent = 'Stop';
+          listenBtn.classList.add('stop');
           // Resume WebSocket if it was closed by a previous Stop.
           // Without this, pressing Listen again after Stop would never reconnect
           // because manuallyDisconnected blocked the auto-reconnect path.
@@ -300,7 +369,8 @@ function buildListenPageHtml() {
           nextStartTime = 0;
           if (ws) { ws._noReconnect = true; try { ws.close(); } catch {} ws = null; }
           if (audioCtx) { try { await audioCtx.close(); } catch {} audioCtx = null; audioChainInput = null; }
-          listenBtn.textContent = '▶ Listen Live';
+          listenBtn.textContent = 'Play';
+          listenBtn.classList.remove('stop');
         }
       });
 
@@ -322,83 +392,114 @@ function createWebServer({ config, runtimeState, client, getDiagnostics, liveVoi
 
     if (requestUrl.pathname === '/') {
       const discordReady = typeof client.isReady === 'function' ? client.isReady() : false;
-      sendHtml(
-        res,
-        200,
-        `<!doctype html>
+      sendHtml(res, 200, `<!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Yuma Runtime</title>
-    <style>
-      :root {
-        color-scheme: dark;
-        --bg: #0d1117;
-        --panel: rgba(255, 255, 255, 0.06);
-        --text: #f4f7fb;
-        --muted: #9fb0c3;
-        --accent: #ff6b8a;
-        --ok: #5ee6a8;
-      }
-      * { box-sizing: border-box; }
-      body {
-        margin: 0;
-        min-height: 100vh;
-        font-family: "Segoe UI", sans-serif;
-        background:
-          radial-gradient(circle at top, rgba(255, 107, 138, 0.32), transparent 40%),
-          linear-gradient(160deg, #081018 0%, #0d1117 48%, #151a24 100%);
-        color: var(--text);
-        display: grid;
-        place-items: center;
-        padding: 24px;
-      }
-      main {
-        width: min(720px, 100%);
-        background: var(--panel);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 24px;
-        padding: 28px;
-        backdrop-filter: blur(14px);
-        box-shadow: 0 28px 80px rgba(0, 0, 0, 0.35);
-      }
-      h1 { margin: 0 0 8px; font-size: clamp(2rem, 4vw, 3rem); }
-      p { margin: 0; color: var(--muted); }
-      .status {
-        margin: 22px 0 18px;
-        display: inline-flex;
-        align-items: center;
-        gap: 10px;
-        padding: 10px 14px;
-        border-radius: 999px;
-        background: rgba(94, 230, 168, 0.12);
-        color: var(--ok);
-        font-weight: 700;
-      }
-      ul {
-        margin: 24px 0 0;
-        padding-left: 18px;
-        color: var(--muted);
-        line-height: 1.6;
-      }
-      code { color: var(--accent); }
-    </style>
-  </head>
-  <body>
-    <main>
-      <h1>Yuma</h1>
-      <p>Runtime endpoint for the Discord bot.</p>
-      <div class="status">${discordReady ? 'Discord connected' : 'Discord booting'}</div>
-      <ul>
-        <li><code>/health</code> returns process, DB, Discord, and voice diagnostics.</li>
-        <li><code>/ready</code> reports whether the Discord client is fully ready.</li>
-        <li><code>/ping</code> is for lightweight uptime checks.</li>
-      </ul>
-    </main>
-  </body>
-</html>`
-      );
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Yuma</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #0f1117;
+      color: #e8eaf0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .card {
+      width: min(380px, 100%);
+      background: #181b24;
+      border: 1px solid #2a2d3a;
+      border-radius: 16px;
+      padding: 28px 24px;
+    }
+    .header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+    .avatar {
+      width: 40px; height: 40px;
+      background: #252836;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.25rem;
+    }
+    .name { font-size: 1.1rem; font-weight: 600; color: #fff; }
+    .sub  { font-size: 0.78rem; color: #6b7280; margin-top: 2px; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+    .badge.ok  { background: rgba(52,211,153,0.12); color: #34d399; }
+    .badge.off { background: rgba(107,114,128,0.15); color: #6b7280; }
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+    hr { border: none; border-top: 1px solid #2a2d3a; margin-bottom: 20px; }
+    .links { display: flex; flex-direction: column; gap: 8px; }
+    a.row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 12px;
+      background: #0f1117;
+      border: 1px solid #2a2d3a;
+      border-radius: 9px;
+      text-decoration: none;
+      color: #e8eaf0;
+      font-size: 0.875rem;
+      transition: border-color .15s;
+    }
+    a.row:hover { border-color: #4f6ef7; }
+    a.row .label { font-weight: 500; }
+    a.row .desc  { font-size: 0.75rem; color: #6b7280; margin-top: 2px; }
+    a.row .arrow { color: #4b5563; font-size: 0.9rem; }
+    a.row .left  { display: flex; flex-direction: column; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="header">
+      <div class="avatar">🤖</div>
+      <div>
+        <div class="name">Yuma</div>
+        <div class="sub">Discord Bot</div>
+      </div>
+    </div>
+    <div class="badge ${discordReady ? 'ok' : 'off'}">
+      <span class="dot"></span>
+      ${discordReady ? 'Online' : 'Connecting'}
+    </div>
+    <hr>
+    <div class="links">
+      <a class="row" href="/listen">
+        <div class="left">
+          <span class="label">🎧 Listen Live</span>
+          <span class="desc">Stream the voice channel in your browser</span>
+        </div>
+        <span class="arrow">›</span>
+      </a>
+      <a class="row" href="/health">
+        <div class="left">
+          <span class="label">Health</span>
+          <span class="desc">Process, DB, Discord, and voice diagnostics</span>
+        </div>
+        <span class="arrow">›</span>
+      </a>
+      <a class="row" href="/ping">
+        <div class="left">
+          <span class="label">Ping</span>
+          <span class="desc">Lightweight uptime check</span>
+        </div>
+        <span class="arrow">›</span>
+      </a>
+    </div>
+  </div>
+</body>
+</html>`);
       return;
     }
 

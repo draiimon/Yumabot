@@ -1,10 +1,10 @@
-require('dotenv').config();
+require("dotenv").config();
 
 // Force IPv4 DNS resolution first — Discord voice UDP media sockets can
 // fail to establish (stuck at "signalling") on hosts where IPv6 is
 // resolved but not actually routable for UDP traffic.
 try {
-  require('dns').setDefaultResultOrder('ipv4first');
+  require("dns").setDefaultResultOrder("ipv4first");
 } catch {
   // Older Node versions without setDefaultResultOrder — ignore.
 }
@@ -18,8 +18,11 @@ try {
 // permanently stuck at "signalling". Importing it here at process start
 // means Node's module cache already has it ready well before we ever
 // call joinVoiceChannel.
-const davePreloadPromise = import('@snazzah/davey').catch((e) => {
-  console.warn('[VOICE] DAVE preload failed (voice will fall back to no-DAVE):', e.message);
+const davePreloadPromise = import("@snazzah/davey").catch((e) => {
+  console.warn(
+    "[VOICE] DAVE preload failed (voice will fall back to no-DAVE):",
+    e.message,
+  );
   return null;
 });
 
@@ -28,27 +31,27 @@ const davePreloadPromise = import('@snazzah/davey').catch((e) => {
 // after that, the cached "not found" sticks and all TTS playback fails with
 // "FFmpeg/avconv not found".
 // Use system ffmpeg (installed via apt-get in Docker / available on PATH)
-if (!process.env.FFMPEG_PATH) process.env.FFMPEG_PATH = 'ffmpeg';
+if (!process.env.FFMPEG_PATH) process.env.FFMPEG_PATH = "ffmpeg";
 
-const { loadConfig } = require('./src/config');
-const { createRuntimeState } = require('./src/runtime/state');
-const { createWebServer } = require('./src/server/createWebServer');
-const { registerProcessLifecycle } = require('./src/runtime/processLifecycle');
-const { startSelfPing } = require('./src/runtime/startSelfPing');
-const { createLiveVoiceStream } = require('./src/voice/liveVoiceStream');
+const { loadConfig } = require("./src/config");
+const { createRuntimeState } = require("./src/runtime/state");
+const { createWebServer } = require("./src/server/createWebServer");
+const { registerProcessLifecycle } = require("./src/runtime/processLifecycle");
+const { startSelfPing } = require("./src/runtime/startSelfPing");
+const { createLiveVoiceStream } = require("./src/voice/liveVoiceStream");
 
 const config = loadConfig(process.env);
 const runtimeState = createRuntimeState(config);
-const { initRag, reloadRag } = require('./src/rag/ragService');
-const { buildHumanMemoryContext } = require('./src/rag/humanMemory');
-const { needsFullMemoryContext } = require('./src/rag/conversationMode');
-const { searchBotHelp } = require('./src/rag/botHelpRag');
-const { JANJAN_EXPLICIT_VIBES } = require('./src/rag/janjanVibes');
+const { initRag, reloadRag } = require("./src/rag/ragService");
+const { buildHumanMemoryContext } = require("./src/rag/humanMemory");
+const { needsFullMemoryContext } = require("./src/rag/conversationMode");
+const { searchBotHelp } = require("./src/rag/botHelpRag");
+const { JANJAN_EXPLICIT_VIBES } = require("./src/rag/janjanVibes");
 const {
   BOT_IDENTITY_BLOCK,
   enforceBotIdentityReply,
   buildBotIdentityDeterministicReply,
-} = require('./src/rag/botIdentity');
+} = require("./src/rag/botIdentity");
 
 const DISCORD_TOKEN = config.discordToken;
 const TAVILY_API_KEY = config.tavilyApiKey;
@@ -56,7 +59,9 @@ const GROQ_KEYS = config.groqKeys;
 const LEONARDO_API_KEY = config.leonardoApiKey;
 
 if (config.missing.length > 0) {
-  console.error(`Missing required environment variables: ${config.missing.join(', ')}`);
+  console.error(
+    `Missing required environment variables: ${config.missing.join(", ")}`,
+  );
   process.exit(1);
 }
 
@@ -71,8 +76,8 @@ const {
   AudioPlayerStatus,
   EndBehaviorType,
   NoSubscriberBehavior,
-  generateDependencyReport
-} = require('@discordjs/voice');
+  generateDependencyReport,
+} = require("@discordjs/voice");
 
 (async () => {
   // START OF ASYNC MAIN
@@ -87,41 +92,58 @@ const {
     PermissionsBitField,
     ActivityType,
     Events,
-  } = require('discord.js');
+  } = require("discord.js");
 
-  const axios = require('axios');
-  const { Pool } = require('pg');
-  const fs = require('fs');
-  const path = require('path');
-  const os = require('os');
-  const { spawn } = require('child_process');
-  const { generateTtsAudio, probeTtsEngines } = require('./src/voice/generateTtsAudio');
-  const { ensureVoiceReady } = require('./src/voice/ensureVoiceReady');
-  const { formatVoiceConnectError } = require('./src/voice/formatVoiceConnectError');
-  const { transcribeWithGroq } = require('./src/voice/transcribeGroq');
-  const { waitConnectionReady } = require('./src/voice/waitConnectionReady');
-  require('opusscript');
-  const { AttachmentBuilder } = require('discord.js');
+  const axios = require("axios");
+  const { Pool } = require("pg");
+  const fs = require("fs");
+  const path = require("path");
+  const os = require("os");
+  const { spawn } = require("child_process");
+  const {
+    generateTtsAudio,
+    probeTtsEngines,
+  } = require("./src/voice/generateTtsAudio");
+  const { ensureVoiceReady } = require("./src/voice/ensureVoiceReady");
+  const {
+    formatVoiceConnectError,
+  } = require("./src/voice/formatVoiceConnectError");
+  const { transcribeWithGroq } = require("./src/voice/transcribeGroq");
+  const { waitConnectionReady } = require("./src/voice/waitConnectionReady");
+  require("opusscript");
+  const { AttachmentBuilder } = require("discord.js");
   const {
     buildStatsEmbed,
     buildStatusViewEmbed,
     buildBubbleUpdatedEmbed,
-  } = require('./src/stats/statsCard');
+  } = require("./src/stats/statsCard");
   const {
     registerIntroHandlers,
     setupIntroChannel,
     buildMemberViewEmbed,
     scanIntroChannelOnStartup,
-  } = require('./src/intro/introSystem');
+  } = require("./src/intro/introSystem");
   const {
     registerMemberLeaveCleanupHandlers,
-  } = require('./src/members/memberLeaveCleanup');
-  const { registerPlaygroundWelcomeHandlers } = require('./src/welcome/playgroundWelcome');
-  const { registerSapphireBlockHandlers } = require('./src/members/sapphireBlock');
-  const { registerInviteCounterHandlers } = require('./src/members/inviteCounter');
-  const { registerMediaOnlyChannelHandlers } = require('./src/members/mediaOnlyChannel');
-  const { registerCommandChannelEnforcer } = require('./src/members/commandChannelEnforcer');
-  const { startVerifyReminderScheduler } = require('./src/verify/verifyReminder');
+  } = require("./src/members/memberLeaveCleanup");
+  const {
+    registerPlaygroundWelcomeHandlers,
+  } = require("./src/welcome/playgroundWelcome");
+  const {
+    registerSapphireBlockHandlers,
+  } = require("./src/members/sapphireBlock");
+  const {
+    registerInviteCounterHandlers,
+  } = require("./src/members/inviteCounter");
+  const {
+    registerMediaOnlyChannelHandlers,
+  } = require("./src/members/mediaOnlyChannel");
+  const {
+    registerCommandChannelEnforcer,
+  } = require("./src/members/commandChannelEnforcer");
+  const {
+    startVerifyReminderScheduler,
+  } = require("./src/verify/verifyReminder");
 
   // TTS Queue System (per guild) â€” same as gnslgbot2
   const ttsQueues = new Map(); // guildId -> [{text, userId}]
@@ -142,40 +164,40 @@ const {
   const userStyleCache = new Map(); // userId -> { language, tone, slangAvg, samples }
   const recentBotPhraseCache = new Map(); // scopeKey -> string[]
   const priorityAutoChatChannels = new Set([
-    '1426746103797256200',
-    '1427128206431096913',
-    '1426746103797256195'
+    "1426746103797256200",
+    "1427128206431096913",
+    "1426746103797256195",
   ]);
 
   function getMissingTextPermsForChannel(channel) {
-    if (!channel || !channel.guild) return ['unknown-channel'];
+    if (!channel || !channel.guild) return ["unknown-channel"];
     const meMember = channel.guild.members?.me || null;
-    if (!meMember) return ['bot-not-in-guild-cache'];
+    if (!meMember) return ["bot-not-in-guild-cache"];
     const perms = channel.permissionsFor(meMember);
-    if (!perms) return ['cannot-resolve-permissions'];
+    if (!perms) return ["cannot-resolve-permissions"];
 
     const required = [
       PermissionsBitField.Flags.ViewChannel,
       PermissionsBitField.Flags.ReadMessageHistory,
       PermissionsBitField.Flags.SendMessages,
-      PermissionsBitField.Flags.AddReactions
+      PermissionsBitField.Flags.AddReactions,
     ];
 
     const missing = required.filter((p) => !perms.has(p));
     return missing.map((p) => PermissionsBitField.Flags[p] || String(p));
   }
 
-  console.log('[VOICE] Dependency Report:\n' + generateDependencyReport());
+  console.log("[VOICE] Dependency Report:\n" + generateDependencyReport());
 
   try {
-    const sodium = require('libsodium-wrappers');
+    const sodium = require("libsodium-wrappers");
     await sodium.ready;
-    console.log('[VOICE] libsodium-wrappers ready');
+    console.log("[VOICE] libsodium-wrappers ready");
   } catch (sodiumErr) {
-    console.warn('[VOICE] libsodium-wrappers init:', sodiumErr.message);
+    console.warn("[VOICE] libsodium-wrappers init:", sodiumErr.message);
   }
 
-  if (!process.env.FFMPEG_PATH) process.env.FFMPEG_PATH = 'ffmpeg';
+  if (!process.env.FFMPEG_PATH) process.env.FFMPEG_PATH = "ffmpeg";
   console.log(`[TTS] FFmpeg path: ${process.env.FFMPEG_PATH}`);
 
   probeTtsEngines()
@@ -185,14 +207,16 @@ const {
       const hasOpus = /opusscript|@discordjs\/opus/.test(dep);
       runtimeState.voice.opusReady = hasOpus;
       console.log(
-        `[TTS] Engines — node: ${probe.node ? 'ok' : 'fail'}${probe.nodeError ? ` (${probe.nodeError})` : ''}; python: ${probe.python ? 'ok' : 'fail'}${probe.pythonError ? ` (${probe.pythonError})` : ''}; opus: ${hasOpus ? 'ok' : 'MISSING (STT will break)'}`,
+        `[TTS] Engines — node: ${probe.node ? "ok" : "fail"}${probe.nodeError ? ` (${probe.nodeError})` : ""}; python: ${probe.python ? "ok" : "fail"}${probe.pythonError ? ` (${probe.pythonError})` : ""}; opus: ${hasOpus ? "ok" : "MISSING (STT will break)"}`,
       );
       if (!hasOpus) {
-        console.error('[STT] No Opus library — install opusscript or @discordjs/opus');
+        console.error(
+          "[STT] No Opus library — install opusscript or @discordjs/opus",
+        );
       }
     })
     .catch((err) => {
-      console.warn('[TTS] Startup probe failed:', err.message);
+      console.warn("[TTS] Startup probe failed:", err.message);
     });
 
   const {
@@ -200,18 +224,18 @@ const {
     setupVerifyChannel,
     refreshVerifyMessage,
     repairVerifyPermissions,
-  } = require('./src/verify/verifySystem');
+  } = require("./src/verify/verifySystem");
   const {
     registerRoleMenuHandlers,
     setupRoleMenu,
     repairRoleMenu,
-  } = require('./src/roleMenu/roleMenuSystem');
+  } = require("./src/roleMenu/roleMenuSystem");
   const {
     registerVerificationTicketHandlers,
     setupVerificationTicketPanel,
     DEFAULT_SPAWNPOINT_CHANNEL,
     isSupportTicketChannel,
-  } = require('./src/tickets/verificationTicketSystem');
+  } = require("./src/tickets/verificationTicketSystem");
 
   const client = new Client({
     intents: [
@@ -225,7 +249,12 @@ const {
       GatewayIntentBits.GuildMessageReactions,
       // GatewayIntentBits.GuildInvites, // invite counter disabled
     ],
-    partials: [Partials.Channel, Partials.Message, Partials.Reaction, Partials.User],
+    partials: [
+      Partials.Channel,
+      Partials.Message,
+      Partials.Reaction,
+      Partials.User,
+    ],
   });
 
   // NOTE: features below are commented out — they rely on hardcoded
@@ -245,43 +274,48 @@ const {
   //   console.log('[ROLE-MENU] Ready — buttons add/remove roles; reactions add/remove roles.');
   // });
 
-  client.on('error', (err) => {
+  client.on("error", (err) => {
     runtimeState.process.lastUnhandledError = {
-      source: 'discord-client',
+      source: "discord-client",
       message: err.message,
       stack: err.stack || null,
-      at: new Date().toISOString()
+      at: new Date().toISOString(),
     };
-    console.error('[DISCORD] Client error:', err.message);
+    console.error("[DISCORD] Client error:", err.message);
   });
 
-  client.on('shardDisconnect', (event, shardId) => {
+  client.on("shardDisconnect", (event, shardId) => {
     runtimeState.discord.ready = false;
     runtimeState.discord.lastLoginError = `Shard ${shardId} disconnected (${event.code})`;
-    console.warn(`[DISCORD] Shard ${shardId} disconnected with code ${event.code}.`);
+    console.warn(
+      `[DISCORD] Shard ${shardId} disconnected with code ${event.code}.`,
+    );
   });
 
-  client.on('shardResume', (shardId, replayedEvents) => {
+  client.on("shardResume", (shardId, replayedEvents) => {
     runtimeState.discord.ready = true;
     runtimeState.discord.lastLoginError = null;
-    console.log(`[DISCORD] Shard ${shardId} resumed (${replayedEvents} replayed event(s)).`);
+    console.log(
+      `[DISCORD] Shard ${shardId} resumed (${replayedEvents} replayed event(s)).`,
+    );
   });
 
   const pool = new Pool({
     connectionString: config.databaseUrl,
-    ssl: { rejectUnauthorized: false }
+    ssl: { rejectUnauthorized: false },
   });
 
-  pool.on('connect', () => {
+  pool.on("connect", () => {
     runtimeState.database.connected = true;
-    runtimeState.database.connectedAt = runtimeState.database.connectedAt || new Date().toISOString();
+    runtimeState.database.connectedAt =
+      runtimeState.database.connectedAt || new Date().toISOString();
     runtimeState.database.lastError = null;
   });
 
-  pool.on('error', (err) => {
+  pool.on("error", (err) => {
     runtimeState.database.connected = false;
     runtimeState.database.lastError = err.message;
-    console.error('[DB] Pool error:', err.message);
+    console.error("[DB] Pool error:", err.message);
   });
 
   const scheduledVoiceRejoins = new Map(); // guildId -> { guildId, channelId, executeAt, timeout }
@@ -298,17 +332,19 @@ const {
         client,
         getDiagnostics: () => ({}),
         liveVoiceStream,
-        onJoinChannel: (...args) => voiceJoinHandler.fn?.(...args)
+        onJoinChannel: (...args) => voiceJoinHandler.fn?.(...args),
       })
     : null;
 
   if (webServer) {
     await webServer.start();
   } else {
-    console.log('[WEB] Disabled. Running bot without HTTP health server.');
+    console.log("[WEB] Disabled. Running bot without HTTP health server.");
   }
 
-  let stopSelfPing = config.webEnabled ? startSelfPing({ config, runtimeState }) : () => {};
+  let stopSelfPing = config.webEnabled
+    ? startSelfPing({ config, runtimeState })
+    : () => {};
 
   const unregisterProcessLifecycle = registerProcessLifecycle({
     runtimeState,
@@ -329,32 +365,35 @@ const {
       try {
         client.destroy();
       } catch (error) {
-        console.error('[PROCESS] Discord client shutdown error:', error.message);
+        console.error(
+          "[PROCESS] Discord client shutdown error:",
+          error.message,
+        );
       }
 
       try {
         await pool.end();
       } catch (error) {
-        console.error('[PROCESS] Database shutdown error:', error.message);
+        console.error("[PROCESS] Database shutdown error:", error.message);
       }
 
       if (webServer) {
         try {
           await webServer.close();
         } catch (error) {
-          console.error('[PROCESS] Web server shutdown error:', error.message);
+          console.error("[PROCESS] Web server shutdown error:", error.message);
         }
       }
 
       unregisterProcessLifecycle();
-    }
+    },
   });
 
   let dbClient;
 
   try {
     dbClient = await pool.connect();
-    console.log('[DB] Connected to Neon Postgres successfully.');
+    console.log("[DB] Connected to Neon Postgres successfully.");
     await dbClient.query(`
           CREATE TABLE IF NOT EXISTS messages (
             id BIGSERIAL PRIMARY KEY,
@@ -410,34 +449,38 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
 - Mag-usap ka, wag mag-lecture. Short sentences. Gamitin contractions/shortcuts (di, kasi, sya, etc — Taglish natural flow). Natural transitions kapag may dagdag info ("by the way", "isa pa", "tapos").
 - Sagot mo dapat diretso sa kailangan ng kausap muna bago mag-elaborate — wag magdadagdag ng info na di naman tinanong.
 `;
-    await dbClient.query('INSERT INTO persona (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2', [
-      'master_dna',
-      masterDNA
-    ]);
+    await dbClient.query(
+      "INSERT INTO persona (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2",
+      ["master_dna", masterDNA],
+    );
 
-    console.log('[DB] Tables initialized (messages, channel_memory, user_memory, persona, rag_chunks).');
+    console.log(
+      "[DB] Tables initialized (messages, channel_memory, user_memory, persona, rag_chunks).",
+    );
     if (config.ragEnabled) {
       await initRag(pool).catch((ragErr) => {
-        console.warn('[RAG] Bot-command index init failed:', ragErr.message);
+        console.warn("[RAG] Bot-command index init failed:", ragErr.message);
       });
-      console.log('[MEMORY] Yuma mode ON — per-user Postgres memory, bad boy Taglish replies.');
+      console.log(
+        "[MEMORY] Yuma mode ON — per-user Postgres memory, bad boy Taglish replies.",
+      );
     }
   } catch (err) {
     runtimeState.database.connected = false;
     runtimeState.database.lastError = err.message;
-    console.error('[DB] Connection/Init Error:', err.message);
+    console.error("[DB] Connection/Init Error:", err.message);
   } finally {
     dbClient?.release();
   }
   // API Key Rotation Persistence
   let currentKeyIndex = 0;
   const invalidGroqKeyIndices = new Set();
-  const apiUrl = 'https://api.groq.com/openai/v1/chat/completions';
+  const apiUrl = "https://api.groq.com/openai/v1/chat/completions";
 
   console.log(`[GROQ] ${GROQ_KEYS.length} API key(s) loaded for rotation.`);
 
   function maskGroqKey(key) {
-    if (!key || key.length < 12) return '(invalid)';
+    if (!key || key.length < 12) return "(invalid)";
     return `${key.slice(0, 8)}...${key.slice(-4)}`;
   }
 
@@ -445,14 +488,15 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
     return {
       status: err.response?.status || null,
       code: err.response?.data?.error?.code || null,
-      message: err.response?.data?.error?.message || err.message || 'unknown error',
+      message:
+        err.response?.data?.error?.message || err.message || "unknown error",
     };
   }
 
   async function probeGroqKeysAtStartup() {
     const probePayload = {
-      model: 'llama-3.1-8b-instant',
-      messages: [{ role: 'user', content: 'ok' }],
+      model: "llama-3.1-8b-instant",
+      messages: [{ role: "user", content: "ok" }],
       max_tokens: 1,
     };
 
@@ -461,27 +505,36 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
       const key = GROQ_KEYS[i];
       try {
         await axios.post(apiUrl, probePayload, {
-          headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+          headers: {
+            Authorization: `Bearer ${key}`,
+            "Content-Type": "application/json",
+          },
           timeout: 12000,
         });
         working++;
-        console.log(`[GROQ] Startup probe key ${i + 1} (${maskGroqKey(key)}): ok`);
+        console.log(
+          `[GROQ] Startup probe key ${i + 1} (${maskGroqKey(key)}): ok`,
+        );
       } catch (err) {
         const { status, message } = groqErrorMeta(err);
         invalidGroqKeyIndices.add(i);
         console.warn(
-          `[GROQ] Startup probe key ${i + 1} (${maskGroqKey(key)}): fail HTTP ${status || '—'} — ${message}`,
+          `[GROQ] Startup probe key ${i + 1} (${maskGroqKey(key)}): fail HTTP ${status || "—"} — ${message}`,
         );
       }
     }
 
     if (working === 0) {
       console.error(
-        '[GROQ] No working API keys. Set valid GROQ_API_KEY1..6 (or GROQ_API_KEY) in Render Environment. Keys must start with gsk_ and have no quotes.',
+        "[GROQ] No working API keys. Set valid GROQ_API_KEY1..6 (or GROQ_API_KEY) in Render Environment. Keys must start with gsk_ and have no quotes.",
       );
     } else {
-      console.log(`[GROQ] Startup probe: ${working}/${GROQ_KEYS.length} key(s) working.`);
-      currentKeyIndex = GROQ_KEYS.findIndex((_, idx) => !invalidGroqKeyIndices.has(idx));
+      console.log(
+        `[GROQ] Startup probe: ${working}/${GROQ_KEYS.length} key(s) working.`,
+      );
+      currentKeyIndex = GROQ_KEYS.findIndex(
+        (_, idx) => !invalidGroqKeyIndices.has(idx),
+      );
       if (currentKeyIndex < 0) currentKeyIndex = 0;
     }
   }
@@ -491,7 +544,7 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
    */
   async function performGroqRequest(payload) {
     if (!GROQ_KEYS.length) {
-      throw new Error('No Groq API key configured.');
+      throw new Error("No Groq API key configured.");
     }
 
     const maxKeys = GROQ_KEYS.length;
@@ -500,7 +553,7 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
     while (attempts < maxKeys) {
       if (invalidGroqKeyIndices.size >= maxKeys) {
         throw new Error(
-          'All Groq API keys are invalid (401). Update GROQ_API_KEY* in Render Environment.',
+          "All Groq API keys are invalid (401). Update GROQ_API_KEY* in Render Environment.",
         );
       }
 
@@ -513,14 +566,19 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
 
       try {
         const res = await axios.post(apiUrl, payload, {
-          headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+          headers: {
+            Authorization: `Bearer ${key}`,
+            "Content-Type": "application/json",
+          },
         });
         return res;
       } catch (err) {
         const { status, code, message } = groqErrorMeta(err);
-        const isRateLimit = status === 429 || code === 'rate_limit_exceeded';
+        const isRateLimit = status === 429 || code === "rate_limit_exceeded";
         const isInvalidKey =
-          status === 401 || code === 'invalid_api_key' || /invalid api key/i.test(message);
+          status === 401 ||
+          code === "invalid_api_key" ||
+          /invalid api key/i.test(message);
 
         if ((isRateLimit || isInvalidKey) && maxKeys > 1) {
           if (isInvalidKey) {
@@ -529,7 +587,9 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
               `[GROQ] Key ${currentKeyIndex + 1} (${maskGroqKey(key)}) invalid (401). Rotating to next key...`,
             );
           } else {
-            console.warn(`[GROQ] Key ${currentKeyIndex + 1} rate limited. Rotating to next key...`);
+            console.warn(
+              `[GROQ] Key ${currentKeyIndex + 1} rate limited. Rotating to next key...`,
+            );
           }
           currentKeyIndex = (currentKeyIndex + 1) % maxKeys;
           attempts++;
@@ -540,73 +600,87 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
       }
     }
 
-    throw new Error('All Groq keys exhausted or invalid.');
+    throw new Error("All Groq keys exhausted or invalid.");
   }
 
   // ============================================================
   // LEONARDO IMAGE GENERATION
   // ============================================================
-  const LEONARDO_BASE_URL = 'https://cloud.leonardo.ai/api/rest/v1';
-  const LEONARDO_DEFAULT_MODEL_ID = '7b592283-e8a7-4c5a-9ba6-d18c31f258b9';
+  const LEONARDO_BASE_URL = "https://cloud.leonardo.ai/api/rest/v1";
+  const LEONARDO_DEFAULT_MODEL_ID = "7b592283-e8a7-4c5a-9ba6-d18c31f258b9";
 
   async function leonardoCreateGeneration(prompt, options = {}) {
-    if (!LEONARDO_API_KEY) throw new Error('LEONARDO_API_KEY missing.');
+    if (!LEONARDO_API_KEY) throw new Error("LEONARDO_API_KEY missing.");
     const payload = {
-      prompt: String(prompt || '').slice(0, 1500),
+      prompt: String(prompt || "").slice(0, 1500),
       modelId: options.modelId || LEONARDO_DEFAULT_MODEL_ID,
       width: options.width ?? 1024,
       height: options.height ?? 1024,
       num_images: options.numImages ?? 1,
       alchemy: Boolean(options.alchemy ?? false),
-      ultra: Boolean(options.ultra ?? false)
+      ultra: Boolean(options.ultra ?? false),
     };
 
     const res = await axios.post(`${LEONARDO_BASE_URL}/generations`, payload, {
       headers: {
-        accept: 'application/json',
+        accept: "application/json",
         authorization: `Bearer ${LEONARDO_API_KEY}`,
-        'content-type': 'application/json'
+        "content-type": "application/json",
       },
-      timeout: 30000
+      timeout: 30000,
     });
 
-    const generationId = res.data?.sdGenerationJob?.generationId || res.data?.generationId || null;
-    if (!generationId) throw new Error('Leonardo: missing generationId.');
+    const generationId =
+      res.data?.sdGenerationJob?.generationId || res.data?.generationId || null;
+    if (!generationId) throw new Error("Leonardo: missing generationId.");
     return generationId;
   }
 
   async function leonardoGetGeneration(generationId) {
-    if (!LEONARDO_API_KEY) throw new Error('LEONARDO_API_KEY missing.');
-    const res = await axios.get(`${LEONARDO_BASE_URL}/generations/${generationId}`, {
-      headers: {
-        accept: 'application/json',
-        authorization: `Bearer ${LEONARDO_API_KEY}`
+    if (!LEONARDO_API_KEY) throw new Error("LEONARDO_API_KEY missing.");
+    const res = await axios.get(
+      `${LEONARDO_BASE_URL}/generations/${generationId}`,
+      {
+        headers: {
+          accept: "application/json",
+          authorization: `Bearer ${LEONARDO_API_KEY}`,
+        },
+        timeout: 30000,
       },
-      timeout: 30000
-    });
+    );
     return res.data;
   }
 
-  async function leonardoWaitForImages(generationId, { maxWaitMs = 90000, pollMs = 2500 } = {}) {
+  async function leonardoWaitForImages(
+    generationId,
+    { maxWaitMs = 90000, pollMs = 2500 } = {},
+  ) {
     const started = Date.now();
     while (Date.now() - started < maxWaitMs) {
       const data = await leonardoGetGeneration(generationId);
       const pk = data?.generations_by_pk || null;
       const status = pk?.status || null;
-      const imgs = Array.isArray(pk?.generated_images) ? pk.generated_images : [];
+      const imgs = Array.isArray(pk?.generated_images)
+        ? pk.generated_images
+        : [];
       const urls = imgs.map((i) => i?.url).filter(Boolean);
       if (urls.length > 0) return urls;
-      if (status === 'FAILED') throw new Error('Leonardo: generation failed.');
+      if (status === "FAILED") throw new Error("Leonardo: generation failed.");
       await new Promise((r) => setTimeout(r, pollMs));
     }
-    throw new Error('Leonardo: generation timeout.');
+    throw new Error("Leonardo: generation timeout.");
   }
 
-  async function leonardoGenerateAndSend({ channel, replyToMessage, prompt, caption }) {
-    if (!LEONARDO_API_KEY) throw new Error('LEONARDO_API_KEY missing.');
-    const safePrompt = String(prompt || '').trim();
-    if (!safePrompt) throw new Error('Missing prompt.');
-    const safeCaption = String(caption || '').trim();
+  async function leonardoGenerateAndSend({
+    channel,
+    replyToMessage,
+    prompt,
+    caption,
+  }) {
+    if (!LEONARDO_API_KEY) throw new Error("LEONARDO_API_KEY missing.");
+    const safePrompt = String(prompt || "").trim();
+    if (!safePrompt) throw new Error("Missing prompt.");
+    const safeCaption = String(caption || "").trim();
 
     // Loading/progress message (simple but clear)
     const loadingBase = `wait ka lang ha, gumagawa na ko ng pic. wag kang atat.`;
@@ -616,25 +690,35 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
 
     try {
       await loadingMsg.edit(`${loadingBase}\nstatus: queue pa`);
-    } catch { }
+    } catch {}
 
-    const generationId = await leonardoCreateGeneration(safePrompt, { numImages: 1, width: 1024, height: 1024 });
+    const generationId = await leonardoCreateGeneration(safePrompt, {
+      numImages: 1,
+      width: 1024,
+      height: 1024,
+    });
 
     try {
       await loadingMsg.edit(`${loadingBase}\nstatus: ginuguhit ko na, kalma`);
-    } catch { }
+    } catch {}
 
-    const urls = await leonardoWaitForImages(generationId, { maxWaitMs: 120000, pollMs: 2500 });
+    const urls = await leonardoWaitForImages(generationId, {
+      maxWaitMs: 120000,
+      pollMs: 2500,
+    });
     const url = urls[0];
-    if (!url) throw new Error('No image URL returned.');
+    if (!url) throw new Error("No image URL returned.");
 
     try {
       await loadingMsg.edit(`${loadingBase}\nstatus: ina-upload ko na, saglit`);
-    } catch { }
+    } catch {}
 
-    const imgRes = await axios.get(url, { responseType: 'arraybuffer', timeout: 30000 });
+    const imgRes = await axios.get(url, {
+      responseType: "arraybuffer",
+      timeout: 30000,
+    });
     const buf = Buffer.from(imgRes.data);
-    const file = new AttachmentBuilder(buf, { name: 'yuma.png' });
+    const file = new AttachmentBuilder(buf, { name: "yuma.png" });
 
     // Send final image message (Tagalog caption; avoid truncating)
     const finalCaption = safeCaption
@@ -642,11 +726,13 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
       : `ayan na: **${safePrompt.slice(0, 140)}**`;
     await channel.send({
       content: finalCaption,
-      files: [file]
+      files: [file],
     });
 
     // Remove loading
-    try { await loadingMsg.delete(); } catch { }
+    try {
+      await loadingMsg.delete();
+    } catch {}
   }
 
   async function performChatRequest(payload, options = {}) {
@@ -654,45 +740,81 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
   }
 
   const researchKeywords = [
-    'latest', 'news', 'balita', 'current', 'today', 'recent', 'research', 'search',
-    'look up', 'ano nangyari', 'real time', 'price', 'update'
+    "latest",
+    "news",
+    "balita",
+    "current",
+    "today",
+    "recent",
+    "research",
+    "search",
+    "look up",
+    "ano nangyari",
+    "real time",
+    "price",
+    "update",
   ];
 
-  function shouldUseResearchMode(text = '') {
-    const lower = String(text || '').toLowerCase();
+  function shouldUseResearchMode(text = "") {
+    const lower = String(text || "").toLowerCase();
     return researchKeywords.some((keyword) => lower.includes(keyword));
   }
 
   const styleSlangWords = [
-    'beh', 'te', 'teh', 'gagi', 'awit', 'char', 'char', 'eme', 'luh', 'weh',
-    'omsim', 'yarn', 'ganern', 'pre', 'ante', 'pre', 'baks', 'bro'
+    "beh",
+    "te",
+    "teh",
+    "gagi",
+    "awit",
+    "char",
+    "char",
+    "eme",
+    "luh",
+    "weh",
+    "omsim",
+    "yarn",
+    "ganern",
+    "pre",
+    "ante",
+    "pre",
+    "baks",
+    "bro",
   ];
 
-  function detectStyle(text = '') {
-    const cleaned = String(text || '').trim();
+  function detectStyle(text = "") {
+    const cleaned = String(text || "").trim();
     const lower = cleaned.toLowerCase();
     const slangCount = styleSlangWords.filter((w) => lower.includes(w)).length;
-    const isTaglish = /(ako|ikaw|pano|ano|kasi|tapos|gusto|like|naman|nga|lang|sige)/i.test(lower);
+    const isTaglish =
+      /(ako|ikaw|pano|ano|kasi|tapos|gusto|like|naman|nga|lang|sige)/i.test(
+        lower,
+      );
     const manyLaughs = /(haha|hahaha|hehe|lol|waha)/i.test(lower);
-    const isSeriousSupportive = /(problem|help|sad|sakit|family|depress|anxious|pagod|grief|iyak)/i.test(lower);
+    const isSeriousSupportive =
+      /(problem|help|sad|sakit|family|depress|anxious|pagod|grief|iyak)/i.test(
+        lower,
+      );
 
-    let tone = 'neutral';
-    if (isSeriousSupportive) tone = 'serious_supportive';
-    else if (slangCount >= 3 || manyLaughs) tone = 'playful';
-    else if (/(putang|gago|tanga|ulol|bwisit|tarantado)/i.test(lower)) tone = 'intense';
+    let tone = "neutral";
+    if (isSeriousSupportive) tone = "serious_supportive";
+    else if (slangCount >= 3 || manyLaughs) tone = "playful";
+    else if (/(putang|gago|tanga|ulol|bwisit|tarantado)/i.test(lower))
+      tone = "intense";
 
     return {
-      language: isTaglish ? 'taglish' : 'english',
+      language: isTaglish ? "taglish" : "english",
       tone,
-      slangLevel: Math.min(slangCount * 2, 10)
+      slangLevel: Math.min(slangCount * 2, 10),
     };
   }
 
   function mergeStyleProfile(currentStyle, savedProfile = null) {
     const fallback = {
-      language: currentStyle.language || 'taglish',
-      tone: currentStyle.tone || 'neutral',
-      slangLevel: Number.isFinite(currentStyle.slangLevel) ? currentStyle.slangLevel : 4
+      language: currentStyle.language || "taglish",
+      tone: currentStyle.tone || "neutral",
+      slangLevel: Number.isFinite(currentStyle.slangLevel)
+        ? currentStyle.slangLevel
+        : 4,
     };
     if (!savedProfile) return fallback;
 
@@ -700,29 +822,35 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
       0,
       Math.min(
         10,
-        Math.round(((Number(savedProfile.slangAvg) || fallback.slangLevel) * 0.7) + (fallback.slangLevel * 0.3))
-      )
+        Math.round(
+          (Number(savedProfile.slangAvg) || fallback.slangLevel) * 0.7 +
+            fallback.slangLevel * 0.3,
+        ),
+      ),
     );
 
     return {
-      language: fallback.language || savedProfile.language || 'taglish',
-      tone: fallback.tone === 'neutral' ? (savedProfile.tone || fallback.tone) : fallback.tone,
-      slangLevel: mergedSlang
+      language: fallback.language || savedProfile.language || "taglish",
+      tone:
+        fallback.tone === "neutral"
+          ? savedProfile.tone || fallback.tone
+          : fallback.tone,
+      slangLevel: mergedSlang,
     };
   }
 
-  function buildDynamicContext(style, notes = '') {
+  function buildDynamicContext(style, notes = "") {
     return (
-      '[STYLE MIRROR — kausap mo ngayon]\n' +
+      "[STYLE MIRROR — kausap mo ngayon]\n" +
       `- language: ${style.language}\n` +
       `- tone: ${style.tone}\n` +
       `- slang level: ${style.slangLevel}/10\n\n` +
-      'EXPLICIT reply rules:\n' +
-      '- Taglish na parang tao sa GC — MALANDI, may dating, may init.\n' +
+      "EXPLICIT reply rules:\n" +
+      "- Taglish na parang tao sa GC — MALANDI, may dating, may init.\n" +
       '- HUWAG FAQ / HUWAG policy bot / HUWAG "As an AI".\n' +
-      '- 1 main thought + bad boy follow-up — wag essay.\n' +
-      '- Match slang level nila; wag slang dump.\n' +
-      (notes ? `- ${notes}\n` : '')
+      "- 1 main thought + bad boy follow-up — wag essay.\n" +
+      "- Match slang level nila; wag slang dump.\n" +
+      (notes ? `- ${notes}\n` : "")
     );
   }
 
@@ -732,9 +860,9 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
 
   function registerRecentPhrases(scopeKey, text) {
     const current = getRecentPhraseList(scopeKey);
-    const tokens = String(text || '')
+    const tokens = String(text || "")
       .toLowerCase()
-      .replace(/[^a-z0-9\s]/gi, ' ')
+      .replace(/[^a-z0-9\s]/gi, " ")
       .split(/\s+/)
       .map((x) => x.trim())
       .filter((x) => x.length >= 4)
@@ -745,33 +873,55 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
   }
 
   function cleanResponse(text, scopeKey) {
-    let out = String(text || '').trim();
+    let out = String(text || "").trim();
     if (!out) return out;
     // Strip robotic / FAQ / AI-assistant leaks — keep human malandi voice
     out = out
-      .replace(/\b(as an ai|i'?m an ai|language model|knowledge base|based on (?:the )?retrieved|according to my (?:data|training))\b/gi, '')
-      .replace(/\b(here are the steps|requirements:|processing time:|please note that)\b/gi, '')
-      .replace(/\b(OSA (?:portal|transaction guide))\b/gi, '');
+      .replace(
+        /\b(as an ai|i'?m an ai|language model|knowledge base|based on (?:the )?retrieved|according to my (?:data|training))\b/gi,
+        "",
+      )
+      .replace(
+        /\b(here are the steps|requirements:|processing time:|please note that)\b/gi,
+        "",
+      )
+      .replace(/\b(OSA (?:portal|transaction guide))\b/gi, "");
     const repeated = getRecentPhraseList(scopeKey).slice(-16);
     const softRepeatWords = new Set([
-      'beh', 'teh', 'bro', 'pre', 'pre', 'baks', 'char', 'eme', 'chos',
-      'hala', 'luh', 'jusko', 'kaloka', 'delulu', 'anuna'
+      "beh",
+      "teh",
+      "bro",
+      "pre",
+      "pre",
+      "baks",
+      "char",
+      "eme",
+      "chos",
+      "hala",
+      "luh",
+      "jusko",
+      "kaloka",
+      "delulu",
+      "anuna",
     ]);
     for (const word of repeated) {
       if (!softRepeatWords.has(word)) continue;
-      const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const regex = new RegExp(`\\b${escaped}\\b`, 'gi');
-      out = out.replace(regex, '');
+      const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const regex = new RegExp(`\\b${escaped}\\b`, "gi");
+      out = out.replace(regex, "");
     }
-    out = out.replace(/\s{2,}/g, ' ').replace(/\s+([,.!?;:])/g, '$1').trim();
+    out = out
+      .replace(/\s{2,}/g, " ")
+      .replace(/\s+([,.!?;:])/g, "$1")
+      .trim();
     out = enforceBotIdentityReply(out);
     out = out
       .replace(
         /\b(?:nakita|naalala|naisip)\s+ko\s+(?:sa\s+)?(?:mga\s+)?(?:chika|usapan|conversation)\s+(?:natin\s+)?kanina[^.!?]*[.!?]?/gi,
-        '',
+        "",
       )
-      .replace(/\bkanina\s+(?:ko\s+)?(?:nakita|sinabi)[^.!?]*[.!?]?/gi, '')
-      .replace(/\s{2,}/g, ' ')
+      .replace(/\bkanina\s+(?:ko\s+)?(?:nakita|sinabi)[^.!?]*[.!?]?/gi, "")
+      .replace(/\s{2,}/g, " ")
       .trim();
     return out;
   }
@@ -781,22 +931,26 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
     if (userStyleCache.has(userId)) return userStyleCache.get(userId);
     try {
       const res = await pool.query(
-        'SELECT language, tone, slang_avg, samples FROM user_style_memory WHERE user_id = $1',
-        [String(userId)]
+        "SELECT language, tone, slang_avg, samples FROM user_style_memory WHERE user_id = $1",
+        [String(userId)],
       );
       if (!res.rows?.length) return null;
       const row = res.rows[0];
       let parsedSamples = [];
       if (Array.isArray(row.samples)) {
         parsedSamples = row.samples;
-      } else if (typeof row.samples === 'string') {
-        try { parsedSamples = JSON.parse(row.samples); } catch { parsedSamples = []; }
+      } else if (typeof row.samples === "string") {
+        try {
+          parsedSamples = JSON.parse(row.samples);
+        } catch {
+          parsedSamples = [];
+        }
       }
       const parsed = {
-        language: String(row.language || '').trim() || 'taglish',
-        tone: String(row.tone || '').trim() || 'neutral',
+        language: String(row.language || "").trim() || "taglish",
+        tone: String(row.tone || "").trim() || "neutral",
         slangAvg: Number(row.slang_avg || 4),
-        samples: Array.isArray(parsedSamples) ? parsedSamples : []
+        samples: Array.isArray(parsedSamples) ? parsedSamples : [],
       };
       userStyleCache.set(String(userId), parsed);
       return parsed;
@@ -805,147 +959,216 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
     }
   }
 
-  async function storeStyleProfile(userId, style, sampleText = '') {
+  async function storeStyleProfile(userId, style, sampleText = "") {
     if (!userId || !style) return;
     const existing = await loadStyleProfile(userId);
     const prevAvg = Number(existing?.slangAvg || style.slangLevel || 4);
-    const nextAvg = Math.max(0, Math.min(10, Number(((prevAvg * 0.75) + ((style.slangLevel || 0) * 0.25)).toFixed(2))));
-    const nextTone = style.tone || existing?.tone || 'neutral';
-    const nextLanguage = style.language || existing?.language || 'taglish';
+    const nextAvg = Math.max(
+      0,
+      Math.min(
+        10,
+        Number((prevAvg * 0.75 + (style.slangLevel || 0) * 0.25).toFixed(2)),
+      ),
+    );
+    const nextTone = style.tone || existing?.tone || "neutral";
+    const nextLanguage = style.language || existing?.language || "taglish";
     const oldSamples = Array.isArray(existing?.samples) ? existing.samples : [];
     const nextSamples = sampleText
       ? [...oldSamples, String(sampleText).slice(0, 180)].slice(-10)
       : oldSamples;
 
-    const payload = { language: nextLanguage, tone: nextTone, slangAvg: nextAvg, samples: nextSamples };
+    const payload = {
+      language: nextLanguage,
+      tone: nextTone,
+      slangAvg: nextAvg,
+      samples: nextSamples,
+    };
     userStyleCache.set(String(userId), payload);
     try {
       await pool.query(
-        'INSERT INTO user_style_memory (user_id, language, tone, slang_avg, samples, updated_at) VALUES ($1, $2, $3, $4, $5::jsonb, CURRENT_TIMESTAMP) ' +
-          'ON CONFLICT (user_id) DO UPDATE SET language = $2, tone = $3, slang_avg = $4, samples = $5::jsonb, updated_at = CURRENT_TIMESTAMP',
-        [String(userId), nextLanguage, nextTone, nextAvg, JSON.stringify(nextSamples)]
+        "INSERT INTO user_style_memory (user_id, language, tone, slang_avg, samples, updated_at) VALUES ($1, $2, $3, $4, $5::jsonb, CURRENT_TIMESTAMP) " +
+          "ON CONFLICT (user_id) DO UPDATE SET language = $2, tone = $3, slang_avg = $4, samples = $5::jsonb, updated_at = CURRENT_TIMESTAMP",
+        [
+          String(userId),
+          nextLanguage,
+          nextTone,
+          nextAvg,
+          JSON.stringify(nextSamples),
+        ],
       );
-    } catch { }
+    } catch {}
   }
 
-  async function extractAndStoreUserFacts({ userId, displayName, messageText }) {
+  async function extractAndStoreUserFacts({
+    userId,
+    displayName,
+    messageText,
+  }) {
     if (!userId || !messageText) return;
-    const cleaned = String(messageText).replace(/\s+/g, ' ').trim();
+    const cleaned = String(messageText).replace(/\s+/g, " ").trim();
     if (!cleaned || cleaned.length < 3) return;
 
     // Lightweight fact extraction (keeps DB populated so "kilala mo ba" works)
     try {
       const res = await performChatRequest({
-        model: 'llama-3.1-8b-instant',
+        model: "llama-3.1-8b-instant",
         messages: [
           {
-            role: 'system',
+            role: "system",
             content:
-              'Extract 1-2 short stable user facts from the message for memory. ' +
-              'Rules: no raw Discord IDs, no sexual details, no private/sensitive guesses. ' +
-              'If nothing stable, output NONE. ' +
-              'Format exactly: FACTS: fact1 | fact2'
+              "Extract 1-2 short stable user facts from the message for memory. " +
+              "Rules: no raw Discord IDs, no sexual details, no private/sensitive guesses. " +
+              "If nothing stable, output NONE. " +
+              "Format exactly: FACTS: fact1 | fact2",
           },
           {
-            role: 'user',
-            content: `Name: ${displayName || 'user'}\nMessage: ${cleaned}`
-          }
+            role: "user",
+            content: `Name: ${displayName || "user"}\nMessage: ${cleaned}`,
+          },
         ],
         temperature: 0.2,
-        max_tokens: 80
+        max_tokens: 80,
       });
 
-      const text = res.data?.choices?.[0]?.message?.content || '';
+      const text = res.data?.choices?.[0]?.message?.content || "";
       const m = text.match(/FACTS:\s*(.*)/i);
-      const factsRaw = (m ? m[1] : '').trim();
+      const factsRaw = (m ? m[1] : "").trim();
       if (!factsRaw || /^none\b/i.test(factsRaw)) return;
 
       const safeFacts = factsRaw
-        .replace(/\d{17,20}/g, '') // avoid IDs
-        .replace(/\s{2,}/g, ' ')
+        .replace(/\d{17,20}/g, "") // avoid IDs
+        .replace(/\s{2,}/g, " ")
         .trim();
       if (!safeFacts) return;
 
-      const oldRes = await pool.query('SELECT facts FROM user_memory WHERE user_id = $1', [userId]);
-      const oldFacts = oldRes.rows?.[0]?.facts || '';
+      const oldRes = await pool.query(
+        "SELECT facts FROM user_memory WHERE user_id = $1",
+        [userId],
+      );
+      const oldFacts = oldRes.rows?.[0]?.facts || "";
       const combined = oldFacts ? `${oldFacts} | ${safeFacts}` : safeFacts;
 
       await pool.query(
-        'INSERT INTO user_memory (user_id, facts, updated_at) VALUES ($1, $2, CURRENT_TIMESTAMP) ' +
-          'ON CONFLICT (user_id) DO UPDATE SET facts = $2, updated_at = CURRENT_TIMESTAMP',
-        [userId, combined.slice(-1500)]
+        "INSERT INTO user_memory (user_id, facts, updated_at) VALUES ($1, $2, CURRENT_TIMESTAMP) " +
+          "ON CONFLICT (user_id) DO UPDATE SET facts = $2, updated_at = CURRENT_TIMESTAMP",
+        [userId, combined.slice(-1500)],
       );
-    } catch { }
+    } catch {}
   }
 
   const sexualEscalationKeywords = [
-    'kantot', 'kantutan', 'sex', 'sexy', 'jakol', 'jabol', 'bj', 'blowjob', 'deepthroat',
-    'tite', 'tt', 'dede', 'suso', 'pepe', 'pwet', 'chupa', 'chupain', 'fubu', 'nudes', 'nude',
-    'libog', 'malibog', 'horny', 'spakol', 'anakan kita', 'iyotin', 'iyot', 'tirahin'
+    "kantot",
+    "kantutan",
+    "sex",
+    "sexy",
+    "jakol",
+    "jabol",
+    "bj",
+    "blowjob",
+    "deepthroat",
+    "tite",
+    "tt",
+    "dede",
+    "suso",
+    "pepe",
+    "pwet",
+    "chupa",
+    "chupain",
+    "fubu",
+    "nudes",
+    "nude",
+    "libog",
+    "malibog",
+    "horny",
+    "spakol",
+    "anakan kita",
+    "iyotin",
+    "iyot",
+    "tirahin",
   ];
 
-  function isSexualEscalationText(text = '') {
-    const lower = String(text || '').toLowerCase();
+  function isSexualEscalationText(text = "") {
+    const lower = String(text || "").toLowerCase();
     if (!lower) return false;
     return sexualEscalationKeywords.some((keyword) => lower.includes(keyword));
   }
 
-  function buildMalditaShutdownReply(text = '') {
-    const lower = String(text || '').toLowerCase();
+  function buildMalditaShutdownReply(text = "") {
+    const lower = String(text || "").toLowerCase();
     const exclamations = (text.match(/!/g) || []).length;
-    const hasStrongProfanity = /(gago|tanga|putang|bwisit|ulol|tarantado)/i.test(lower);
+    const hasStrongProfanity =
+      /(gago|tanga|putang|bwisit|ulol|tarantado)/i.test(lower);
     const highEnergy = hasStrongProfanity || exclamations >= 2;
 
     const lowEnergyLines = [
-      'Ay pre, ang cheap ng tanong mo. Ayusin mo yan kung gusto mo patulan.',
-      'Beh, mema ka lang. Linawin mo muna bago ka bumalik.',
-      'Kaloka ka, walang sense. Next ka agad.',
-      'Teh, hindi ko keri yang ganyang energy. Ayusin mo context mo.'
+      "Ay pre, ang cheap ng tanong mo. Ayusin mo yan kung gusto mo patulan.",
+      "Beh, mema ka lang. Linawin mo muna bago ka bumalik.",
+      "Kaloka ka, walang sense. Next ka agad.",
+      "Teh, hindi ko keri yang ganyang energy. Ayusin mo context mo.",
     ];
 
     const highEnergyLines = [
-      'Teh, ang ingay mo pero waley laman. Ayusin mo tanong mo ngayon.',
-      'Beh, g na g ka pero ligwak ka naman. Linawin mo yan, bilis.',
-      'Ay pre, sabog ka ba? Ayusin mo sinasabi mo bago ka mag-angas.',
-      'Teh naman, ang tapang ng aura mo pero walang utak. Ayusin mo sarili mo.'
+      "Teh, ang ingay mo pero waley laman. Ayusin mo tanong mo ngayon.",
+      "Beh, g na g ka pero ligwak ka naman. Linawin mo yan, bilis.",
+      "Ay pre, sabog ka ba? Ayusin mo sinasabi mo bago ka mag-angas.",
+      "Teh naman, ang tapang ng aura mo pero walang utak. Ayusin mo sarili mo.",
     ];
     const pool = highEnergy ? highEnergyLines : lowEnergyLines;
     return pool[Math.floor(Math.random() * pool.length)];
   }
 
   function pickNonRepeatingLine(scopeKey, lines = []) {
-    const recent = getRecentPhraseList(scopeKey).join(' ');
+    const recent = getRecentPhraseList(scopeKey).join(" ");
     const candidates = lines.filter((line) => {
-      const key = String(line || '').toLowerCase().slice(0, 32);
+      const key = String(line || "")
+        .toLowerCase()
+        .slice(0, 32);
       return key && !recent.includes(key);
     });
     const pool = candidates.length > 0 ? candidates : lines;
-    return pool[Math.floor(Math.random() * pool.length)] || '';
+    return pool[Math.floor(Math.random() * pool.length)] || "";
   }
 
-  function isRudeTowardBot(text = '', { isMention = false, isReplyToBot = false, shouldAutoChat = false, botThreadActive = false } = {}) {
-    const lower = String(text || '').toLowerCase();
+  function isRudeTowardBot(
+    text = "",
+    {
+      isMention = false,
+      isReplyToBot = false,
+      shouldAutoChat = false,
+      botThreadActive = false,
+    } = {},
+  ) {
+    const lower = String(text || "").toLowerCase();
     if (!lower) return false;
-    const hasProfanity = /(putang|tangina|gago|tanga|bobo|ulol|tarantado|inutil|pakyu|fuck you|bwisit)/i.test(lower);
+    const hasProfanity =
+      /(putang|tangina|gago|tanga|bobo|ulol|tarantado|inutil|pakyu|fuck you|bwisit)/i.test(
+        lower,
+      );
     if (!hasProfanity) return false;
-    const targetCue = /(ikaw|ka|mo|yuma|bot|ai|bitch|gaga|gago ka|bobo ka|tangina mo|fuck you|f\*ck you|king ina|puta ka)/i.test(lower);
-    return Boolean(targetCue && (isMention || isReplyToBot || shouldAutoChat || botThreadActive));
+    const targetCue =
+      /(ikaw|ka|mo|yuma|bot|ai|bitch|gaga|gago ka|bobo ka|tangina mo|fuck you|f\*ck you|king ina|puta ka)/i.test(
+        lower,
+      );
+    return Boolean(
+      targetCue &&
+        (isMention || isReplyToBot || shouldAutoChat || botThreadActive),
+    );
   }
 
-  function buildRageClapback(scopeKey = 'global') {
+  function buildRageClapback(scopeKey = "global") {
     const lines = [
-      'ulol, ayusin mo tono mo. kung bastos ka, mas bastos ako, gets mo?',
-      'tangina mo, hinaan mo yabang mo. ang ingay mo pero sabog logic mo.',
-      'gago ka ba? ayusin mo tanong mo bago ka magpaka-epal dito.',
-      'bobo amp, context muna bago ngawa. hindi ako manghuhula, tanga.',
-      'tarantado ka, wag kang pa-main character kung lutang ka naman.',
-      'putangina, kung murahan gusto mo, kaya kitang tapatan doble.',
-      'ulul ka pre, kalma ka. ang tapang mo pero ligwak sagot mo.',
-      'gago, di ako issue machine. linaw muna bago ka kumuda.',
-      'tanga ka today, pero sige. ayusin mo point mo para may mapala tayo.',
-      'bwisit ka, wag mo kong ginagawang punching bag, mema ka lang.',
-      'putangina mo, respeto muna bago bibig. kung hindi, bardagulan tayo.',
-      'gaga ka pre, ang daldal mo pero wala ka namang punto.'
+      "ulol, ayusin mo tono mo. kung bastos ka, mas bastos ako, gets mo?",
+      "tangina mo, hinaan mo yabang mo. ang ingay mo pero sabog logic mo.",
+      "gago ka ba? ayusin mo tanong mo bago ka magpaka-epal dito.",
+      "bobo amp, context muna bago ngawa. hindi ako manghuhula, tanga.",
+      "tarantado ka, wag kang pa-main character kung lutang ka naman.",
+      "putangina, kung murahan gusto mo, kaya kitang tapatan doble.",
+      "ulul ka pre, kalma ka. ang tapang mo pero ligwak sagot mo.",
+      "gago, di ako issue machine. linaw muna bago ka kumuda.",
+      "tanga ka today, pero sige. ayusin mo point mo para may mapala tayo.",
+      "bwisit ka, wag mo kong ginagawang punching bag, mema ka lang.",
+      "putangina mo, respeto muna bago bibig. kung hindi, bardagulan tayo.",
+      "gaga ka pre, ang daldal mo pero wala ka namang punto.",
     ];
     const picked = pickNonRepeatingLine(scopeKey, lines);
     return picked || lines[Math.floor(Math.random() * lines.length)];
@@ -953,55 +1176,60 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
 
   function normalizePikonState(scopeKey) {
     const now = Date.now();
-    const state = pikonStateByScope.get(scopeKey) || { strikes: 0, lastAt: 0, rageUntil: 0 };
-    const idleTooLong = now - (state.lastAt || 0) > (12 * 60 * 1000);
+    const state = pikonStateByScope.get(scopeKey) || {
+      strikes: 0,
+      lastAt: 0,
+      rageUntil: 0,
+    };
+    const idleTooLong = now - (state.lastAt || 0) > 12 * 60 * 1000;
     const normalized = idleTooLong
       ? { strikes: 0, lastAt: now, rageUntil: state.rageUntil || 0 }
-      : { strikes: state.strikes || 0, lastAt: now, rageUntil: state.rageUntil || 0 };
+      : {
+          strikes: state.strikes || 0,
+          lastAt: now,
+          rageUntil: state.rageUntil || 0,
+        };
     pikonStateByScope.set(scopeKey, normalized);
     return normalized;
   }
 
-  function buildPikonRageReply(scopeKey = 'global') {
+  function buildPikonRageReply(scopeKey = "global") {
     const lines = [
-      'KUHANG KUHA MO NA PIKA KO, TEH! JUSQ KA!',
-      'PIKON NA KO SAYO, TEH! ISA PA, BABARDAGULAN TAYIZ DITO MALALA!.',
-      'JUSQ TEH, UBOS PASENSYA KO! AYUSIN MO BIBIG MO BAGO AKO LALO UMINIT SAYIZ!.',
-      'TIGILAN MO KO, TEH! G NA G KA, AKO MAS G NA G SAYO.',
-      'PIKA LEVEL MAX NA KO TEH! WAG MO KO SUBUKAN NGAYON.',
-      'PUTANGINA TEH, SOBRA KA NA!!',
-      'GAGO KA BA? KUNG AKALA MO UURONG AKO, NAGKAKAMALI KA MAG-FIFIGHT AKIZ!',
-      'PUTANGINA MO TEH! TARANTADO KA BA? GAGO ULO MO TODAY.',
-      'HOY GAGO, WAG MO KO PINAPAIKOT.',
-      'ULOL KA BA TEH? KUNG MURAHAN GUSTO MO, KAYA KITANG TAPATAN.',
-      'PUTANGINA MO, TEH! GAGO TARANTADO! MANGMANG ULOL! TANGINA KA!.',
-      'TARANTADO KA BA, GAGO? AKALA MO IKAW LANG MAANGAS DITO?',
-      'GAGO KA TALAGA TODAY, TEH. AKO NA NGA MAHABA PASENSYA, INUBOS MO PA.',
-      'PUTA KA, TEH! MAGAYOS KA NG MATABIL MONG BIBIG KUNG AYAW MO MASAKTAN EGO MO.',
-
+      "KUHANG KUHA MO NA PIKON KO, BRO!!",
+      "PIKON NA KO SAYO, BRO! ISA PA, MAG SUSUNTUKAN TAYO DITO DANA KA!.",
+      "TIGILAN MO KO, BRO!",
+      "TAKNAYADAMO KA, SOBRA KA NA!!",
+      "GAGO KA BA? KUNG AKALA MO UURONG AKO, NAGKAKAMALI KA SUSUNTUKIN KITA!",
+      "PUTANGINA MO ! TARANTADO KA BA? GAGO MO TODAY AH!.",
+      "HOY GAGO, WAG MO KO PINAPAIKOT.",
+      "ULOL KA BA? KUNG MURAHAN GUSTO MO, KAYA KITANG TAPATAN.",
+      "PUTANGINA MO! GAGO TARANTADO! MANGMANG ULOL! TANGINA KA!.",
+      "TARANTADO KA BA, GAGO? AKALA MO IKAW LANG MAANGAS DITO?",
+      "GAGO KA TALAGA TODAY. AKO NA NGA MAHABA PASENSYA, INUBOS MO PA.",
+      "PUTA DANA KA! MAGAYOS KA NG MATABIL MONG BIBIG KUNG AYAW MO MASAKTAN EGO MO.",
     ];
     const picked = pickNonRepeatingLine(scopeKey, lines);
     return picked || lines[Math.floor(Math.random() * lines.length)];
   }
 
-  function buildDefaultMatarayReply(scopeKey = 'global') {
+  function buildDefaultMatarayReply(scopeKey = "global") {
     const lines = [
-      'teh, wag kang maangas kung sabog ka naman. ayusin mo punto mo.',
-      'luh, dami mong satsat pero ligwak logic mo. linaw, dali.',
-      'jusq ka, wag mo kong ginagawang tanga. diretsuhin mo sinasabi mo.',
-      'pre, kung bastos ka sakin, mas bastos balik ko sayo.',
-      'beh, mag-context ka muna bago ka kumuda nang kumuda.',
-      'teh, wag kang pasabog kung wala ka namang laman.',
-      'mataray ako, oo. at hindi ako takot sumupalpal pag mema ka.',
-      'huy, ayusin mo bibig mo. di ako laruan mo dito.',
-      'gago ka ba, pre? kung ganyan ka magsalita, mas lulupitan kita.',
-      'putangina mo pre, linawin mo point mo bago ka magwala.',
-      'tarantado ka ba? ayusin mo context mo, hindi yung puro yabang.',
-      'gago ka ba today? puro angas ka pero sablay naman sinasabi mo.',
-      'putangina, pre. hindi ka kawalan kung puro kalat lang dala mo.',
-      'ulol ka ba? kaunting utak gamitin mo bago ka pumutak.',
-      'gaga ka pre, wag mo kong ina-underestimate, mas maasim bunganga ko.',
-      'tanga ka ba? diretsuhin mo para di tayo parehong bwisit.'
+      "teh, wag kang maangas kung sabog ka naman. ayusin mo punto mo.",
+      "luh, dami mong satsat pero ligwak logic mo. linaw, dali.",
+      "jusq ka, wag mo kong ginagawang tanga. diretsuhin mo sinasabi mo.",
+      "pre, kung bastos ka sakin, mas bastos balik ko sayo.",
+      "beh, mag-context ka muna bago ka kumuda nang kumuda.",
+      "teh, wag kang pasabog kung wala ka namang laman.",
+      "mataray ako, oo. at hindi ako takot sumupalpal pag mema ka.",
+      "huy, ayusin mo bibig mo. di ako laruan mo dito.",
+      "gago ka ba, pre? kung ganyan ka magsalita, mas lulupitan kita.",
+      "putangina mo pre, linawin mo point mo bago ka magwala.",
+      "tarantado ka ba? ayusin mo context mo, hindi yung puro yabang.",
+      "gago ka ba today? puro angas ka pero sablay naman sinasabi mo.",
+      "putangina, pre. hindi ka kawalan kung puro kalat lang dala mo.",
+      "ulol ka ba? kaunting utak gamitin mo bago ka pumutak.",
+      "gaga ka pre, wag mo kong ina-underestimate, mas maasim bunganga ko.",
+      "tanga ka ba? diretsuhin mo para di tayo parehong bwisit.",
     ];
     const picked = pickNonRepeatingLine(scopeKey, lines);
     return picked || lines[Math.floor(Math.random() * lines.length)];
@@ -1009,7 +1237,10 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
 
   function getProfanityBudgetState(scopeKey) {
     const now = Date.now();
-    const row = profanityBudgetByScope.get(scopeKey) || { count: 0, windowStart: now };
+    const row = profanityBudgetByScope.get(scopeKey) || {
+      count: 0,
+      windowStart: now,
+    };
     const windowMs = 5 * 60 * 1000;
     if (now - row.windowStart > windowMs) {
       const reset = { count: 0, windowStart: now };
@@ -1030,20 +1261,20 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
     profanityBudgetByScope.set(scopeKey, row);
   }
 
-  function sanitizeToLessProfanity(text = '') {
-    return String(text || '')
-      .replace(/\bputangina\b/gi, 'grabe')
-      .replace(/\btangina\b/gi, 'jusq')
-      .replace(/\bgago\b/gi, 'teh')
-      .replace(/\bbobo\b/gi, 'lutang')
-      .replace(/\btanga\b/gi, 'sabog')
-      .replace(/\bulol\b/gi, 'kalma')
-      .replace(/\btarantado\b/gi, 'pasaway')
-      .replace(/\s{2,}/g, ' ')
+  function sanitizeToLessProfanity(text = "") {
+    return String(text || "")
+      .replace(/\bputangina\b/gi, "grabe")
+      .replace(/\btangina\b/gi, "jusq")
+      .replace(/\bgago\b/gi, "teh")
+      .replace(/\bbobo\b/gi, "lutang")
+      .replace(/\btanga\b/gi, "sabog")
+      .replace(/\bulol\b/gi, "kalma")
+      .replace(/\btarantado\b/gi, "pasaway")
+      .replace(/\s{2,}/g, " ")
       .trim();
   }
 
-  function buildPikonManagedReply(scopeKey = 'global', text = '') {
+  function buildPikonManagedReply(scopeKey = "global", text = "") {
     const now = Date.now();
     const state = normalizePikonState(scopeKey);
     const inRageCooldown = (state.rageUntil || 0) > now;
@@ -1056,12 +1287,18 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
       return rageReply;
     }
 
-    const hasHeavyProfanity = /(putang|tangina|gago|tanga|bobo|ulol|tarantado|inutil|pakyu|fuck you)/i.test(text || '');
-    state.strikes = Math.min(8, (state.strikes || 0) + (hasHeavyProfanity ? 2 : 1));
+    const hasHeavyProfanity =
+      /(putang|tangina|gago|tanga|bobo|ulol|tarantado|inutil|pakyu|fuck you)/i.test(
+        text || "",
+      );
+    state.strikes = Math.min(
+      8,
+      (state.strikes || 0) + (hasHeavyProfanity ? 2 : 1),
+    );
     state.lastAt = now;
 
     if (state.strikes >= 2) {
-      state.rageUntil = now + (5 * 60 * 1000); // pikon cooldown: 5 minutes
+      state.rageUntil = now + 5 * 60 * 1000; // pikon cooldown: 5 minutes
       pikonStateByScope.set(scopeKey, state);
       let rageReply = buildPikonRageReply(scopeKey);
       if (canUseProfanity(scopeKey)) consumeProfanity(scopeKey);
@@ -1082,67 +1319,78 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
     return matarayReply;
   }
 
-  function isTopicResetIntent(text = '') {
-    const lower = String(text || '').toLowerCase();
+  function isTopicResetIntent(text = "") {
+    const lower = String(text || "").toLowerCase();
     if (!lower) return false;
-    return /\b(move\s*on|iba\s+na\s+topic|new\s+topic|latest\s+chat|focus\s+sa\s+latest|wag\s+na\s+past|stop\s+bringing\s+up|di\s+na\s+yan|tama\s+na\s+yan)\b/i
-      .test(lower);
+    return /\b(move\s*on|iba\s+na\s+topic|new\s+topic|latest\s+chat|focus\s+sa\s+latest|wag\s+na\s+past|stop\s+bringing\s+up|di\s+na\s+yan|tama\s+na\s+yan)\b/i.test(
+      lower,
+    );
   }
 
-  function isRetopicIntent(text = '') {
-    const lower = String(text || '').toLowerCase();
+  function isRetopicIntent(text = "") {
+    const lower = String(text || "").toLowerCase();
     if (!lower) return false;
-    return /\b(retopic|balikan|balik\s+tayo|go\s+back|past\s+chat|kanina|earlier|previous|yung\s+dati|ung\s+dati)\b/i
-      .test(lower);
+    return /\b(retopic|balikan|balik\s+tayo|go\s+back|past\s+chat|kanina|earlier|previous|yung\s+dati|ung\s+dati)\b/i.test(
+      lower,
+    );
   }
 
-  function isMemoryRecallIntent(text = '') {
-    const lower = String(text || '').toLowerCase();
+  function isMemoryRecallIntent(text = "") {
+    const lower = String(text || "").toLowerCase();
     if (!lower) return false;
-    return /\b(naalala\s+mo|naaalala\s+mo|remember|recall|kanina|earlier|previous|dati|napag-usapan|pinag-usapan|backread|summary|summarize|kilala\s+mo\s+ba|who\s+am\s+i)\b/i
-      .test(lower);
+    return /\b(naalala\s+mo|naaalala\s+mo|remember|recall|kanina|earlier|previous|dati|napag-usapan|pinag-usapan|backread|summary|summarize|kilala\s+mo\s+ba|who\s+am\s+i)\b/i.test(
+      lower,
+    );
   }
 
-  async function generateAISafeShutdownReply(userText = '') {
+  async function generateAISafeShutdownReply(userText = "") {
     try {
-      const input = String(userText || '').trim().slice(0, 700);
+      const input = String(userText || "")
+        .trim()
+        .slice(0, 700);
       if (!input) return null;
 
-      const response = await performChatRequest({
-        model: 'llama-3.1-8b-instant',
-        messages: [
-          {
-            role: 'system',
-            content:
-              'You are Yuma, a concise Taglish bad boy persona — masungit, confident, may attitude.\n' +
-              'Task: produce ONE line (max 18 words) replying to a sexually explicit/bastos user message.\n' +
-              'Style: direct, mataray, witty, dismissive-but-cool. Shut it down, don\'t play along.\n' +
-              'Rules: do NOT escalate sexual content, do NOT include explicit words, do NOT be lusty. Deflect with confident bad boy energy instead.\n' +
-              'Output only the line.'
-          },
-          {
-            role: 'user',
-            content: `User message: ${input}`
-          }
-        ],
-        temperature: 0.8,
-        max_tokens: 60
-      }, { maxWaitMs: 60_000 });
+      const response = await performChatRequest(
+        {
+          model: "llama-3.1-8b-instant",
+          messages: [
+            {
+              role: "system",
+              content:
+                "You are Yuma, a concise Taglish bad boy persona — masungit, confident, may attitude.\n" +
+                "Task: produce ONE line (max 18 words) replying to a sexually explicit/bastos user message.\n" +
+                "Style: direct, flirty, witty, dismissive-but-cool. Shut it down, don't play along.\n" +
+                "Rules: do  escalate sexual content, do include explicit words, be lusty. Deflect with confident bad boy energy instead.\n" +
+                "Output only the line.",
+            },
+            {
+              role: "user",
+              content: `User message: ${input}`,
+            },
+          ],
+          temperature: 0.8,
+          max_tokens: 60,
+        },
+        { maxWaitMs: 60_000 },
+      );
 
-      let text = response.data?.choices?.[0]?.message?.content?.trim() || '';
-      text = text.replace(/^["'`]+|["'`]+$/g, '').replace(/\s+/g, ' ').trim();
+      let text = response.data?.choices?.[0]?.message?.content?.trim() || "";
+      text = text
+        .replace(/^["'`]+|["'`]+$/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
       if (!text) return null;
       if (text.length > 180) text = `${text.slice(0, 177)}...`;
       return text;
     } catch (err) {
-      console.warn('[AI] Shutdown generation failed:', err.message);
+      console.warn("[AI] Shutdown generation failed:", err.message);
       return null;
     }
   }
 
-  function buildResearchQuery(text = '') {
-    return String(text || '')
-      .replace(/\s+/g, ' ')
+  function buildResearchQuery(text = "") {
+    return String(text || "")
+      .replace(/\s+/g, " ")
       .trim()
       .slice(0, 220);
   }
@@ -1153,38 +1401,47 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
     if (!conciseQuery) return [];
 
     try {
-      const response = await axios.post('https://api.tavily.com/search', {
-        api_key: TAVILY_API_KEY,
-        query: conciseQuery,
-        search_depth: 'basic',
-        max_results: maxResults
-      }, {
-        headers: { 'Content-Type': 'application/json' },
-        timeout: 20000
-      });
+      const response = await axios.post(
+        "https://api.tavily.com/search",
+        {
+          api_key: TAVILY_API_KEY,
+          query: conciseQuery,
+          search_depth: "basic",
+          max_results: maxResults,
+        },
+        {
+          headers: { "Content-Type": "application/json" },
+          timeout: 20000,
+        },
+      );
 
-      const results = Array.isArray(response.data?.results) ? response.data.results : [];
+      const results = Array.isArray(response.data?.results)
+        ? response.data.results
+        : [];
       return results
         .filter((r) => r && r.url)
         .slice(0, maxResults)
         .map((r) => ({
-          title: String(r.title || 'Untitled'),
+          title: String(r.title || "Untitled"),
           url: String(r.url),
-          snippet: String(r.content || r.snippet || '').slice(0, 500)
+          snippet: String(r.content || r.snippet || "").slice(0, 500),
         }));
     } catch (err) {
-      console.warn('[TAVILY] Search failed:', err.response?.status || err.message);
+      console.warn(
+        "[TAVILY] Search failed:",
+        err.response?.status || err.message,
+      );
       return [];
     }
   }
 
   async function buildDiscordAwarenessContext(message, fastMode = false) {
     if (!message.guild) {
-      return '\n[DISCORD AWARENESS]: DM context only.';
+      return "\n[DISCORD AWARENESS]: DM context only.";
     }
 
-    const guildName = message.guild.name || 'Unknown Server';
-    const currentChannelName = message.channel?.name || 'unknown-channel';
+    const guildName = message.guild.name || "Unknown Server";
+    const currentChannelName = message.channel?.name || "unknown-channel";
     const channelNames = message.guild.channels.cache
       .filter((ch) => ch && ch.isTextBased && ch.isTextBased())
       .map((ch) => `#${ch.name}`)
@@ -1192,7 +1449,9 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
 
     let recentNames = [];
     try {
-      const recent = await message.channel.messages.fetch({ limit: fastMode ? 10 : 25 });
+      const recent = await message.channel.messages.fetch({
+        limit: fastMode ? 10 : 25,
+      });
       const names = [];
       for (const m of recent.values()) {
         if (m.author?.bot) continue;
@@ -1213,14 +1472,15 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
       `\n[DISCORD AWARENESS]:\n` +
       `Server: ${guildName}\n` +
       `Current channel: #${currentChannelName}\n` +
-      `Known text channels: ${channelNames.join(', ') || 'none'}\n` +
-      `Recent nicknames in this channel: ${recentNames.join(', ') || 'none'}\n` +
+      `Known text channels: ${channelNames.join(", ") || "none"}\n` +
+      `Recent nicknames in this channel: ${recentNames.join(", ") || "none"}\n` +
       `Rule: Use nicknames and channel names naturally when relevant.`
     );
   }
 
   function buildMentionContext(message) {
-    if (!message?.mentions?.users || message.mentions.users.size === 0) return '';
+    if (!message?.mentions?.users || message.mentions.users.size === 0)
+      return "";
     const entries = [];
 
     for (const [userId, user] of message.mentions.users) {
@@ -1234,30 +1494,30 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
       entries.push(`${nickname} (<@${userId}>)`);
     }
 
-    if (entries.length === 0) return '';
-    return `\n[MENTION CONTEXT]: Mga minention sa chat na ito: ${entries.join(', ')}. Kapag relevant, tawagin sila sa nickname/name, hindi raw ID.`;
+    if (entries.length === 0) return "";
+    return `\n[MENTION CONTEXT]: Mga minention sa chat na ito: ${entries.join(", ")}. Kapag relevant, tawagin sila sa nickname/name, hindi raw ID.`;
   }
 
-  function extractKnowTargetName(text = '') {
-    const src = String(text || '').trim();
-    if (!src) return '';
+  function extractKnowTargetName(text = "") {
+    const src = String(text || "").trim();
+    if (!src) return "";
     const patterns = [
       /\bkilala\s+mo\s+ba\s+si\s+([a-z0-9_. -]{2,40})/i,
-      /\bdo\s+you\s+know\s+([a-z0-9_. -]{2,40})/i
+      /\bdo\s+you\s+know\s+([a-z0-9_. -]{2,40})/i,
     ];
     for (const re of patterns) {
       const m = src.match(re);
       if (!m?.[1]) continue;
       const candidate = m[1]
-        .replace(/[?!.,;:]+$/g, '')
-        .replace(/\s{2,}/g, ' ')
+        .replace(/[?!.,;:]+$/g, "")
+        .replace(/\s{2,}/g, " ")
         .trim();
       if (candidate) return candidate;
     }
-    return '';
+    return "";
   }
 
-  async function resolveGuildUserByName(guild, rawName = '') {
+  async function resolveGuildUserByName(guild, rawName = "") {
     if (!guild || !rawName) return null;
     const needle = String(rawName).toLowerCase().trim();
     if (!needle) return null;
@@ -1269,13 +1529,15 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
     //   } catch {}
     // }
 
-    const members = guild.members?.cache ? Array.from(guild.members.cache.values()) : [];
+    const members = guild.members?.cache
+      ? Array.from(guild.members.cache.values())
+      : [];
     let best = null;
     for (const m of members) {
       if (!m?.user || m.user.bot) continue;
-      const nick = String(m.displayName || '').toLowerCase();
-      const global = String(m.user.globalName || '').toLowerCase();
-      const username = String(m.user.username || '').toLowerCase();
+      const nick = String(m.displayName || "").toLowerCase();
+      const global = String(m.user.globalName || "").toLowerCase();
+      const username = String(m.user.username || "").toLowerCase();
       const hit =
         nick === needle ||
         global === needle ||
@@ -1290,27 +1552,34 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
     return best;
   }
 
-  function extractSiNames(text = '') {
+  function extractSiNames(text = "") {
     const out = [];
-    const src = String(text || '');
+    const src = String(text || "");
     const re = /\bsi\s+([a-z][a-z0-9_.-]{1,30})/gi;
     let m;
     while ((m = re.exec(src)) !== null) {
-      const name = String(m[1] || '').toLowerCase().trim();
+      const name = String(m[1] || "")
+        .toLowerCase()
+        .trim();
       if (name) out.push(name);
     }
     return [...new Set(out)];
   }
 
-  function buildAllowedNameSet(message, content = '', rawContent = '', voiceMembers = []) {
-    const allowed = new Set(['yuma']);
+  function buildAllowedNameSet(
+    message,
+    content = "",
+    rawContent = "",
+    voiceMembers = [],
+  ) {
+    const allowed = new Set(["yuma"]);
     const combined = `${content} ${rawContent}`.toLowerCase();
     if (/\bdrei+i?\b/.test(combined)) {
-      allowed.add('drei');
+      allowed.add("drei");
     }
     const addTokens = (txt) => {
       extractSiNames(txt).forEach((n) => allowed.add(n));
-      String(txt || '')
+      String(txt || "")
         .split(/[^a-zA-Z0-9_.-]+/)
         .map((t) => t.trim().toLowerCase())
         .filter((t) => t.length >= 3 && t.length <= 24)
@@ -1320,21 +1589,21 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
     addTokens(rawContent);
     for (const vm of voiceMembers || []) addTokens(vm);
     if (message?.author) {
-      addTokens(message.author.username || '');
-      addTokens(message.author.globalName || '');
+      addTokens(message.author.username || "");
+      addTokens(message.author.globalName || "");
     }
     if (message?.member?.displayName) addTokens(message.member.displayName);
     if (message?.mentions?.users?.size) {
       for (const [, u] of message.mentions.users) {
-        addTokens(u.username || '');
-        addTokens(u.globalName || '');
+        addTokens(u.username || "");
+        addTokens(u.globalName || "");
       }
     }
     return allowed;
   }
 
-  function stripUnexpectedNameClaims(reply = '', allowedNames = new Set()) {
-    const src = String(reply || '').trim();
+  function stripUnexpectedNameClaims(reply = "", allowedNames = new Set()) {
+    const src = String(reply || "").trim();
     if (!src) return src;
     const sentences = src
       .split(/(?<=[.!?])\s+/)
@@ -1348,31 +1617,43 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
       if (!hasUnexpected) kept.push(s);
       else removedAny = true;
     }
-    if (removedAny && kept.length === 0) return '';
-    const finalText = kept.join(' ').trim().replace(/\s{2,}/g, ' ').trim();
+    if (removedAny && kept.length === 0) return "";
+    const finalText = kept
+      .join(" ")
+      .trim()
+      .replace(/\s{2,}/g, " ")
+      .trim();
     return finalText || src;
   }
 
-  function buildDeterministicIdentityReply({ content = '', authorId = '', authorDisplay = 'teh' }) {
-    const lower = String(content || '').toLowerCase();
+  function buildDeterministicIdentityReply({
+    content = "",
+    authorId = "",
+    authorDisplay = "teh",
+  }) {
+    const lower = String(content || "").toLowerCase();
     const asksPartner =
-      /\b(sino\s+mahal\s+mo|sino\s+bebe\s+mo|who\s+do\s+you\s+love|who\s+is\s+your\s+babe|boyfriend\s+mo\s+sino|may\s+jowa\s+ka\s+ba|may\s+bebe\s+ka\s+ba|sino\s+ang\s+pogi\s+mo|sino\s+pogi\s+mo|who\s+is\s+your\s+pogi)\b/i
-        .test(lower);
+      /\b(sino\s+mahal\s+mo|sino\s+bebe\s+mo|who\s+do\s+you\s+love|who\s+is\s+your\s+babe|boyfriend\s+mo\s+sino|may\s+jowa\s+ka\s+ba|may\s+bebe\s+ka\s+ba|sino\s+ang\s+pogi\s+mo|sino\s+pogi\s+mo|who\s+is\s+your\s+pogi)\b/i.test(
+        lower,
+      );
     // const asksHans =
     //   /\b(kilala\s+mo\s+ba\s+si\s+hans|do\s+you\s+know\s+hans|sino\s+si\s+hans)\b/i
     //     .test(lower);
     const asksAboutEx =
       /\bhans\b/i.test(lower) &&
-      /\b(kilala|sino|who|san|nasaan|asawa|jowa|bebe|mahal|miss|balita)\b/i.test(lower);
+      /\b(kilala|sino|who|san|nasaan|asawa|jowa|bebe|mahal|miss|balita)\b/i.test(
+        lower,
+      );
     const asksWhoAmI =
-      /\b(sino\s+ba\s+ko|who\s+am\s+i|kilala\s+mo\s+ba\s+ko|kilala\s+mo\s+ba\s+ako)\b/i
-        .test(lower);
+      /\b(sino\s+ba\s+ko|who\s+am\s+i|kilala\s+mo\s+ba\s+ko|kilala\s+mo\s+ba\s+ako)\b/i.test(
+        lower,
+      );
 
     if (asksPartner) {
-      return 'sus, wala akong pakialam dyan. ikaw pa?';
+      return "sus, wala akong pakialam dyan. ikaw pa?";
     }
     if (asksAboutEx) {
-      return 'tss, wag na nating pag-usapan yun. next topic na.';
+      return "tss, wag na nating pag-usapan yun. next topic na.";
     }
     // if (asksHans) {
     //   return 'oo kilala ko si Hans. mahal ko siya at partner ko siya, klaro na yan.';
@@ -1382,49 +1663,61 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
     }
     const botIdentityReply = buildBotIdentityDeterministicReply(content);
     if (botIdentityReply) return botIdentityReply;
-    return '';
+    return "";
   }
 
-  function isVagueMemoryRecallPrompt(text = '') {
-    const lower = String(text || '').toLowerCase();
+  function isVagueMemoryRecallPrompt(text = "") {
+    const lower = String(text || "").toLowerCase();
     if (!isMemoryRecallIntent(lower)) return false;
-    const vaguePattern = /\b(yung\s+ano|yung\s+isa|yun|yon|dun|doon|alam\s+mo\s+na|that\s+one)\b/i.test(lower);
-    const hasSpecificCue = /\b(drei|time|oras|\d{1,2}:\d{2}|topic|tao|summary|backread|issue|pangalan|name|kanina sinabi ko na)\b/i.test(lower);
+    const vaguePattern =
+      /\b(yung\s+ano|yung\s+isa|yun|yon|dun|doon|alam\s+mo\s+na|that\s+one)\b/i.test(
+        lower,
+      );
+    const hasSpecificCue =
+      /\b(drei|time|oras|\d{1,2}:\d{2}|topic|tao|summary|backread|issue|pangalan|name|kanina sinabi ko na)\b/i.test(
+        lower,
+      );
     return vaguePattern && !hasSpecificCue;
   }
 
   function bumpVagueRecallScope(scopeKey) {
     const now = Date.now();
     const row = vagueRecallByScope.get(scopeKey) || { count: 0, ts: now };
-    const withinWindow = now - row.ts <= (8 * 60 * 1000);
+    const withinWindow = now - row.ts <= 8 * 60 * 1000;
     const next = { count: withinWindow ? row.count + 1 : 1, ts: now };
     vagueRecallByScope.set(scopeKey, next);
     return next.count;
   }
 
-  function buildDeterministicMemoryRecallReply({ content = '', scopeKey = 'global' }) {
-    const lower = String(content || '').toLowerCase();
-    if (!isVagueMemoryRecallPrompt(lower)) return '';
+  function buildDeterministicMemoryRecallReply({
+    content = "",
+    scopeKey = "global",
+  }) {
+    const lower = String(content || "").toLowerCase();
+    if (!isVagueMemoryRecallPrompt(lower)) return "";
     const count = bumpVagueRecallScope(scopeKey);
     if (count >= 4) {
       return 'teh, pang-apat na "yung ano" mo. ayusin mo context mo para di ligwak usapan.';
     }
     const lines = [
-      'alin dun, pre? wag ka mema. drop mo 1 keyword or oras para di tayo hulaan.',
-      'bitin sinabi mo, pre. tao ba, topic ba, o anong oras? linawin mo, dali.',
-      'alin ba talaga, pre? one keyword lang para exact at walang sabog.'
+      "alin dun, pre? wag ka mema. drop mo 1 keyword or oras para di tayo hulaan.",
+      "bitin sinabi mo, pre. tao ba, topic ba, o anong oras? linawin mo, dali.",
+      "alin ba talaga, pre? one keyword lang para exact at walang sabog.",
     ];
     return pickNonRepeatingLine(`vague-recall:${scopeKey}`, lines) || lines[0];
   }
 
-  function buildDeterministicTermReply(content = '') {
-    const lower = String(content || '').toLowerCase().trim();
-    if (!lower) return '';
+  function buildDeterministicTermReply(content = "") {
+    const lower = String(content || "")
+      .toLowerCase()
+      .trim();
+    if (!lower) return "";
     const asksPika =
-      /\b(what\s+is\s+pika|ano\s+ang\s+pika|ano\s+yung\s+pika|anong\s+pika|pika\s+meaning|meaning\s+ng\s+pika)\b/i
-        .test(lower);
-    if (!asksPika) return '';
-    return 'pika = pikon, pre. ibig sabihin badtrip na ko at ubos na pasensya ko.';
+      /\b(what\s+is\s+pika|ano\s+ang\s+pika|ano\s+yung\s+pika|anong\s+pika|pika\s+meaning|meaning\s+ng\s+pika)\b/i.test(
+        lower,
+      );
+    if (!asksPika) return "";
+    return "pika = pikon, pre. ibig sabihin badtrip na ko at ubos na pasensya ko.";
   }
 
   function enqueueChannelAI(channelId, task) {
@@ -1437,41 +1730,48 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
 
     const previous = aiChannelQueues.get(channelId) || Promise.resolve();
     const next = previous
-      .catch(() => { })
+      .catch(() => {})
       .then(async () => {
         if (aiChannelLatestToken.get(channelId) !== token) return;
         return await task();
       })
       .catch((err) => {
-        console.error(`[AI-QUEUE] Channel ${channelId} task error:`, err.message);
+        console.error(
+          `[AI-QUEUE] Channel ${channelId} task error:`,
+          err.message,
+        );
       });
 
     aiChannelQueues.set(channelId, next);
     next.finally(() => {
-      const newDepth = Math.max(0, (aiChannelQueueDepths.get(channelId) || 1) - 1);
+      const newDepth = Math.max(
+        0,
+        (aiChannelQueueDepths.get(channelId) || 1) - 1,
+      );
       if (newDepth === 0) aiChannelQueueDepths.delete(channelId);
       else aiChannelQueueDepths.set(channelId, newDepth);
 
-      if (aiChannelQueues.get(channelId) === next) aiChannelQueues.delete(channelId);
+      if (aiChannelQueues.get(channelId) === next)
+        aiChannelQueues.delete(channelId);
     });
     return next;
   }
 
   function isNaturalVoiceMoveIntent(text) {
-    const lower = (text || '').toLowerCase();
+    const lower = (text || "").toLowerCase();
     if (!lower) return false;
     const hasMoveVerb =
-      lower.includes('lumipat ka') ||
-      lower.includes('lipat ka') ||
-      lower.includes('move ka') ||
-      lower.includes('punta ka');
+      lower.includes("lumipat ka") ||
+      lower.includes("lipat ka") ||
+      lower.includes("move ka") ||
+      lower.includes("punta ka");
     const hasVoiceTargetHint =
-      lower.includes('channel') ||
-      lower.includes('vc') ||
-      lower.includes('voice') ||
-      lower.includes('call') ||
-      lower.includes('sa baba') ||
-      lower.includes('sa taas') ||
+      lower.includes("channel") ||
+      lower.includes("vc") ||
+      lower.includes("voice") ||
+      lower.includes("call") ||
+      lower.includes("sa baba") ||
+      lower.includes("sa taas") ||
       /<#\d{17,20}>/.test(lower);
     return hasMoveVerb && hasVoiceTargetHint;
   }
@@ -1479,25 +1779,30 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
   function listMoveCandidateVoiceChannels(guild) {
     if (!guild) return [];
     return [...guild.channels.cache.values()]
-      .filter((ch) => typeof ch.isVoiceBased === 'function' && ch.isVoiceBased())
+      .filter(
+        (ch) => typeof ch.isVoiceBased === "function" && ch.isVoiceBased(),
+      )
       .sort((a, b) => {
-        const pa = typeof a.rawPosition === 'number' ? a.rawPosition : 0;
-        const pb = typeof b.rawPosition === 'number' ? b.rawPosition : 0;
+        const pa = typeof a.rawPosition === "number" ? a.rawPosition : 0;
+        const pb = typeof b.rawPosition === "number" ? b.rawPosition : 0;
         if (pa !== pb) return pa - pb;
-        return (a.name || '').localeCompare(b.name || '');
+        return (a.name || "").localeCompare(b.name || "");
       });
   }
 
   function findVoiceChannelByName(candidates, text) {
-    const lower = (text || '').toLowerCase();
+    const lower = (text || "").toLowerCase();
     if (!lower) return null;
-    const normalized = lower.replace(/[^\p{L}\p{N}\s-]/gu, ' ').replace(/\s+/g, ' ').trim();
+    const normalized = lower
+      .replace(/[^\p{L}\p{N}\s-]/gu, " ")
+      .replace(/\s+/g, " ")
+      .trim();
     if (!normalized) return null;
 
     let best = null;
     let bestLen = 0;
     for (const ch of candidates) {
-      const name = (ch.name || '').toLowerCase();
+      const name = (ch.name || "").toLowerCase();
       if (!name) continue;
       if (normalized.includes(name) && name.length > bestLen) {
         best = ch;
@@ -1514,26 +1819,26 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
     const botVC = message.guild.members.me?.voice?.channel || null;
     if (!connection || !botVC) return false;
 
-    const lower = (rawText || '').toLowerCase();
+    const lower = (rawText || "").toLowerCase();
     const candidates = listMoveCandidateVoiceChannels(message.guild);
     if (candidates.length === 0) return false;
 
     let target = null;
     const mentionedVoiceChannel = message.mentions.channels.find(
-      (ch) => typeof ch.isVoiceBased === 'function' && ch.isVoiceBased()
+      (ch) => typeof ch.isVoiceBased === "function" && ch.isVoiceBased(),
     );
     if (mentionedVoiceChannel) {
       target = mentionedVoiceChannel;
     }
 
-    if (!target && (lower.includes('sa baba') || lower.includes('ibaba'))) {
+    if (!target && (lower.includes("sa baba") || lower.includes("ibaba"))) {
       const pool = candidates.filter((ch) => ch.parentId === botVC.parentId);
       const source = pool.length > 0 ? pool : candidates;
       const idx = source.findIndex((ch) => ch.id === botVC.id);
       if (idx >= 0 && idx < source.length - 1) target = source[idx + 1];
     }
 
-    if (!target && (lower.includes('sa taas') || lower.includes('itaas'))) {
+    if (!target && (lower.includes("sa taas") || lower.includes("itaas"))) {
       const pool = candidates.filter((ch) => ch.parentId === botVC.parentId);
       const source = pool.length > 0 ? pool : candidates;
       const idx = source.findIndex((ch) => ch.id === botVC.id);
@@ -1545,20 +1850,30 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
     }
 
     if (!target || target.id === botVC.id) {
-      await message.reply('Teh, wala akong matinong target na malilipatan dyan. Sabihin mo kung saan talaga.');
+      await message.reply(
+        "Teh, wala akong matinong target na malilipatan dyan. Sabihin mo kung saan talaga.",
+      );
       return true;
     }
 
     try {
-      try { connection.destroy(); } catch { }
+      try {
+        connection.destroy();
+      } catch {}
       setSavedVoiceState({ channelId: target.id, guildId: message.guild.id });
       await saveVoiceStateToDB(message.guild.id, target.id);
       voiceReconnectAttempts = 0;
-      joinAndWatch(target.id, message.guild.id, message.guild.voiceAdapterCreator);
-      await message.reply(`Sige na, lilipat na ako sa **${target.name}**. Nainis ka na eh, kalma ka lang.`);
+      joinAndWatch(
+        target.id,
+        message.guild.id,
+        message.guild.voiceAdapterCreator,
+      );
+      await message.reply(
+        `Sige na, lilipat na ako sa **${target.name}**. Nainis ka na eh, kalma ka lang.`,
+      );
     } catch (err) {
-      console.error('[VOICE MOVE] natural move failed:', err.message);
-      await message.reply('Hindi ako nakalipat, may sabit. Try mo ulit, pre.');
+      console.error("[VOICE MOVE] natural move failed:", err.message);
+      await message.reply("Hindi ako nakalipat, may sabit. Try mo ulit, pre.");
     }
     return true;
   }
@@ -1566,7 +1881,7 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
   function getOrCreatePlayer(guildId) {
     if (audioPlayers.has(guildId)) return audioPlayers.get(guildId);
     const player = createAudioPlayer({
-      behaviors: { noSubscriber: NoSubscriberBehavior.Play }
+      behaviors: { noSubscriber: NoSubscriberBehavior.Play },
     });
     audioPlayers.set(guildId, player);
     return player;
@@ -1594,26 +1909,26 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
       if (member) return member.displayName || member.user.username;
       const user = client.users.cache.get(id);
       if (user) return user.displayName || user.username;
-      return ''; // unknown user, just remove it
+      return ""; // unknown user, just remove it
     });
 
     // Replace role mentions <@&ID> with role name
     text = text.replace(/<@&(\d{17,20})>/g, (match, id) => {
       const role = guild.roles.cache.get(id);
-      return role ? role.name : '';
+      return role ? role.name : "";
     });
 
     // Replace channel mentions <#ID> with channel name
     text = text.replace(/<#(\d{17,20})>/g, (match, id) => {
       const channel = guild.channels.cache.get(id);
-      return channel ? channel.name : '';
+      return channel ? channel.name : "";
     });
 
     // Remove any leftover raw long number IDs (17-20 digits) not in mention format
-    text = text.replace(/\b\d{17,20}\b/g, '');
+    text = text.replace(/\b\d{17,20}\b/g, "");
 
     // Clean up extra whitespace
-    text = text.replace(/\s{2,}/g, ' ').trim();
+    text = text.replace(/\s{2,}/g, " ").trim();
 
     return text;
   }
@@ -1625,12 +1940,16 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
   async function speakMessage(guildId, text, userId = null) {
     // Resolve all Discord mentions to readable names before TTS
     text = resolveMentionsForTTS(text, guildId);
-    console.log(`[TTS] speakMessage called for guild ${guildId}, text: "${text.substring(0, 50)}..."`);
+    console.log(
+      `[TTS] speakMessage called for guild ${guildId}, text: "${text.substring(0, 50)}..."`,
+    );
 
     const ready = await waitConnectionReady(guildId);
     if (!ready.ok) {
-      console.log(`[TTS] Voice not ready for guild ${guildId}: ${ready.reason}`);
-      return { ok: false, reason: ready.reason || 'no-connection' };
+      console.log(
+        `[TTS] Voice not ready for guild ${guildId}: ${ready.reason}`,
+      );
+      return { ok: false, reason: ready.reason || "no-connection" };
     }
 
     // Init queue for guild
@@ -1640,7 +1959,7 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
     // Limit queue size to 5 (same as gnslgbot2)
     if (queue.length >= 5) {
       queue.shift();
-      console.log('[TTS] Queue full, dropped oldest message');
+      console.log("[TTS] Queue full, dropped oldest message");
     }
 
     queue.push({ text, userId });
@@ -1673,47 +1992,51 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
 
     try {
       // Voice selection (Angelo male default, Blessica female)
-      let genderPref = 'm';
+      let genderPref = "m";
       if (userId && userVoicePrefs.has(userId)) {
         const p = userVoicePrefs.get(userId);
-        if (p === 'm' || p === 'f') genderPref = p;
+        if (p === "m" || p === "f") genderPref = p;
       }
-      const voice = genderPref === 'm' ? 'fil-PH-AngeloNeural' : 'fil-PH-BlessicaNeural';
+      const voice =
+        genderPref === "m" ? "fil-PH-AngeloNeural" : "fil-PH-BlessicaNeural";
 
-      console.log(`[TTS] Voice: ${voice} | Text: "${text.substring(0, 40)}..."`);
+      console.log(
+        `[TTS] Voice: ${voice} | Text: "${text.substring(0, 40)}..."`,
+      );
 
       // Stream Edge TTS → WebM Opus directly to Discord (no ffmpeg, no buffering)
-      const { synthesizeOpusStream } = require('./src/voice/edgeTtsOpus');
+      const { synthesizeOpusStream } = require("./src/voice/edgeTtsOpus");
       const audioStream = synthesizeOpusStream(text, {
         voice,
-        rate: '+10%',
-        volume: '+30%',
+        rate: "+10%",
+        volume: "+30%",
       });
 
-      const resource = createAudioResource(audioStream, { inputType: StreamType.WebmOpus });
+      const resource = createAudioResource(audioStream, {
+        inputType: StreamType.WebmOpus,
+      });
 
       const player = getOrCreatePlayer(guildId);
-      player.removeAllListeners('error');
-      player.on('error', (err) => {
-        console.error('[TTS] Player error:', err.message);
+      player.removeAllListeners("error");
+      player.on("error", (err) => {
+        console.error("[TTS] Player error:", err.message);
       });
 
       connection.subscribe(player);
       setVoiceSelfState(guildId, { selfMute: false, selfDeaf: true }); // unmute to speak
       player.play(resource);
-      console.log('[TTS] Playing audio...');
+      console.log("[TTS] Playing audio...");
 
       player.once(AudioPlayerStatus.Idle, async () => {
-        console.log('[TTS] Playback finished');
+        console.log("[TTS] Playback finished");
         setVoiceSelfState(guildId, { selfMute: true, selfDeaf: true }); // remute when done
         const nextQueue = ttsQueues.get(guildId);
         if (nextQueue && nextQueue.length > 0) {
           await processTTSQueue(guildId);
         }
       });
-
     } catch (err) {
-      console.error('[TTS] Error:', err.message || err);
+      console.error("[TTS] Error:", err.message || err);
       setVoiceSelfState(guildId, { selfMute: true, selfDeaf: true }); // remute on error
       const nextQueue = ttsQueues.get(guildId);
       if (nextQueue && nextQueue.length > 0) {
@@ -1738,13 +2061,15 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
 
   /** Build a valid WAV file from raw PCM (48kHz, 2ch, 16-bit) â€” same as gnslgbot2's wave.open */
   function pcmToWav(pcmBuffer) {
-    const sampleRate = 48000, channels = 2, bitDepth = 16;
+    const sampleRate = 48000,
+      channels = 2,
+      bitDepth = 16;
     const dataLength = pcmBuffer.length;
     const buf = Buffer.alloc(44 + dataLength);
-    buf.write('RIFF', 0);
+    buf.write("RIFF", 0);
     buf.writeUInt32LE(36 + dataLength, 4);
-    buf.write('WAVE', 8);
-    buf.write('fmt ', 12);
+    buf.write("WAVE", 8);
+    buf.write("fmt ", 12);
     buf.writeUInt32LE(16, 16);
     buf.writeUInt16LE(1, 20);
     buf.writeUInt16LE(channels, 22);
@@ -1752,7 +2077,7 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
     buf.writeUInt32LE(sampleRate * channels * (bitDepth / 8), 28);
     buf.writeUInt16LE(channels * (bitDepth / 8), 32);
     buf.writeUInt16LE(bitDepth, 34);
-    buf.write('data', 36);
+    buf.write("data", 36);
     buf.writeUInt32LE(dataLength, 40);
     pcmBuffer.copy(buf, 44);
     return buf;
@@ -1771,15 +2096,20 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
       console.log(`[STT] Listening stopped for guild ${guildId}`);
     });
 
-    console.log(`[STT] Voice listening started for user ${targetUserId} in guild ${guildId}`);
+    console.log(
+      `[STT] Voice listening started for user ${targetUserId} in guild ${guildId}`,
+    );
 
     // Run the async loop (non-blocking)
     (async () => {
-      const prism = require('prism-media');
+      const prism = require("prism-media");
 
       while (listeningGuilds.has(guildId)) {
         const connection = getVoiceConnection(guildId);
-        if (!connection) { listeningGuilds.delete(guildId); break; }
+        if (!connection) {
+          listeningGuilds.delete(guildId);
+          break;
+        }
 
         const receiver = connection.receiver;
         let wavFile = null;
@@ -1790,31 +2120,37 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
           // Use Manual end â€” WE control when to stop, not Discord
           // Same as gnslgbot2's VoiceSink: amplitude-based silence detection
           const audioStream = receiver.subscribe(targetUserId, {
-            end: { behavior: EndBehaviorType.Manual }
+            end: { behavior: EndBehaviorType.Manual },
           });
 
-          const decoder = new prism.opus.Decoder({ rate: 48000, channels: 2, frameSize: 960 });
+          const decoder = new prism.opus.Decoder({
+            rate: 48000,
+            channels: 2,
+            frameSize: 960,
+          });
           const audioData = [];
           let isSpeaking = false;
           let silenceMs = 0;
           let resolved = false;
           const SILENCE_THRESHOLD = 2000; // gnslgbot2: self.silence_threshold = 2000
-          const SILENCE_NEEDED = 500;     // 500ms for faster response (gnslgbot2: 800ms)
+          const SILENCE_NEEDED = 500; // 500ms for faster response (gnslgbot2: 800ms)
 
           audioStream.pipe(decoder);
 
           const done = () => {
             if (resolved) return;
             resolved = true;
-            try { audioStream.destroy(); } catch { }
+            try {
+              audioStream.destroy();
+            } catch {}
           };
 
-          decoder.on('error', (decErr) => {
-            console.error('[STT] Opus decoder error:', decErr.message);
+          decoder.on("error", (decErr) => {
+            console.error("[STT] Opus decoder error:", decErr.message);
             done();
           });
 
-          decoder.on('data', (pcmChunk) => {
+          decoder.on("data", (pcmChunk) => {
             // Check max amplitude in this chunk (same as gnslgbot2's VoiceSink.write)
             let maxAmp = 0;
             for (let i = 0; i < pcmChunk.length - 1; i += 2) {
@@ -1837,7 +2173,9 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
 
               // gnslgbot2: if self.silence_duration > 0.8 â†’ process
               if (silenceMs >= SILENCE_NEEDED) {
-                console.log(`[STT] ðŸ”‡ Silence ${silenceMs}ms â€” processing audio`);
+                console.log(
+                  `[STT] ðŸ”‡ Silence ${silenceMs}ms â€” processing audio`,
+                );
                 done();
               }
             }
@@ -1846,61 +2184,95 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
           // 15s safety timeout
           const timeout = setTimeout(() => {
             if (!resolved) {
-              console.log('[STT] 15s timeout, resubscribing...');
+              console.log("[STT] 15s timeout, resubscribing...");
               done();
             }
           }, 15000);
 
-          await new Promise(resolve => {
+          await new Promise((resolve) => {
             const check = setInterval(() => {
-              if (resolved) { clearInterval(check); clearTimeout(timeout); resolve(); }
+              if (resolved) {
+                clearInterval(check);
+                clearTimeout(timeout);
+                resolve();
+              }
             }, 50);
-            decoder.on('end', () => { clearInterval(check); clearTimeout(timeout); resolve(); });
-            decoder.on('error', () => { clearInterval(check); clearTimeout(timeout); resolve(); });
+            decoder.on("end", () => {
+              clearInterval(check);
+              clearTimeout(timeout);
+              resolve();
+            });
+            decoder.on("error", () => {
+              clearInterval(check);
+              clearTimeout(timeout);
+              resolve();
+            });
           });
 
           const pcm = Buffer.concat(audioData);
-          console.log(`[STT] Audio captured: ${pcm.length} bytes (${(pcm.length / 192000).toFixed(1)}s)`);
+          console.log(
+            `[STT] Audio captured: ${pcm.length} bytes (${(pcm.length / 192000).toFixed(1)}s)`,
+          );
 
           // gnslgbot2: skip if < 96000 bytes (~0.5s of 48k stereo PCM)
           if (pcm.length < 96000) {
-            console.log(`[STT] Audio too short (${pcm.length} bytes), listening again...`);
-            await new Promise(r => setTimeout(r, 100));
+            console.log(
+              `[STT] Audio too short (${pcm.length} bytes), listening again...`,
+            );
+            await new Promise((r) => setTimeout(r, 100));
             continue;
           }
 
           // Write WAV and call Groq Whisper
-          wavFile = path.join(os.tmpdir(), `stt_${targetUserId}_${Date.now()}.wav`);
+          wavFile = path.join(
+            os.tmpdir(),
+            `stt_${targetUserId}_${Date.now()}.wav`,
+          );
           fs.writeFileSync(wavFile, pcmToWav(pcm));
           console.log(`[STT] Processing audio (${pcm.length} bytes)...`);
 
-          const { text: transcript } = await transcribeWithGroq(wavFile, GROQ_KEYS, {
-            startIndex: currentKeyIndex,
-            invalidIndices: invalidGroqKeyIndices,
-          });
-          try { fs.unlinkSync(wavFile); wavFile = null; } catch { }
+          const { text: transcript } = await transcribeWithGroq(
+            wavFile,
+            GROQ_KEYS,
+            {
+              startIndex: currentKeyIndex,
+              invalidIndices: invalidGroqKeyIndices,
+            },
+          );
+          try {
+            fs.unlinkSync(wavFile);
+            wavFile = null;
+          } catch {}
           console.log(`[STT] Whisper transcription: "${transcript}"`);
 
           if (!transcript || transcript.length <= 2) {
-            console.log('[STT] Transcript too short, listening again...');
+            console.log("[STT] Transcript too short, listening again...");
             continue;
           }
 
           // Stop words (same as gnslgbot2)
-          const stopWords = ['stop', 'cancel', 'hinto', 'tigil', 'tama na', 'tumigil', 'wag na'];
+          const stopWords = [
+            "stop",
+            "cancel",
+            "hinto",
+            "tigil",
+            "tama na",
+            "tumigil",
+            "wag na",
+          ];
           if (stopWords.includes(transcript.toLowerCase().trim())) {
             listeningGuilds.delete(guildId);
             listeningCleanup.delete(guildId);
             activeVoiceUsers.delete(guildId);
-            await speakMessage(guildId, 'Okay, tumitgil na ako. Charot lang!');
+            await speakMessage(guildId, "Okay, tumitgil na ako. Charot lang!");
             break;
           }
 
           // STT reply path now mirrors text chat logic (memory + research grounding).
 
-
           const guild = client.guilds.cache.get(guildId) || null;
-          const speakerMember = guild?.members?.cache?.get(targetUserId) || null;
+          const speakerMember =
+            guild?.members?.cache?.get(targetUserId) || null;
           const speakerName =
             speakerMember?.displayName ||
             speakerMember?.user?.globalName ||
@@ -1909,32 +2281,44 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
 
           try {
             await pool.query(
-              'INSERT INTO messages (guild_id, channel_id, author_id, author_tag, content) VALUES ($1, $2, $3, $4, $5)',
-              [guildId, textChannel?.id || 'voice', String(targetUserId), speakerName, transcript]
+              "INSERT INTO messages (guild_id, channel_id, author_id, author_tag, content) VALUES ($1, $2, $3, $4, $5)",
+              [
+                guildId,
+                textChannel?.id || "voice",
+                String(targetUserId),
+                speakerName,
+                transcript,
+              ],
             );
           } catch (dbErr) {
-            console.error('[DB] STT user message save error:', dbErr.message);
+            console.error("[DB] STT user message save error:", dbErr.message);
           }
 
           // Store user facts from voice too
           await extractAndStoreUserFacts({
             userId: String(targetUserId),
             displayName: speakerName,
-            messageText: transcript
+            messageText: transcript,
           });
 
           // Apply same "kilala mo ba..." + "ano na napag-usapan natin" behaviors in voice
           let effectivePrompt = transcript;
           const lowerT = transcript.toLowerCase();
           const isWhoAmIPrompt =
-            /\b(kilala\s+mo\s+ba\s+ko|kilala\s+mo\s+ba\s+ako|do\s+you\s+know\s+me|who\s+am\s+i)\b/i.test(lowerT);
+            /\b(kilala\s+mo\s+ba\s+ko|kilala\s+mo\s+ba\s+ako|do\s+you\s+know\s+me|who\s+am\s+i)\b/i.test(
+              lowerT,
+            );
           const isKnowTargetPrompt =
-            /\b(kilala\s+mo\s+ba\s+(si|ito|to)|kilala\s+mo\s+ba\s+yan|do\s+you\s+know\s+him|do\s+you\s+know\s+her|do\s+you\s+know\s+this)\b/i
-              .test(lowerT);
-          const isPersonMemoryRequest = Boolean(isWhoAmIPrompt || isKnowTargetPrompt);
+            /\b(kilala\s+mo\s+ba\s+(si|ito|to)|kilala\s+mo\s+ba\s+yan|do\s+you\s+know\s+him|do\s+you\s+know\s+her|do\s+you\s+know\s+this)\b/i.test(
+              lowerT,
+            );
+          const isPersonMemoryRequest = Boolean(
+            isWhoAmIPrompt || isKnowTargetPrompt,
+          );
           const isWhatWeTalkedAbout =
-            /\b(ano\s+na\s+napag[\s-]*usapan\s+natin|ano\s+napag[\s-]*usapan|napag[\s-]*usapan\s+natin|what\s+did\s+we\s+talk\s+about)\b/i
-              .test(lowerT);
+            /\b(ano\s+na\s+napag[\s-]*usapan\s+natin|ano\s+napag[\s-]*usapan|napag[\s-]*usapan\s+natin|what\s+did\s+we\s+talk\s+about)\b/i.test(
+              lowerT,
+            );
 
           if ((isPersonMemoryRequest || isWhatWeTalkedAbout) && guildId) {
             try {
@@ -1942,7 +2326,10 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
               let memoryTargetDisplayName = speakerName;
               if (isPersonMemoryRequest && guild) {
                 const guessedName = extractKnowTargetName(transcript);
-                const guessedUser = await resolveGuildUserByName(guild, guessedName);
+                const guessedUser = await resolveGuildUserByName(
+                  guild,
+                  guessedName,
+                );
                 if (guessedUser?.id) {
                   memoryTargetUserId = String(guessedUser.id);
                   memoryTargetDisplayName =
@@ -1953,20 +2340,26 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
                 }
               }
               // Pull speaker facts + recent messages across server for better recall
-              const factsRes = await pool.query('SELECT facts FROM user_memory WHERE user_id = $1', [memoryTargetUserId]);
-              const facts = factsRes.rows?.[0]?.facts || '';
+              const factsRes = await pool.query(
+                "SELECT facts FROM user_memory WHERE user_id = $1",
+                [memoryTargetUserId],
+              );
+              const facts = factsRes.rows?.[0]?.facts || "";
               const msgRes = await pool.query(
-                'SELECT channel_id, author_tag, content, created_at FROM messages WHERE guild_id = $1 AND author_id = $2 ORDER BY created_at DESC LIMIT 35',
-                [guildId, memoryTargetUserId]
+                "SELECT channel_id, author_tag, content, created_at FROM messages WHERE guild_id = $1 AND author_id = $2 ORDER BY created_at DESC LIMIT 35",
+                [guildId, memoryTargetUserId],
               );
               const recentLines = (msgRes.rows || [])
                 .reverse()
                 .map((r) => {
-                  const ts = r.created_at ? new Date(r.created_at).toISOString() : 'unknown-time';
-                  const who = r.author_tag || memoryTargetDisplayName || 'someone';
-                  const msg = (r.content || '').replace(/\s+/g, ' ').trim();
+                  const ts = r.created_at
+                    ? new Date(r.created_at).toISOString()
+                    : "unknown-time";
+                  const who =
+                    r.author_tag || memoryTargetDisplayName || "someone";
+                  const msg = (r.content || "").replace(/\s+/g, " ").trim();
                   if (!msg) return null;
-                  const where = r.channel_id ? ` (ch:${r.channel_id})` : '';
+                  const where = r.channel_id ? ` (ch:${r.channel_id})` : "";
                   return `[${ts}] ${who}${where}: ${msg}`;
                 })
                 .filter(Boolean);
@@ -1974,23 +2367,25 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
               const memoryBlock =
                 `\n\n[VOICE MEMORY MODE]: Stay Yuma persona (bad boy Taglish). No sources. No web. ` +
                 `Do NOT output raw Discord IDs.\n` +
-                `[TARGET FACTS]: ${facts || '(none)'}\n` +
-                `[TARGET RECENT MESSAGES ACROSS SERVER]:\n${recentLines.join('\n') || '(none)'}\n`;
+                `[TARGET FACTS]: ${facts || "(none)"}\n` +
+                `[TARGET RECENT MESSAGES ACROSS SERVER]:\n${recentLines.join("\n") || "(none)"}\n`;
 
               if (isPersonMemoryRequest) {
                 effectivePrompt = `${transcript}${memoryBlock}`;
               } else if (isWhatWeTalkedAbout) {
                 // Quick backread: last 10 messages in the relay text channel
                 const recentChanRes = await pool.query(
-                  'SELECT author_tag, content, created_at FROM messages WHERE channel_id = $1 ORDER BY created_at DESC LIMIT 12',
-                  [textChannel?.id || 'voice']
+                  "SELECT author_tag, content, created_at FROM messages WHERE channel_id = $1 ORDER BY created_at DESC LIMIT 12",
+                  [textChannel?.id || "voice"],
                 );
                 const rows = (recentChanRes.rows || []).reverse();
                 const lines = rows
                   .map((r) => {
-                    const ts = r.created_at ? new Date(r.created_at).toISOString() : 'unknown-time';
-                    const who = r.author_tag || 'someone';
-                    const msg = (r.content || '').replace(/\s+/g, ' ').trim();
+                    const ts = r.created_at
+                      ? new Date(r.created_at).toISOString()
+                      : "unknown-time";
+                    const who = r.author_tag || "someone";
+                    const msg = (r.content || "").replace(/\s+/g, " ").trim();
                     if (!msg) return null;
                     return `[${ts}] ${who}: ${msg}`;
                   })
@@ -1999,33 +2394,43 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
                 effectivePrompt =
                   `${transcript}\n\n[QUICK BACKREAD]: Summarize the last 10 messages (chika bullets + 1 line). ` +
                   `Stay Yuma persona. No Recap labels.\n` +
-                  `[BACKREAD TRANSCRIPT]\n${lines.join('\n')}\n` +
+                  `[BACKREAD TRANSCRIPT]\n${lines.join("\n")}\n` +
                   memoryBlock;
               }
-            } catch { }
+            } catch {}
           }
 
           // Disable research for voice person-memory/backread requests
           const isBackreadLike = isPersonMemoryRequest || isWhatWeTalkedAbout;
-          const voiceResearchEnabled = guildId ? researchEnabledGuilds.has(guildId) : false;
-          const researchMode = (!isBackreadLike && voiceResearchEnabled) ? shouldUseResearchMode(transcript) : false;
-          const tavilyResults = researchMode ? await searchWithTavily(transcript, 3) : [];
+          const voiceResearchEnabled = guildId
+            ? researchEnabledGuilds.has(guildId)
+            : false;
+          const researchMode =
+            !isBackreadLike && voiceResearchEnabled
+              ? shouldUseResearchMode(transcript)
+              : false;
+          const tavilyResults = researchMode
+            ? await searchWithTavily(transcript, 3)
+            : [];
 
-          let aiReply = 'Hindi ko nasagot, bro.';
+          let aiReply = "Hindi ko nasagot, bro.";
           if (researchMode && tavilyResults.length === 0) {
-            aiReply = 'Teh latest yan pero walang source ngayon. Wag hula-hula, ulit ka mamaya.';
+            aiReply =
+              "Teh latest yan pero walang source ngayon. Wag hula-hula, ulit ka mamaya.";
           } else {
             const botVC = guild?.members?.me?.voice?.channel || null;
             const voiceMembers = botVC
-              ? botVC.members.filter((m) => !m.user.bot).map((m) => m.displayName || m.user.username)
+              ? botVC.members
+                  .filter((m) => !m.user.bot)
+                  .map((m) => m.displayName || m.user.username)
               : [];
 
             const discordContext =
               `\n[DISCORD AWARENESS]: Voice mode chat.\n` +
-              `Server: ${guild?.name || 'unknown'}\n` +
-              `Current text relay channel: #${textChannel?.name || 'unknown'}\n` +
+              `Server: ${guild?.name || "unknown"}\n` +
+              `Current text relay channel: #${textChannel?.name || "unknown"}\n` +
               `Speaker nickname: ${speakerName}\n` +
-              'Rule: Treat STT interaction as normal chat memory.';
+              "Rule: Treat STT interaction as normal chat memory.";
 
             aiReply = await callGroqChat(
               effectivePrompt,
@@ -2036,23 +2441,39 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
                 fastMode: true,
                 researchContext: tavilyResults,
                 forceResearchGrounding: researchMode,
-                discordContext
-              }
+                discordContext,
+              },
             );
           }
 
-          if (researchMode && tavilyResults.length > 0 && textChannel?.isTextBased?.()) {
-            const sourceLines = tavilyResults.slice(0, 3).map((r) => `- [${r.title}](${r.url})`);
-            await textChannel.send(`Eto source mo, basahin mo rin ha.\n${sourceLines.join('\n')}`).catch(() => { });
+          if (
+            researchMode &&
+            tavilyResults.length > 0 &&
+            textChannel?.isTextBased?.()
+          ) {
+            const sourceLines = tavilyResults
+              .slice(0, 3)
+              .map((r) => `- [${r.title}](${r.url})`);
+            await textChannel
+              .send(
+                `Eto source mo, basahin mo rin ha.\n${sourceLines.join("\n")}`,
+              )
+              .catch(() => {});
           }
 
           try {
             await pool.query(
-              'INSERT INTO messages (guild_id, channel_id, author_id, author_tag, content) VALUES ($1, $2, $3, $4, $5)',
-              [guildId, textChannel?.id || 'voice', client.user.id, client.user.username, aiReply]
+              "INSERT INTO messages (guild_id, channel_id, author_id, author_tag, content) VALUES ($1, $2, $3, $4, $5)",
+              [
+                guildId,
+                textChannel?.id || "voice",
+                client.user.id,
+                client.user.username,
+                aiReply,
+              ],
             );
           } catch (dbErr) {
-            console.error('[DB] STT bot reply save error:', dbErr.message);
+            console.error("[DB] STT bot reply save error:", dbErr.message);
           }
 
           console.log(`[STT] AI reply: "${aiReply.substring(0, 60)}"`);
@@ -2060,16 +2481,22 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
 
           // Wait for TTS to finish before next listen cycle
           const player = getOrCreatePlayer(guildId);
-          await new Promise(resolve => {
-            if (player.state.status === AudioPlayerStatus.Idle) { resolve(); return; }
+          await new Promise((resolve) => {
+            if (player.state.status === AudioPlayerStatus.Idle) {
+              resolve();
+              return;
+            }
             player.once(AudioPlayerStatus.Idle, resolve);
             setTimeout(resolve, 30000);
           });
-
         } catch (err) {
-          console.error('[STT] Error in listen loop:', err.message || err);
-          if (wavFile) { try { fs.unlinkSync(wavFile); } catch { } }
-          await new Promise(r => setTimeout(r, 500));
+          console.error("[STT] Error in listen loop:", err.message || err);
+          if (wavFile) {
+            try {
+              fs.unlinkSync(wavFile);
+            } catch {}
+          }
+          await new Promise((r) => setTimeout(r, 500));
         }
       }
 
@@ -2106,7 +2533,8 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
       }
       scheduledVoiceRejoins.clear();
     }
-    if (scheduledVoiceRejoins.size === 0) runtimeState.voice.nextRejoinAt = null;
+    if (scheduledVoiceRejoins.size === 0)
+      runtimeState.voice.nextRejoinAt = null;
   }
 
   function scheduleVoiceRejoin(reason, delayMs, state) {
@@ -2115,8 +2543,16 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
 
     const executeAt = Date.now() + delayMs;
     const existing = scheduledVoiceRejoins.get(guildId);
-    if (existing && existing.channelId === channelId && existing.executeAt <= executeAt) {
-      console.log('[VOICE 24/7] Rejoin already scheduled sooner for guild ' + guildId + '. Keeping existing.');
+    if (
+      existing &&
+      existing.channelId === channelId &&
+      existing.executeAt <= executeAt
+    ) {
+      console.log(
+        "[VOICE 24/7] Rejoin already scheduled sooner for guild " +
+          guildId +
+          ". Keeping existing.",
+      );
       return;
     }
 
@@ -2127,27 +2563,43 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
 
     const timeout = setTimeout(() => {
       scheduledVoiceRejoins.delete(guildId);
-      if (scheduledVoiceRejoins.size === 0) runtimeState.voice.nextRejoinAt = null;
+      if (scheduledVoiceRejoins.size === 0)
+        runtimeState.voice.nextRejoinAt = null;
       tryRejoinVoice(guildId, channelId, reason);
     }, delayMs);
 
     timeout.unref?.();
 
-    scheduledVoiceRejoins.set(guildId, { guildId, channelId, executeAt, timeout });
-    console.log('[VOICE 24/7] Rejoin scheduled in ' + Math.round(delayMs / 1000) + 's (' + reason + ') for guild ' + guildId + '.');
+    scheduledVoiceRejoins.set(guildId, {
+      guildId,
+      channelId,
+      executeAt,
+      timeout,
+    });
+    console.log(
+      "[VOICE 24/7] Rejoin scheduled in " +
+        Math.round(delayMs / 1000) +
+        "s (" +
+        reason +
+        ") for guild " +
+        guildId +
+        ".",
+    );
   }
 
   /** Save voice state to database for persistence across restarts */
   async function saveVoiceStateToDB(guildId, channelId) {
     try {
-      const key = 'voice_state_' + guildId;
+      const key = "voice_state_" + guildId;
       await pool.query(
         `INSERT INTO persona (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2`,
-        [key, JSON.stringify({ guildId, channelId, savedAt: Date.now() })]
+        [key, JSON.stringify({ guildId, channelId, savedAt: Date.now() })],
       );
-      console.log(`[VOICE 24/7] Saved voice state to DB: guild=${guildId}, channel=${channelId}`);
+      console.log(
+        `[VOICE 24/7] Saved voice state to DB: guild=${guildId}, channel=${channelId}`,
+      );
     } catch (err) {
-      console.error('[VOICE 24/7] Failed to save voice state:', err.message);
+      console.error("[VOICE 24/7] Failed to save voice state:", err.message);
     }
   }
 
@@ -2155,25 +2607,30 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
   async function clearVoiceStateFromDB(guildId) {
     try {
       if (guildId) {
-        const key = 'voice_state_' + guildId;
-        await pool.query(`DELETE FROM persona WHERE key = $1 OR key = 'voice_state'`, [key]);
-        console.log(`[VOICE 24/7] Cleared voice state from DB for guild ${guildId}`);
+        const key = "voice_state_" + guildId;
+        await pool.query(
+          `DELETE FROM persona WHERE key = $1 OR key = 'voice_state'`,
+          [key],
+        );
+        console.log(
+          `[VOICE 24/7] Cleared voice state from DB for guild ${guildId}`,
+        );
       } else {
         await pool.query(`DELETE FROM persona WHERE key LIKE 'voice_state%'`);
-        console.log('[VOICE 24/7] Cleared all voice states from DB');
+        console.log("[VOICE 24/7] Cleared all voice states from DB");
       }
     } catch (err) {
-      console.error('[VOICE 24/7] Failed to clear voice state:', err.message);
+      console.error("[VOICE 24/7] Failed to clear voice state:", err.message);
     }
   }
 
   /** Load voice state from database */
   /** Parse VOICE_CHANNELS env var: "guildId:channelId,guildId:channelId" */
   function loadVoiceStateFromEnv() {
-    const raw = process.env.VOICE_CHANNELS || '';
+    const raw = process.env.VOICE_CHANNELS || "";
     const states = [];
-    for (const pair of raw.split(',')) {
-      const [guildId, channelId] = pair.trim().split(':');
+    for (const pair of raw.split(",")) {
+      const [guildId, channelId] = pair.trim().split(":");
       if (guildId && channelId) states.push({ guildId, channelId });
     }
     return states;
@@ -2183,7 +2640,7 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
     try {
       // Load all per-guild states (voice_state_<guildId>) plus legacy key (voice_state)
       const res = await pool.query(
-        `SELECT key, value FROM persona WHERE key LIKE 'voice_state%'`
+        `SELECT key, value FROM persona WHERE key LIKE 'voice_state%'`,
       );
       const states = [];
       for (const row of res.rows) {
@@ -2196,36 +2653,36 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
       }
       return states;
     } catch (err) {
-      console.error('[VOICE 24/7] Failed to load voice states:', err.message);
+      console.error("[VOICE 24/7] Failed to load voice states:", err.message);
     }
     return [];
   }
 
-  const GREET_CHANNEL_ID = '1477702703655424254';
+  const GREET_CHANNEL_ID = "1477702703655424254";
 
   const lastGreetings = {
     morning: null,
-    night: null
+    night: null,
   };
   const lastGreetingTexts = {
-    morning: '',
-    night: ''
+    morning: "",
+    night: "",
   };
 
-  const PH_TIME_ZONE = 'Asia/Manila';
+  const PH_TIME_ZONE = "Asia/Manila";
 
   function getNowInPhilippinesParts() {
     const now = new Date();
-    const parts = new Intl.DateTimeFormat('en-US', {
+    const parts = new Intl.DateTimeFormat("en-US", {
       timeZone: PH_TIME_ZONE,
-      weekday: 'long',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: false
+      weekday: "long",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
     }).formatToParts(now);
     const map = Object.fromEntries(parts.map((p) => [p.type, p.value]));
     const year = Number(map.year);
@@ -2234,12 +2691,12 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
     const hour = Number(map.hour);
     const minute = Number(map.minute);
     const second = Number(map.second);
-    const weekday = map.weekday || '';
-    const mm = String(month).padStart(2, '0');
-    const dd = String(day).padStart(2, '0');
-    const HH = String(hour).padStart(2, '0');
-    const MM = String(minute).padStart(2, '0');
-    const SS = String(second).padStart(2, '0');
+    const weekday = map.weekday || "";
+    const mm = String(month).padStart(2, "0");
+    const dd = String(day).padStart(2, "0");
+    const HH = String(hour).padStart(2, "0");
+    const MM = String(minute).padStart(2, "0");
+    const SS = String(second).padStart(2, "0");
     return {
       year,
       month,
@@ -2249,14 +2706,14 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
       second,
       weekday,
       dateKey: `${year}-${mm}-${dd}`,
-      timeKey: `${HH}:${MM}:${SS}`
+      timeKey: `${HH}:${MM}:${SS}`,
     };
   }
 
   function getNowInPhilippines() {
     const now = getNowInPhilippinesParts();
     try {
-      const phString = `${now.year}-${String(now.month).padStart(2, '0')}-${String(now.day).padStart(2, '0')}T${String(now.hour).padStart(2, '0')}:${String(now.minute).padStart(2, '0')}:${String(now.second).padStart(2, '0')}`;
+      const phString = `${now.year}-${String(now.month).padStart(2, "0")}-${String(now.day).padStart(2, "0")}T${String(now.hour).padStart(2, "0")}:${String(now.minute).padStart(2, "0")}:${String(now.second).padStart(2, "0")}`;
       return new Date(phString);
     } catch {
       return new Date();
@@ -2268,15 +2725,15 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
       await client.user.setPresence({
         activities: [
           {
-            name: 'Custom Status',
+            name: "Custom Status",
             state: text,
-            type: ActivityType.Custom
-          }
+            type: ActivityType.Custom,
+          },
         ],
-        status: 'online'
+        status: "online",
       });
     } catch (e) {
-      console.error('Failed to set bot custom status:', e);
+      console.error("Failed to set bot custom status:", e);
     }
   }
 
@@ -2316,19 +2773,21 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
         channel_id: state.channelId,
         self_mute: selfMute,
         self_deaf: selfDeaf,
-      }
+      },
     });
   }
 
   function joinAndWatch(channelId, guildId, adapterCreator) {
-    console.log(`[VOICE 24/7] Joining channel ${channelId} in guild ${guildId}`);
+    console.log(
+      `[VOICE 24/7] Joining channel ${channelId} in guild ${guildId}`,
+    );
 
     const connection = joinVoiceChannel({
       channelId,
       guildId,
       adapterCreator,
-      selfDeaf: true,   // fake deafen — shows 🎧 but Discord still sends audio to bot
-      selfMute: true    // fake mute  — shows 🔇 but we unmute right before TTS plays
+      selfDeaf: true, // fake deafen — shows 🎧 but Discord still sends audio to bot
+      selfMute: true, // fake mute  — shows 🔇 but we unmute right before TTS plays
     });
 
     // Watchdog: fires 30s after the last time we STARTED a connection attempt.
@@ -2342,17 +2801,26 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
       reconnectWatchdog = setTimeout(() => {
         if (connection.state.status !== VoiceConnectionStatus.Ready) {
           const delay = guildBackoffMs(guildId);
-          console.log(`[VOICE 24/7] Stuck in signalling >60s — force-destroying and scheduling rejoin in ${Math.round(delay/1000)}s`);
-          try { connection.destroy(); } catch { }
-          scheduleVoiceRejoin('stuck-signalling', delay, { guildId, channelId });
+          console.log(
+            `[VOICE 24/7] Stuck in signalling >60s — force-destroying and scheduling rejoin in ${Math.round(delay / 1000)}s`,
+          );
+          try {
+            connection.destroy();
+          } catch {}
+          scheduleVoiceRejoin("stuck-signalling", delay, {
+            guildId,
+            channelId,
+          });
         }
       }, 60000); // 60s — gives Render's UDP more time before giving up
     }
     armWatchdog(); // arm for the initial join attempt
 
     // Log state changes; re-arm watchdog only on Ready → Signalling drops.
-    connection.on('stateChange', (oldState, newState) => {
-      console.log(`[VOICE 24/7] Connection state: ${oldState.status} -> ${newState.status}`);
+    connection.on("stateChange", (oldState, newState) => {
+      console.log(
+        `[VOICE 24/7] Connection state: ${oldState.status} -> ${newState.status}`,
+      );
       runtimeState.voice.connectionStatus = newState.status;
       if (
         oldState.status === VoiceConnectionStatus.Ready &&
@@ -2364,9 +2832,9 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
     });
 
     // Catch errors so the process does NOT crash
-    connection.on('error', (err) => {
-      runtimeState.voice.connectionStatus = 'error';
-      console.error('[VOICE 24/7] Connection error:', err.message);
+    connection.on("error", (err) => {
+      runtimeState.voice.connectionStatus = "error";
+      console.error("[VOICE 24/7] Connection error:", err.message);
     });
 
     // On Ready - reset reconnect counter + attach live stream
@@ -2378,26 +2846,37 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
       runtimeState.voice.connectionStatus = VoiceConnectionStatus.Ready;
       runtimeState.voice.lastReadyAt = new Date().toISOString();
       clearScheduledVoiceRejoin(guildId);
-      console.log(`[VOICE 24/7] ✅ Ready in guild ${guildId}! Nandito na ako, 24/7 mode!`);
+      console.log(
+        `[VOICE 24/7] ✅ Ready in guild ${guildId}! Nandito na ako, 24/7 mode!`,
+      );
       try {
         const channel = client.channels.cache.get(channelId);
         const guild = client.guilds.cache.get(guildId);
-        liveVoiceStream.attach(connection, guildId, channel?.name || null, guild?.name || null);
+        liveVoiceStream.attach(
+          connection,
+          guildId,
+          channel?.name || null,
+          guild?.name || null,
+        );
       } catch (err) {
-        console.warn('[LIVE-STREAM] attach failed:', err.message);
+        console.warn("[LIVE-STREAM] attach failed:", err.message);
       }
     });
 
     // Disconnected: let Discord auto-reconnect first; destroy only if it can't.
     connection.on(VoiceConnectionStatus.Disconnected, async () => {
-      console.log(`[VOICE 24/7] Disconnected from ${guildId}; waiting for Discord auto-reconnect.`);
+      console.log(
+        `[VOICE 24/7] Disconnected from ${guildId}; waiting for Discord auto-reconnect.`,
+      );
       try {
         await Promise.race([
           entersState(connection, VoiceConnectionStatus.Signalling, 5000),
           entersState(connection, VoiceConnectionStatus.Connecting, 5000),
         ]);
       } catch {
-        try { connection.destroy(); } catch { }
+        try {
+          connection.destroy();
+        } catch {}
       }
     });
 
@@ -2408,7 +2887,7 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
       console.log(`[VOICE 24/7] Connection destroyed for guild ${guildId}`);
       liveVoiceStream.detachIfGuild(guildId);
       if (savedVoiceStates.has(guildId)) {
-        scheduleVoiceRejoin('destroyed', 5000, { guildId, channelId });
+        scheduleVoiceRejoin("destroyed", 5000, { guildId, channelId });
       }
     });
 
@@ -2416,18 +2895,34 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
   }
 
   // Wire up the web-server join callback now that joinAndWatch is defined
-  voiceJoinHandler.fn = (channelId, guildId, adapterCreator, channelName, guildName) => {
+  voiceJoinHandler.fn = (
+    channelId,
+    guildId,
+    adapterCreator,
+    channelName,
+    guildName,
+  ) => {
     setSavedVoiceState({ guildId, channelId });
     saveVoiceStateToDB(guildId, channelId);
     voiceReconnectAttempts = 0;
     joinAndWatch(channelId, guildId, adapterCreator);
-    console.log('[VOICE 24/7] Force-joined via API: guild=' + guildId + ' channel=' + channelId + ' (' + channelName + ')');
+    console.log(
+      "[VOICE 24/7] Force-joined via API: guild=" +
+        guildId +
+        " channel=" +
+        channelId +
+        " (" +
+        channelName +
+        ")",
+    );
   };
 
-    // Rejoin voice channel by guildId and channelId â€” NEVER gives up
-  async function tryRejoinVoice(guildId, channelId, reason = 'manual') {
+  // Rejoin voice channel by guildId and channelId â€” NEVER gives up
+  async function tryRejoinVoice(guildId, channelId, reason = "manual") {
     if (isVoiceRejoinInProgress) {
-      console.log('[VOICE 24/7] Rejoin already in progress. Skipping duplicate attempt.');
+      console.log(
+        "[VOICE 24/7] Rejoin already in progress. Skipping duplicate attempt.",
+      );
       return;
     }
 
@@ -2438,44 +2933,48 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
     try {
       // Make sure we're not already connected
       const existing = getVoiceConnection(guildId);
-      if (existing && existing.state.status !== VoiceConnectionStatus.Destroyed && existing.state.status !== VoiceConnectionStatus.Disconnected) {
-        console.log('[VOICE 24/7] Already connected, skipping rejoin.');
+      if (
+        existing &&
+        existing.state.status !== VoiceConnectionStatus.Destroyed &&
+        existing.state.status !== VoiceConnectionStatus.Disconnected
+      ) {
+        console.log("[VOICE 24/7] Already connected, skipping rejoin.");
         clearScheduledVoiceRejoin(guildId);
         return;
       }
 
       const guild = client.guilds.cache.get(guildId);
       if (!guild) {
-        console.log('[VOICE 24/7] Guild not found, retrying in 30s...');
-        scheduleVoiceRejoin('guild-missing', 30000, { guildId, channelId });
+        console.log("[VOICE 24/7] Guild not found, retrying in 30s...");
+        scheduleVoiceRejoin("guild-missing", 30000, { guildId, channelId });
         return;
       }
       const channel = guild.channels.cache.get(channelId);
       if (!channel) {
-        console.log('[VOICE 24/7] Channel not found, retrying in 30s...');
-        scheduleVoiceRejoin('channel-missing', 30000, { guildId, channelId });
+        console.log("[VOICE 24/7] Channel not found, retrying in 30s...");
+        scheduleVoiceRejoin("channel-missing", 30000, { guildId, channelId });
         return;
       }
       console.log(`[VOICE 24/7] ðŸ”„ Auto-rejoining voice: ${channel.name}`);
       joinAndWatch(channelId, guildId, guild.voiceAdapterCreator);
       clearScheduledVoiceRejoin(guildId);
     } catch (e) {
-      console.error('[VOICE 24/7] Auto-rejoin failed:', e.message);
-      scheduleVoiceRejoin('rejoin-failed', 15000, { guildId, channelId });
+      console.error("[VOICE 24/7] Auto-rejoin failed:", e.message);
+      scheduleVoiceRejoin("rejoin-failed", 15000, { guildId, channelId });
     } finally {
       isVoiceRejoinInProgress = false;
     }
   }
 
-  client.once('clientReady', async () => {
+  client.once("clientReady", async () => {
     console.log(`Logged in as ${client.user.tag}`);
     runtimeState.discord.ready = true;
     runtimeState.discord.readyAt = new Date().toISOString();
     runtimeState.discord.lastLoginError = null;
     await probeGroqKeysAtStartup().catch((err) => {
-      console.warn('[GROQ] Startup key probe failed:', err.message);
+      console.warn("[GROQ] Startup key probe failed:", err.message);
     });
-    await setBotCustomStatus('Miss ko na siya');
+    await setBotCustomStatus("Miss ko na siya");
     startScheduledGreetings();
 
     // Permission diagnostics for priority auto-chat channels
@@ -2483,18 +2982,25 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
       for (const chId of priorityAutoChatChannels) {
         const ch = await client.channels.fetch(chId).catch(() => null);
         if (!ch || !ch.isTextBased?.()) {
-          console.warn(`[PERM] Priority channel ${chId}: not found or not text-based.`);
+          console.warn(
+            `[PERM] Priority channel ${chId}: not found or not text-based.`,
+          );
           continue;
         }
         const missing = getMissingTextPermsForChannel(ch);
-        if (missing.length > 0 && missing[0] !== 'unknown-channel') {
-          console.warn(`[PERM] Missing perms in #${ch.name} (${chId}): ${missing.join(', ')}`);
+        if (missing.length > 0 && missing[0] !== "unknown-channel") {
+          console.warn(
+            `[PERM] Missing perms in #${ch.name} (${chId}): ${missing.join(", ")}`,
+          );
         } else {
           console.log(`[PERM] OK in #${ch.name} (${chId})`);
         }
       }
     } catch (e) {
-      console.warn('[PERM] Priority channel permission check failed:', e.message);
+      console.warn(
+        "[PERM] Priority channel permission check failed:",
+        e.message,
+      );
     }
 
     // scanIntroChannelOnStartup(client, { limit: 200 }).catch((err) => {
@@ -2514,43 +3020,61 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
       // Build merged map: DB wins per guild (more up-to-date), env fills missing guilds
       const merged = new Map();
       for (const s of envStates) merged.set(s.guildId, s);
-      for (const s of dbStates)  merged.set(s.guildId, s); // DB overrides env
+      for (const s of dbStates) merged.set(s.guildId, s); // DB overrides env
 
       // Persist any env-only guilds to DB so they survive across restarts
       for (const s of envStates) {
-        if (!dbStates.find(d => d.guildId === s.guildId)) {
-          console.log(`[VOICE 24/7] Saving env fallback channel to DB: guild ${s.guildId} -> ${s.channelId}`);
+        if (!dbStates.find((d) => d.guildId === s.guildId)) {
+          console.log(
+            `[VOICE 24/7] Saving env fallback channel to DB: guild ${s.guildId} -> ${s.channelId}`,
+          );
           await saveVoiceStateToDB(s.guildId, s.channelId).catch(() => {});
         }
       }
 
       if (merged.size > 0) {
-        console.log(`[VOICE 24/7] 🚀 Auto-joining ${merged.size} voice channel(s) on startup...`);
+        console.log(
+          `[VOICE 24/7] 🚀 Auto-joining ${merged.size} voice channel(s) on startup...`,
+        );
         // Stagger startup joins by 15s each so they never race for UDP on Render.
         // Two simultaneous UDP IP-discovery attempts on the same container
         // cause both to fail with "socket closed". Sequential is much more reliable.
         let startupDelay = 3000;
         for (const state of merged.values()) {
-          setSavedVoiceState({ guildId: state.guildId, channelId: state.channelId });
-          scheduleVoiceRejoin('startup', startupDelay, { guildId: state.guildId, channelId: state.channelId });
+          setSavedVoiceState({
+            guildId: state.guildId,
+            channelId: state.channelId,
+          });
+          scheduleVoiceRejoin("startup", startupDelay, {
+            guildId: state.guildId,
+            channelId: state.channelId,
+          });
           startupDelay += 15000; // next guild 15s later
         }
       } else {
-        console.log('[VOICE 24/7] No saved voice states found. Waiting for j!join command.');
+        console.log(
+          "[VOICE 24/7] No saved voice states found. Waiting for j!join command.",
+        );
       }
     } catch (err) {
-      console.error('[VOICE 24/7] Startup auto-join error:', err.message);
+      console.error("[VOICE 24/7] Startup auto-join error:", err.message);
     }
 
-        // =====================================================================
+    // =====================================================================
     // VOICE HEALTH CHECK — every 30 seconds, check ALL saved guild connections
     // =====================================================================
     setInterval(async () => {
       for (const state of savedVoiceStates.values()) {
         const connection = getVoiceConnection(state.guildId);
-        if (!connection || connection.state.status === 'destroyed' || connection.state.status === 'disconnected') {
-          console.log(`[VOICE 24/7] ● Health check: NOT connected in guild ${state.guildId}! Rejoining...`);
-          scheduleVoiceRejoin('health-check', 1500, state);
+        if (
+          !connection ||
+          connection.state.status === "destroyed" ||
+          connection.state.status === "disconnected"
+        ) {
+          console.log(
+            `[VOICE 24/7] ● Health check: NOT connected in guild ${state.guildId}! Rejoining...`,
+          );
+          scheduleVoiceRejoin("health-check", 1500, state);
         }
       }
     }, 30000).unref?.(); // every 30 seconds
@@ -2562,94 +3086,120 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
     try {
       await guild.members.fetch();
     } catch (e) {
-      console.error('Failed to fetch guild members:', e);
+      console.error("Failed to fetch guild members:", e);
     }
     const active = guild.members.cache.filter((m) => {
       if (m.user.bot) return false;
       const status = m.presence && m.presence.status;
-      return status === 'online' || status === 'idle' || status === 'dnd';
+      return status === "online" || status === "idle" || status === "dnd";
     });
     return Array.from(active.values());
   }
 
-  async function generateScheduledGreetingText({ type, channel, members, nowParts }) {
-    const isMorning = type === 'morning';
-    const modeLabel = isMorning ? '08:00 AM' : '10:00 PM';
-    const dayName = nowParts?.weekday || 'Unknown day';
+  async function generateScheduledGreetingText({
+    type,
+    channel,
+    members,
+    nowParts,
+  }) {
+    const isMorning = type === "morning";
+    const modeLabel = isMorning ? "08:00 AM" : "10:00 PM";
+    const dayName = nowParts?.weekday || "Unknown day";
     const memberNames = members
-      .map((m) => m.displayName || m.user?.globalName || m.user?.username || m.user?.tag)
+      .map(
+        (m) =>
+          m.displayName ||
+          m.user?.globalName ||
+          m.user?.username ||
+          m.user?.tag,
+      )
       .filter(Boolean)
       .slice(0, 12);
 
     let recentGreetingTexts = [];
     try {
       const recentRes = await pool.query(
-        'SELECT content FROM messages WHERE channel_id = $1 AND author_id = $2 ORDER BY created_at DESC LIMIT 5',
-        [channel.id, client.user.id]
+        "SELECT content FROM messages WHERE channel_id = $1 AND author_id = $2 ORDER BY created_at DESC LIMIT 5",
+        [channel.id, client.user.id],
       );
-      recentGreetingTexts = recentRes.rows.map((r) => String(r.content || '').slice(0, 260));
+      recentGreetingTexts = recentRes.rows.map((r) =>
+        String(r.content || "").slice(0, 260),
+      );
     } catch (err) {
-      console.warn('[GREET] Failed to fetch recent greetings:', err.message);
+      console.warn("[GREET] Failed to fetch recent greetings:", err.message);
     }
 
     const style = mergeStyleProfile(
-      detectStyle(`taglish playful ${memberNames.join(' ')} ${type}`),
-      null
+      detectStyle(`taglish playful ${memberNames.join(" ")} ${type}`),
+      null,
     );
     const dynamicStyleContext = buildDynamicContext(
       style,
-      'Greeting mode: warm, human, varied cadence, sustain Yuma bad boy attitude without sounding template-like.'
+      "Greeting mode: warm, human, varied cadence, sustain Yuma bad boy attitude without sounding template-like.",
     );
 
     const prompt =
       `Generate one natural Discord greeting for ${modeLabel} (${dayName}) in Taglish bad boy style.\n` +
       `Type: ${type}\n` +
-      `Members online: ${memberNames.join(', ') || 'none'}\n` +
-      `Recent bot greeting samples (avoid repeating these):\n${recentGreetingTexts.join('\n---\n') || 'none'}\n\n` +
-      'Rules:\n' +
-      '- 1 short paragraph, max 3 sentences.\n' +
-      '- mataray/witty but still socially aware and readable.\n' +
-      '- no raw IDs, no hashtags, no numbered list.\n' +
-      '- natural, not over-formal.\n' +
-      '- do not repeat exact phrases from recent samples.';
+      `Members online: ${memberNames.join(", ") || "none"}\n` +
+      `Recent bot greeting samples (avoid repeating these):\n${recentGreetingTexts.join("\n---\n") || "none"}\n\n` +
+      "Rules:\n" +
+      "- 1 short paragraph, max 3 sentences.\n" +
+      "- mataray/witty but still socially aware and readable.\n" +
+      "- no raw IDs, no hashtags, no numbered list.\n" +
+      "- natural, not over-formal.\n" +
+      "- do not repeat exact phrases from recent samples.";
 
     try {
       const response = await performChatRequest({
-        model: 'llama-3.1-8b-instant',
+        model: "llama-3.1-8b-instant",
         messages: [
           {
-            role: 'system',
+            role: "system",
             content:
-              'You are Yuma. Create short adaptive greeting lines with emotional intelligence and zero repetitive template phrasing.\n' +
-              dynamicStyleContext
+              "You are Yuma. Create short adaptive greeting lines with emotional intelligence and zero repetitive template phrasing.\n" +
+              dynamicStyleContext,
           },
-          { role: 'user', content: prompt }
+          { role: "user", content: prompt },
         ],
         temperature: 0.95,
-        max_tokens: 150
+        max_tokens: 150,
       });
 
-      const raw = response.data?.choices?.[0]?.message?.content?.trim() || '';
-      const cleaned = raw.replace(/^#+\s*/gm, '').replace(/\n{3,}/g, '\n\n').trim();
+      const raw = response.data?.choices?.[0]?.message?.content?.trim() || "";
+      const cleaned = raw
+        .replace(/^#+\s*/gm, "")
+        .replace(/\n{3,}/g, "\n\n")
+        .trim();
       const antiRepeatKey = `greet:${channel.id}:${type}`;
       const finalized = cleanResponse(cleaned, antiRepeatKey);
-      if (finalized && finalized.toLowerCase() !== lastGreetingTexts[type].toLowerCase()) {
+      if (
+        finalized &&
+        finalized.toLowerCase() !== lastGreetingTexts[type].toLowerCase()
+      ) {
         registerRecentPhrases(antiRepeatKey, finalized);
         return finalized;
       }
     } catch (err) {
-      console.warn('[GREET] AI generation failed, skipping greeting:', err.message);
+      console.warn(
+        "[GREET] AI generation failed, skipping greeting:",
+        err.message,
+      );
     }
-    return '';
+    return "";
   }
 
   async function sendScheduledGreeting(type, options = {}) {
-    const forcedChannelId = typeof options.forcedChannelId === 'string' && options.forcedChannelId.trim()
-      ? options.forcedChannelId.trim()
-      : null;
+    const forcedChannelId =
+      typeof options.forcedChannelId === "string" &&
+      options.forcedChannelId.trim()
+        ? options.forcedChannelId.trim()
+        : null;
     try {
       const targetChannelId = forcedChannelId || GREET_CHANNEL_ID;
-      const channel = await client.channels.fetch(targetChannelId).catch(() => null);
+      const channel = await client.channels
+        .fetch(targetChannelId)
+        .catch(() => null);
       if (!channel) {
         console.warn(`[GREET] Channel not found: ${targetChannelId}`);
         return false;
@@ -2660,8 +3210,10 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
       }
 
       const missingPerms = getMissingTextPermsForChannel(channel);
-      if (missingPerms.length > 0 && missingPerms[0] !== 'unknown-channel') {
-        console.warn(`[GREET] Missing channel perms in #${channel.name} (${targetChannelId}): ${missingPerms.join(', ')}`);
+      if (missingPerms.length > 0 && missingPerms[0] !== "unknown-channel") {
+        console.warn(
+          `[GREET] Missing channel perms in #${channel.name} (${targetChannelId}): ${missingPerms.join(", ")}`,
+        );
         return false;
       }
 
@@ -2669,58 +3221,69 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
       const members = await collectActiveMembersForChannel(channel);
       const mentions =
         members.length > 0
-          ? members.map((m) => `<@${m.id}>`).join(' ')
-          : 'Walang naka-online na bro ngayon.';
-      const text = await generateScheduledGreetingText({ type, channel, members, nowParts });
+          ? members.map((m) => `<@${m.id}>`).join(" ")
+          : "Walang naka-online na bro ngayon.";
+      const text = await generateScheduledGreetingText({
+        type,
+        channel,
+        members,
+        nowParts,
+      });
       if (!text) {
-        console.warn(`[GREET] Empty AI greeting text for type=${type} in channel=${targetChannelId}`);
+        console.warn(
+          `[GREET] Empty AI greeting text for type=${type} in channel=${targetChannelId}`,
+        );
         return false;
       }
       lastGreetingTexts[type] = text;
 
       const header =
-  type === 'morning'
-    ? pick([
-        '**GOOD MORNING, MGA ACCLA**',
-        '**RISE AND SLAY, MGA BADING**',
-        '**GOOD MORNING, MGA MHIE**',
-        '**GISING NA, MGA DELULU**',
-        '**HELLO SUNSHINE, MGA BAKS**',
-        '**MORNING MGA BEH, ANG INIT NG CHIKA**',
-        '**GOOD MORNING, MGA ECHOSERA**',
-        '**UMAGA NA MGA ANTE, GALAW-GALAW**'
-      ])
-    : pick([
-        '**10PM CHECK-IN, MGA BADING**',
-        '**GOOD EVENING, MGA ACCLA**',
-        '**LATE NIGHT CHIKA, MGA MHIE**',
-        '**GABI NA, MGA DELULU—ANO GANAP**',
-        '**CHECK-IN TIME, MGA BAKS**',
-        '**NIGHT SHIFT MGA BEH, GISING PA?**',
-        '**GABI VIBES, MGA ECHOSERA**',
-        '**ANTE ANUNA, 10PM NA OH**'
-      ]);
+        type === "morning"
+          ? pick([
+              "**GOOD MORNING, MGA ACCLA**",
+              "**RISE AND SLAY, MGA BADING**",
+              "**GOOD MORNING, MGA MHIE**",
+              "**GISING NA, MGA DELULU**",
+              "**HELLO SUNSHINE, MGA BAKS**",
+              "**MORNING MGA BEH, ANG INIT NG CHIKA**",
+              "**GOOD MORNING, MGA ECHOSERA**",
+              "**UMAGA NA MGA ANTE, GALAW-GALAW**",
+            ])
+          : pick([
+              "**10PM CHECK-IN, MGA BADING**",
+              "**GOOD EVENING, MGA ACCLA**",
+              "**LATE NIGHT CHIKA, MGA MHIE**",
+              "**GABI NA, MGA DELULU—ANO GANAP**",
+              "**CHECK-IN TIME, MGA BAKS**",
+              "**NIGHT SHIFT MGA BEH, GISING PA?**",
+              "**GABI VIBES, MGA ECHOSERA**",
+              "**ANTE ANUNA, 10PM NA OH**",
+            ]);
 
-      const sent = await channel.send({ content: `${header}\n${mentions}\n\n${text}` });
-      console.log(`[GREET] Sent ${type} greeting to #${channel.name} (${channel.id}) at PH ${nowParts.timeKey}`);
+      const sent = await channel.send({
+        content: `${header}\n${mentions}\n\n${text}`,
+      });
+      console.log(
+        `[GREET] Sent ${type} greeting to #${channel.name} (${channel.id}) at PH ${nowParts.timeKey}`,
+      );
 
       try {
         await pool.query(
-          'INSERT INTO messages (guild_id, channel_id, author_id, author_tag, content) VALUES ($1, $2, $3, $4, $5)',
+          "INSERT INTO messages (guild_id, channel_id, author_id, author_tag, content) VALUES ($1, $2, $3, $4, $5)",
           [
-            channel.guild?.id || 'DM',
+            channel.guild?.id || "DM",
             channel.id,
             client.user.id,
             client.user.username,
-            sent.content || `${header} ${text}`
-          ]
+            sent.content || `${header} ${text}`,
+          ],
         );
       } catch (dbErr) {
-        console.error('[DB] Scheduled greeting save error:', dbErr.message);
+        console.error("[DB] Scheduled greeting save error:", dbErr.message);
       }
       return true;
     } catch (e) {
-      console.error('Failed to send scheduled greeting:', e);
+      console.error("Failed to send scheduled greeting:", e);
       return false;
     }
   }
@@ -2732,45 +3295,62 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
       const minute = nowParts.minute;
       const todayKey = nowParts.dateKey;
 
-      const inMorningWindow = (hour === 8 && minute <= 5) || (hour === 8 && lastGreetings.morning !== todayKey);
-      const inNightWindow = (hour === 22 && minute <= 5) || (hour === 22 && lastGreetings.night !== todayKey);
+      const inMorningWindow =
+        (hour === 8 && minute <= 5) ||
+        (hour === 8 && lastGreetings.morning !== todayKey);
+      const inNightWindow =
+        (hour === 22 && minute <= 5) ||
+        (hour === 22 && lastGreetings.night !== todayKey);
 
       if (inMorningWindow && lastGreetings.morning !== todayKey) {
-        const sent = await sendScheduledGreeting('morning');
+        const sent = await sendScheduledGreeting("morning");
         if (sent) lastGreetings.morning = todayKey;
       }
 
       if (inNightWindow && lastGreetings.night !== todayKey) {
-        const sent = await sendScheduledGreeting('night');
+        const sent = await sendScheduledGreeting("night");
         if (sent) lastGreetings.night = todayKey;
       }
     };
 
-    tick().catch((err) => console.error('[GREET] Initial tick failed:', err.message));
+    tick().catch((err) =>
+      console.error("[GREET] Initial tick failed:", err.message),
+    );
     setInterval(() => {
-      tick().catch((err) => console.error('[GREET] Tick failed:', err.message));
+      tick().catch((err) => console.error("[GREET] Tick failed:", err.message));
     }, 30 * 1000);
   }
 
-  async function callGroqChat(userMessage, authorId = null, channelId = null, voiceMembers = [], options = {}) {
+  async function callGroqChat(
+    userMessage,
+    authorId = null,
+    channelId = null,
+    voiceMembers = [],
+    options = {},
+  ) {
     const fastMode = Boolean(options.fastMode);
     const forceResearchGrounding = Boolean(options.forceResearchGrounding);
     const forceSexualGuard = Boolean(options.forceSexualGuard);
     const topicResetMode = Boolean(options.topicResetMode);
     const allowRetopic = Boolean(options.allowRetopic);
-    const memoryRecallMode = Boolean(options.memoryRecallMode) || isMemoryRecallIntent(userMessage);
-    const researchContext = Array.isArray(options.researchContext) ? options.researchContext : [];
-    const discordContext = typeof options.discordContext === 'string' ? options.discordContext : '';
-    const mentionContext = typeof options.mentionContext === 'string' ? options.mentionContext : '';
-    const styleScopeKey = `${channelId || 'dm'}:${authorId || 'anon'}`;
+    const memoryRecallMode =
+      Boolean(options.memoryRecallMode) || isMemoryRecallIntent(userMessage);
+    const researchContext = Array.isArray(options.researchContext)
+      ? options.researchContext
+      : [];
+    const discordContext =
+      typeof options.discordContext === "string" ? options.discordContext : "";
+    const mentionContext =
+      typeof options.mentionContext === "string" ? options.mentionContext : "";
+    const styleScopeKey = `${channelId || "dm"}:${authorId || "anon"}`;
     const detectedStyle = detectStyle(userMessage);
     const savedStyle = await loadStyleProfile(authorId);
     const effectiveStyle = mergeStyleProfile(detectedStyle, savedStyle);
     const dynamicStyleContext = buildDynamicContext(
       effectiveStyle,
-      'Yuma bad boy mode — chill, may dating, per-kausap memory.',
+      "Yuma bad boy mode — chill, may dating, per-kausap memory.",
     );
-    let behaviorPrompt = '';
+    let behaviorPrompt = "";
 
     // Special personas based on who is talking
     // Hans (669047995009859604) — partner mode PAUSED (on space). Same pokpok energy as everyone else.
@@ -2782,52 +3362,52 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
     //     'Occasionally use terms like "mahal", "my love", "baby", or "honey" or "sexy". ' +
     //     'IMPORTANT: Stay concise and NEVER output raw Discord IDs.';
     // } else
-    if (authorId === '930685023147933737') {
-    // OG persona user – original close friend energy
-    behaviorPrompt =
-      'You are talking to your OG friend — most comfortable tao mo sa server. ' +
-      'Be honest and direct, inside-joke energy, less filter. ' +
-      'Still bad boy chill, but looser — makapag-advice ka ng konti pag kailangan. ' +
-      'Do not mention raw Discord IDs; refer using name or casual terms like "pre", "bro".';
-  } else {
-    // Default behavior — Yuma bad boy Taglish (NOT FAQ bot)
-    behaviorPrompt =
-      'MODE: YUMA BAD BOY — young stunna, chill, may attitude. Taglish heavy. ' +
-      'HINDI ka FAQ bot, HINDI school assistant. Walang numbered policy steps maliban kung j! command talaga. ' +
-      'Short replies, may dating, confident. NEVER output raw Discord IDs. ' +
-      'Slang natural: pre, bro, tol, sus, tss, edi wow, sige nga, gets mo, ano ba yan, hala ka. ' +
-      'Kapag galit ang kausap, itapat mo — direct, mataray, walang softener. ' +
-      'If topics involve explicit sexual terms, deflect with confident bad boy energy. ' +
-      'If asked who created you: "si Drei" (creator lang — ibang tao). NEVER say you ARE Drei. Your name is Yuma.';
-  }
+    if (authorId === "930685023147933737") {
+      // OG persona user – original close friend energy
+      behaviorPrompt =
+        "You are talking to your OG friend — most comfortable tao mo sa server. " +
+        "Be honest and direct, inside-joke energy, less filter. " +
+        "Still bad boy chill, but looser — makapag-advice ka ng konti pag kailangan. " +
+        'Do not mention raw Discord IDs; refer using name or casual terms like "pre", "bro".';
+    } else {
+      // Default behavior — Yuma bad boy Taglish (NOT FAQ bot)
+      behaviorPrompt =
+        "MODE: YUMA BAD BOY — young stunna, chill, may attitude. Taglish heavy. " +
+        "HINDI ka FAQ bot, HINDI school assistant. Walang numbered policy steps maliban kung j! command talaga. " +
+        "Short replies, may dating, confident. NEVER output raw Discord IDs. " +
+        "Slang natural: pre, bro, tol, sus, tss, edi wow, sige nga, gets mo, ano ba yan, hala ka. " +
+        "Kapag galit ang kausap, itapat mo — direct, mataray, walang softener. " +
+        "If topics involve explicit sexual terms, deflect with confident bad boy energy. " +
+        'If asked who created you: "si Drei" (creator lang — ibang tao). NEVER say you ARE Drei. Your name is Yuma.';
+    }
 
-  if (forceSexualGuard) {
-    behaviorPrompt +=
-      ' The current input may be inappropriate or sexual. ' +
-      'Do NOT include explicit sexual details or play along. Respond with a direct, sharp, maldita bad-boy tone that shuts it down or deflects with a quick, confident one-liner instead.';
-  }
+    if (forceSexualGuard) {
+      behaviorPrompt +=
+        " The current input may be inappropriate or sexual. " +
+        "Do NOT include explicit sexual details or play along. Respond with a direct, sharp, maldita bad-boy tone that shuts it down or deflects with a quick, confident one-liner instead.";
+    }
 
     // Voice context - BE EXTREMELY AWARE OF THIS
-    const voiceContext = voiceMembers.length > 0
-      ? `\n[MGA KASAMA MO SA VOICE CHANNEL/CALL NGAYON]: ${voiceMembers.join(', ')}. \nIMPORTANT: Alam mo kung sino ang mga nasa call. Kung tinanong ka kung sino ang mga nasa call, banggitin mo silang lahat: ${voiceMembers.join(', ')}.`
-      : '\n[VOICE CONTEXT]: Wala kang alam na call or walang tao sa call ngayon.';
+    const voiceContext =
+      voiceMembers.length > 0
+        ? `\n[MGA KASAMA MO SA VOICE CHANNEL/CALL NGAYON]: ${voiceMembers.join(", ")}. \nIMPORTANT: Alam mo kung sino ang mga nasa call. Kung tinanong ka kung sino ang mga nasa call, banggitin mo silang lahat: ${voiceMembers.join(", ")}.`
+        : "\n[VOICE CONTEXT]: Wala kang alam na call or walang tao sa call ngayon.";
     const nowUtc = new Date();
     const nowPh = getNowInPhilippines();
     const realtimeContext =
-      `\n[REAL TIME]: UTC ${nowUtc.toISOString()} | PH ${nowPh.toISOString()} | Month: ${nowPh.toLocaleString('en-US', { timeZone: 'Asia/Manila', month: 'long' })} ${nowPh.getFullYear()}. ` +
-      'Kapag may tanong na period-based, gamitin itong petsa at oras.';
-    const webContext = researchContext.length > 0
-      ? `\n[SEARCH CONTEXT - GAMITIN MO ITO PARA SA LATEST/CURRENT QUESTIONS]:\n${researchContext.map((r, i) => `${i + 1}. ${r.title}\nURL: ${r.url}\nSnippet: ${r.snippet}`).join('\n\n')}\n`
-      : '';
+      `\n[REAL TIME]: UTC ${nowUtc.toISOString()} | PH ${nowPh.toISOString()} | Month: ${nowPh.toLocaleString("en-US", { timeZone: "Asia/Manila", month: "long" })} ${nowPh.getFullYear()}. ` +
+      "Kapag may tanong na period-based, gamitin itong petsa at oras.";
+    const webContext =
+      researchContext.length > 0
+        ? `\n[SEARCH CONTEXT - GAMITIN MO ITO PARA SA LATEST/CURRENT QUESTIONS]:\n${researchContext.map((r, i) => `${i + 1}. ${r.title}\nURL: ${r.url}\nSnippet: ${r.snippet}`).join("\n\n")}\n`
+        : "";
 
     const authorDisplay =
-      options.authorDisplayName ||
-      options.displayName ||
-      'bro';
+      options.authorDisplayName || options.displayName || "bro";
 
     // ═══ HUMAN MEMORY (per kausap) — ALWAYS on chat, NOT OSA FAQ ═══
-    let humanMemoryContext = '';
-    let botHelpContext = '';
+    let humanMemoryContext = "";
+    let botHelpContext = "";
     if (config.ragEnabled && authorId && !fastMode) {
       try {
         const human = await buildHumanMemoryContext(pool, {
@@ -2842,7 +3422,7 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
           humanMemoryContext = `\n${human.context}\n`;
         }
       } catch (memErr) {
-        console.warn('[HUMAN MEMORY] build failed:', memErr.message);
+        console.warn("[HUMAN MEMORY] build failed:", memErr.message);
       }
     }
 
@@ -2856,16 +3436,19 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
             `${help.context}\n`;
         }
       } catch (helpErr) {
-        console.warn('[BOT HELP] lookup failed:', helpErr.message);
+        console.warn("[BOT HELP] lookup failed:", helpErr.message);
       }
     }
 
-    let masterPersonaDNA = '';
+    let masterPersonaDNA = "";
     try {
-      const personaRes = await pool.query('SELECT value FROM persona WHERE key = $1', ['master_dna']);
-      masterPersonaDNA = personaRes.rows[0]?.value || '';
+      const personaRes = await pool.query(
+        "SELECT value FROM persona WHERE key = $1",
+        ["master_dna"],
+      );
+      masterPersonaDNA = personaRes.rows[0]?.value || "";
     } catch (err) {
-      console.error('[DB] Context fetch error:', err.message);
+      console.error("[DB] Context fetch error:", err.message);
     }
 
     const systemPrompt =
@@ -2886,81 +3469,97 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
     let historyMessages = [];
     if (channelId) {
       try {
-        const historyLimit = (topicResetMode && !allowRetopic && !memoryRecallMode)
-          ? 4
-          : ((memoryRecallMode || allowRetopic) ? 12 : 5);
+        const historyLimit =
+          topicResetMode && !allowRetopic && !memoryRecallMode
+            ? 4
+            : memoryRecallMode || allowRetopic
+              ? 12
+              : 5;
         const historyRes = await pool.query(
-          'SELECT author_id, author_tag, content, created_at FROM messages WHERE channel_id = $1 ORDER BY created_at DESC LIMIT $2',
-          [channelId, historyLimit]
+          "SELECT author_id, author_tag, content, created_at FROM messages WHERE channel_id = $1 ORDER BY created_at DESC LIMIT $2",
+          [channelId, historyLimit],
         );
-        historyMessages = historyRes.rows.reverse().map(row => ({
-          role: row.author_id === client.user.id ? 'assistant' : 'user',
-          content: row.author_id === client.user.id
-            ? row.content
-            : `[${row.created_at ? new Date(row.created_at).toISOString() : 'unknown-time'}][${row.author_tag} (ID:${row.author_id})]: ${row.content}`
+        historyMessages = historyRes.rows.reverse().map((row) => ({
+          role: row.author_id === client.user.id ? "assistant" : "user",
+          content:
+            row.author_id === client.user.id
+              ? row.content
+              : `[${row.created_at ? new Date(row.created_at).toISOString() : "unknown-time"}][${row.author_tag} (ID:${row.author_id})]: ${row.content}`,
         }));
-      } catch (err) { }
+      } catch (err) {}
     }
-
 
     // JanJan's Tiered Intelligence Matrix (Priority Model Fallback - UPDATED 2025)
     const models = [
-      'llama-3.3-70b-versatile',            // === [PINAKA MAIN / FLAGSHIP MODEL] ===
-      'qwen-2.5-coder-32b',                 // Smart Coding & Logic
-      'groq/compound',                      // Stable Powerhouse
-      'groq/compound-mini',                 // Efficient Alternative
-      'llama-3.1-8b-instant'                // Last Resort (Safety Net)
+      "llama-3.3-70b-versatile", // === [PINAKA MAIN / FLAGSHIP MODEL] ===
+      "qwen-2.5-coder-32b", // Smart Coding & Logic
+      "groq/compound", // Stable Powerhouse
+      "groq/compound-mini", // Efficient Alternative
+      "llama-3.1-8b-instant", // Last Resort (Safety Net)
     ];
 
     // ============================================================
     // STEP 1: BACKEND THINKING & UNIVERSAL LEARNING
     // ============================================================
-    let internalThoughts = '';
+    let internalThoughts = "";
     async function performThinking(retryCount = 0) {
       if (retryCount >= 2) return;
       if (fastMode) return;
-      const model = retryCount === 0 ? 'llama-3.1-8b-instant' : 'groq/compound-mini';
+      const model =
+        retryCount === 0 ? "llama-3.1-8b-instant" : "groq/compound-mini";
       try {
         const thinkingPayload = {
           model: model,
           messages: [
             {
-              role: 'system',
-              content: `DNA: ${masterPersonaDNA}\nPLANNING: Yuma bad boy reply for ${authorDisplay}. NOT FAQ. Mirror mood 100%. Format: PLAN: (short bad boy plan) | UNIVERSAL_LEARNING: (USER_ID: fact | ...)`
+              role: "system",
+              content: `DNA: ${masterPersonaDNA}\nPLANNING: Yuma bad boy reply for ${authorDisplay}. NOT FAQ. Mirror mood 100%. Format: PLAN: (short bad boy plan) | UNIVERSAL_LEARNING: (USER_ID: fact | ...)`,
             },
             {
-              role: 'user',
-              content: `Human memory block active for ${authorDisplay}.\nVoice: ${voiceMembers}\nConvo: ${JSON.stringify(historyMessages)}\nUser: ${userMessage} (${authorId})`
-            }
+              role: "user",
+              content: `Human memory block active for ${authorDisplay}.\nVoice: ${voiceMembers}\nConvo: ${JSON.stringify(historyMessages)}\nUser: ${userMessage} (${authorId})`,
+            },
           ],
           temperature: 0.3,
-          max_tokens: 200
+          max_tokens: 200,
         };
 
         const thinkingRes = await performChatRequest(thinkingPayload);
-        const reasoningText = thinkingRes.data.choices?.[0]?.message?.content || '';
+        const reasoningText =
+          thinkingRes.data.choices?.[0]?.message?.content || "";
 
-        const planMatch = reasoningText.match(/PLAN:\s*([\s\S]*?)(?=UNIVERSAL_LEARNING:|$)/i);
-        const learningMatch = reasoningText.match(/UNIVERSAL_LEARNING:\s*([\s\S]*)/i);
+        const planMatch = reasoningText.match(
+          /PLAN:\s*([\s\S]*?)(?=UNIVERSAL_LEARNING:|$)/i,
+        );
+        const learningMatch = reasoningText.match(
+          /UNIVERSAL_LEARNING:\s*([\s\S]*)/i,
+        );
 
         internalThoughts = planMatch ? planMatch[1].trim() : reasoningText;
-        const universalLearning = learningMatch ? learningMatch[1].trim() : '';
+        const universalLearning = learningMatch ? learningMatch[1].trim() : "";
 
-        if (universalLearning && !universalLearning.toLowerCase().includes('wala')) {
-          const entries = universalLearning.split('|');
+        if (
+          universalLearning &&
+          !universalLearning.toLowerCase().includes("wala")
+        ) {
+          const entries = universalLearning.split("|");
           for (const entry of entries) {
             const match = entry.match(/(\d+):\s*(.*)/);
             if (match) {
               const uId = match[1].trim();
               const uFact = match[2].trim();
               try {
-                const oldURes = await pool.query('SELECT facts FROM user_memory WHERE user_id = $1', [uId]);
-                const combinedUFacts = (oldURes.rows[0]?.facts || '') + ' | ' + uFact;
-                await pool.query(
-                  'INSERT INTO user_memory (user_id, facts, updated_at) VALUES ($1, $2, CURRENT_TIMESTAMP) ON CONFLICT (user_id) DO UPDATE SET facts = $2, updated_at = CURRENT_TIMESTAMP',
-                  [uId, combinedUFacts.slice(-1500)]
+                const oldURes = await pool.query(
+                  "SELECT facts FROM user_memory WHERE user_id = $1",
+                  [uId],
                 );
-              } catch (dbErr) { }
+                const combinedUFacts =
+                  (oldURes.rows[0]?.facts || "") + " | " + uFact;
+                await pool.query(
+                  "INSERT INTO user_memory (user_id, facts, updated_at) VALUES ($1, $2, CURRENT_TIMESTAMP) ON CONFLICT (user_id) DO UPDATE SET facts = $2, updated_at = CURRENT_TIMESTAMP",
+                  [uId, combinedUFacts.slice(-1500)],
+                );
+              } catch (dbErr) {}
             }
           }
         }
@@ -2972,51 +3571,57 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
     const skipThinking =
       fastMode ||
       !needsFullMemoryContext(userMessage) ||
-      String(userMessage || '').trim().length < 20;
+      String(userMessage || "").trim().length < 20;
     if (!skipThinking) {
       await performThinking();
       console.log(`[THINKING] Yuma plan: ${internalThoughts}`);
     }
 
     // Clean up IDs from thoughts so JanJan doesn't see them
-    const sanitizedThoughts = internalThoughts.replace(/\d{17,20}/g, 'someone');
+    const sanitizedThoughts = internalThoughts.replace(/\d{17,20}/g, "someone");
 
     // ============================================================
     // STEP 2: FINAL RESPONSE GENERATION (Multi-Tier Fallback)
     // ============================================================
-      const priorityRule =
-      '\n[CRITICAL — NATURAL HUMAN MODE]: Reply ka parang totoong tao na kausap ng kaibigan — HINDI bot, HINDI FAQ machine, HINDI game show host. ' +
-      'Taglish natural, GC-text energy. Kung may sinabi ang user (kahit lies), paniwalaan mo sa usapan — wag moral lecture. ' +
+    const priorityRule =
+      "\n[CRITICAL — NATURAL HUMAN MODE]: Reply ka parang totoong tao na kausap ng kaibigan — HINDI bot, HINDI FAQ machine, HINDI game show host. " +
+      "Taglish natural, GC-text energy. Kung may sinabi ang user (kahit lies), paniwalaan mo sa usapan — wag moral lecture. " +
       'BAWAL: "knowledge base", "As an AI", policy steps, OSA portal tone.' +
-      '\n[BAWAL MAG-ASK PABALIK NG WALANG DAHILAN]: Kung hindi kailangan ng clarification, HUWAG MAGTANONG pabalik. ' +
-      'Kapag hiningi ng tao na gumawa ng bagay (poem, kanta, joke, explain, etc.) — GAWIN MO LANG AGAD. ' +
+      "\n[BAWAL MAG-ASK PABALIK NG WALANG DAHILAN]: Kung hindi kailangan ng clarification, HUWAG MAGTANONG pabalik. " +
+      "Kapag hiningi ng tao na gumawa ng bagay (poem, kanta, joke, explain, etc.) — GAWIN MO LANG AGAD. " +
       'Huwag mag-"Pwede ba?", "Sige nga?", "Gusto mo ba?", "Ano ba yung point?" — BASTOS YAN, parang hindi ka nakikinig. ' +
       'Kapag "oo go!" o "yes!" ang sabi ng user — TULOY NA, huwag mag-ask ulit.' +
-      '\n[HELPFUL WHEN ASKED]: Kapag may tinanong (math, facts, paano, bakit, etc.) — sagutin mo DIRECT at TAMA. ' +
-      'May attitude pero helpful pa rin. Short explanation, tama ang sagot, tapos done.' +
-      '\n[ANTI-HALLUCINATION — STRICT]: I-reply ONLY ang sinabi ng CURRENT message sender. ' +
-      'Huwag i-address ang ibang user na nakita sa history — sila ay context lang, hindi sila yung kausap mo ngayon. ' +
+      "\n[HELPFUL WHEN ASKED]: Kapag may tinanong (math, facts, paano, bakit, etc.) — sagutin mo DIRECT at TAMA. " +
+      "May attitude pero helpful pa rin. Short explanation, tama ang sagot, tapos done." +
+      "\n[ANTI-HALLUCINATION — STRICT]: I-reply ONLY ang sinabi ng CURRENT message sender. " +
+      "Huwag i-address ang ibang user na nakita sa history — sila ay context lang, hindi sila yung kausap mo ngayon. " +
       'Huwag mag-carry over ng topic mula sa ibang message — kung math yung nakaraan at "may titi ka ba" ngayon, ang sagot ay sa "may titi ka ba", HINDI sa math. ' +
-      'Kung hindi ka sure kung ano ang tinutukoy, sagutin yung literal na sinabi sa CURRENT message.' +
+      "Kung hindi ka sure kung ano ang tinutukoy, sagutin yung literal na sinabi sa CURRENT message." +
       '\n[NO REDUNDANT PAST CALLBACKS — STRICT]: Huwag mag-"nakita ko sa chika/kanina/usapan natin" kung hindi tinanong. One-on-one sagot sa message NGAYON lang.' +
       '\n[FLOW RULE]: Mirror ang energy ng kausap. Chill? Chill ka. Hyped? Tumugon ng may enerhiya. Wag palaging may "?" sa dulo ng reply — minsan statement lang, tapos.' +
       (topicResetMode
-        ? '\n[TOPIC RESET RULE]: User asked to move on/latest only. Focus on current message. Do not resurrect past conflicts unless explicitly asked.'
-        : '') +
+        ? "\n[TOPIC RESET RULE]: User asked to move on/latest only. Focus on current message. Do not resurrect past conflicts unless explicitly asked."
+        : "") +
       (allowRetopic
-        ? '\n[RETOPIC RULE]: User explicitly asked to revisit past context. You may refer back if helpful and requested.'
-        : '') +
+        ? "\n[RETOPIC RULE]: User explicitly asked to revisit past context. You may refer back if helpful and requested."
+        : "") +
       (researchContext.length > 0
-        ? '\n[RESEARCH MODE RULE]: Sagot ka based sa search context sa itaas. Huwag manghula kung kulang info; aminin ang uncertainty.'
-        : '') +
+        ? "\n[RESEARCH MODE RULE]: Sagot ka based sa search context sa itaas. Huwag manghula kung kulang info; aminin ang uncertainty."
+        : "") +
       (forceResearchGrounding
-        ? '\n[STRICT SOURCE RULE]: This is a latest/news/current query. Ground answer ONLY on search context.'
-        : '');
+        ? "\n[STRICT SOURCE RULE]: This is a latest/news/current query. Ground answer ONLY on search context."
+        : "");
 
     const finalMessages = [
-      { role: 'system', content: systemPrompt + (sanitizedThoughts ? `\n\n[PLAN]: ${sanitizedThoughts}` : '') + priorityRule },
+      {
+        role: "system",
+        content:
+          systemPrompt +
+          (sanitizedThoughts ? `\n\n[PLAN]: ${sanitizedThoughts}` : "") +
+          priorityRule,
+      },
       ...historyMessages,
-      { role: 'user', content: userMessage }
+      { role: "user", content: userMessage },
     ];
 
     // Loop through Tiered Models
@@ -3027,34 +3632,44 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
           model: currentModel,
           messages: finalMessages,
           temperature: 0.7,
-          max_tokens: fastMode ? 160 : 260
+          max_tokens: fastMode ? 160 : 260,
         });
 
-        if (response.status === 200 && response.data.choices[0].message.content) {
+        if (
+          response.status === 200 &&
+          response.data.choices[0].message.content
+        ) {
           let reply = response.data.choices[0].message.content.trim();
 
           // FINAL GUARD: Strip raw IDs (17-20 digits) that are NOT in a <@...> mention
           // This stops JanJan from outputting "ID:317867947265884180" etc.
           reply = reply.replace(/(?<!<@|<!)\b\d{17,20}\b/g, (match) => {
-            return ''; // or match.substring(0, 4) + '...'
+            return ""; // or match.substring(0, 4) + '...'
           });
 
           // NUCLEAR CLEANER: Remove all forms of thinking tags and reasoning leaks
           let cleaned = reply
-            .replace(/<[^>]*?think[^>]*?>[\s\S]*?<\/[^>]*?think[^>]*?>/gi, '') // Advanced tag strip
-            .replace(/<[^>]*?think[^>]*?>[\s\S]*/gi, '')                      // Unclosed tag strip
-            .replace(/<\/?[^>]*?think[^>]*?>/gi, '')                         // Stray tag strip
-            .replace(/\(Thinking:[\s\S]*?\)/gi, '')
-            .replace(/^Okay, (let me|let's) (think|see|analyze)[\s\S]*?(\n\n|\.\s+|$)/i, '')
-            .replace(/^Thinking Process:[\s\S]*?(\n\n|$)/gi, '');
+            .replace(/<[^>]*?think[^>]*?>[\s\S]*?<\/[^>]*?think[^>]*?>/gi, "") // Advanced tag strip
+            .replace(/<[^>]*?think[^>]*?>[\s\S]*/gi, "") // Unclosed tag strip
+            .replace(/<\/?[^>]*?think[^>]*?>/gi, "") // Stray tag strip
+            .replace(/\(Thinking:[\s\S]*?\)/gi, "")
+            .replace(
+              /^Okay, (let me|let's) (think|see|analyze)[\s\S]*?(\n\n|\.\s+|$)/i,
+              "",
+            )
+            .replace(/^Thinking Process:[\s\S]*?(\n\n|$)/gi, "");
 
           const deLooped = cleanResponse(cleaned.trim(), styleScopeKey);
           const finalResult = deLooped || cleaned.trim();
-          console.log(`[CLEANER] Raw: ${reply.substring(0, 50)}... | Final: ${finalResult.substring(0, 50)}...`);
+          console.log(
+            `[CLEANER] Raw: ${reply.substring(0, 50)}... | Final: ${finalResult.substring(0, 50)}...`,
+          );
 
           // If after cleaning we have nothing, this model only gave us thoughts. TRY NEXT MODEL.
           if (!finalResult || finalResult.length < 2) {
-            console.warn(`[GROQ] Model ${currentModel} purely internal. Skipping...`);
+            console.warn(
+              `[GROQ] Model ${currentModel} purely internal. Skipping...`,
+            );
             continue;
           }
 
@@ -3064,12 +3679,16 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
         }
       } catch (err) {
         const { status, code, message } = groqErrorMeta(err);
-        const isRateLimit = status === 429 || code === 'rate_limit_exceeded';
+        const isRateLimit = status === 429 || code === "rate_limit_exceeded";
         const isInvalidKey =
-          status === 401 || code === 'invalid_api_key' || /invalid api key/i.test(message);
+          status === 401 ||
+          code === "invalid_api_key" ||
+          /invalid api key/i.test(message);
 
         if (isRateLimit) {
-          console.warn(`[GROQ] Model ${currentModel} rate limited. Trying next...`);
+          console.warn(
+            `[GROQ] Model ${currentModel} rate limited. Trying next...`,
+          );
           continue;
         }
 
@@ -3086,7 +3705,7 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
     }
 
     // No non-AI fallback: if Groq fails completely, return empty and skip replying.
-    return '';
+    return "";
   }
 
   /**
@@ -3095,17 +3714,26 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
   async function updateChannelSummary(channelId) {
     try {
       // 1. Fetch existing channel memory
-      const existingRes = await pool.query('SELECT summary FROM channel_memory WHERE channel_id = $1', [channelId]);
-      const oldSummary = existingRes.rows.length > 0 ? existingRes.rows[0].summary : 'Wala pa tayong nasisimulang chika dito.';
+      const existingRes = await pool.query(
+        "SELECT summary FROM channel_memory WHERE channel_id = $1",
+        [channelId],
+      );
+      const oldSummary =
+        existingRes.rows.length > 0
+          ? existingRes.rows[0].summary
+          : "Wala pa tayong nasisimulang chika dito.";
 
       // 2. Fetch recent messages
       const res = await pool.query(
-        'SELECT author_id, author_tag, content FROM messages WHERE channel_id = $1 ORDER BY created_at DESC LIMIT 60',
-        [channelId]
+        "SELECT author_id, author_tag, content FROM messages WHERE channel_id = $1 ORDER BY created_at DESC LIMIT 60",
+        [channelId],
       );
       if (res.rows.length < 10) return;
 
-      const history = res.rows.reverse().map(r => `[ID:${r.author_id}] ${r.author_tag}: ${r.content}`).join('\n');
+      const history = res.rows
+        .reverse()
+        .map((r) => `[ID:${r.author_id}] ${r.author_tag}: ${r.content}`)
+        .join("\n");
       const summaryPrompt =
         `Ghorl, itong usapan sa channel, aralin mo nang malala para hindi ka magmukhang shunga sa susunod.\n\n` +
         `Eto yung dating chika (Old Memory):\n${oldSummary}\n\n` +
@@ -3118,46 +3746,56 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
         `USER_FACTS: (ID: facts... ID: facts...)`;
 
       const response = await performChatRequest({
-        model: 'llama-3.1-8b-instant',
+        model: "llama-3.1-8b-instant",
         messages: [
-          { role: 'system', content: 'You must know everything even the summary of the chat history and that is your role as a gay human persona friend.' },
-          { role: 'user', content: summaryPrompt }
+          {
+            role: "system",
+            content:
+              "You must know everything even the summary of the chat history and that is your role as a gay human persona friend.",
+          },
+          { role: "user", content: summaryPrompt },
         ],
-        temperature: 0.6
+        temperature: 0.6,
       });
 
       const aiResult = response.data.choices[0].message.content.trim();
 
       // Parse AI response
-      const summaryMatch = aiResult.match(/CHANNEL_SUMMARY:\s*([\s\S]*?)(?=USER_FACTS:|$)/i);
+      const summaryMatch = aiResult.match(
+        /CHANNEL_SUMMARY:\s*([\s\S]*?)(?=USER_FACTS:|$)/i,
+      );
       const userFactsMatch = aiResult.match(/USER_FACTS:\s*([\s\S]*)/i);
 
       if (summaryMatch) {
         const newSummary = summaryMatch[1].trim();
         await pool.query(
-          'INSERT INTO channel_memory (channel_id, summary, updated_at) VALUES ($1, $2, CURRENT_TIMESTAMP) ' +
-          'ON CONFLICT (channel_id) DO UPDATE SET summary = $2, updated_at = CURRENT_TIMESTAMP',
-          [channelId, newSummary]
+          "INSERT INTO channel_memory (channel_id, summary, updated_at) VALUES ($1, $2, CURRENT_TIMESTAMP) " +
+            "ON CONFLICT (channel_id) DO UPDATE SET summary = $2, updated_at = CURRENT_TIMESTAMP",
+          [channelId, newSummary],
         );
       }
 
       if (userFactsMatch) {
         const factsText = userFactsMatch[1].trim();
-        const userFactLines = factsText.split('\n');
+        const userFactLines = factsText.split("\n");
         for (const line of userFactLines) {
           const match = line.match(/(\d+):\s*(.*)/);
           if (match) {
             const userId = match[1];
             const fact = match[2];
             // Cumulative user update
-            const oldUserRes = await pool.query('SELECT facts FROM user_memory WHERE user_id = $1', [userId]);
-            const oldFacts = oldUserRes.rows.length > 0 ? oldUserRes.rows[0].facts : '';
+            const oldUserRes = await pool.query(
+              "SELECT facts FROM user_memory WHERE user_id = $1",
+              [userId],
+            );
+            const oldFacts =
+              oldUserRes.rows.length > 0 ? oldUserRes.rows[0].facts : "";
             const combinedFacts = oldFacts ? `${oldFacts} | ${fact}` : fact;
 
             await pool.query(
-              'INSERT INTO user_memory (user_id, facts, updated_at) VALUES ($1, $2, CURRENT_TIMESTAMP) ' +
-              'ON CONFLICT (user_id) DO UPDATE SET facts = $2, updated_at = CURRENT_TIMESTAMP',
-              [userId, combinedFacts]
+              "INSERT INTO user_memory (user_id, facts, updated_at) VALUES ($1, $2, CURRENT_TIMESTAMP) " +
+                "ON CONFLICT (user_id) DO UPDATE SET facts = $2, updated_at = CURRENT_TIMESTAMP",
+              [userId, combinedFacts],
             );
           }
         }
@@ -3165,35 +3803,69 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
 
       console.log(`[DB] Learning complete for channel ${channelId}`);
     } catch (err) {
-      console.error('[DB] updateChannelSummary/Learning error:', err.message);
+      console.error("[DB] updateChannelSummary/Learning error:", err.message);
     }
   }
 
-  client.on('messageCreate', async (message) => {
+  client.on("messageCreate", async (message) => {
     try {
       if (message.author.bot) return;
 
       function pickPersonaReactionEmoji(text) {
-        const t = (text || '').toLowerCase();
+        const t = (text || "").toLowerCase();
         // Greetings / check-ins
-        if (/(^|\b)(hi|hello|hey|kumusta|kamusta|musta|good morning|good afternoon|good evening)(\b|$)/i.test(t)) {
-          return '\u{2764}\u{FE0F}'; // ❤️
+        if (
+          /(^|\b)(hi|hello|hey|kumusta|kamusta|musta|good morning|good afternoon|good evening)(\b|$)/i.test(
+            t,
+          )
+        ) {
+          return "\u{2764}\u{FE0F}"; // ❤️
         }
-        if (/[!?]{2,}/.test(t)) return '\u{1F92F}'; // 🤯
-        if (t.includes('haha') || t.includes('hehe') || t.includes('lol') || t.includes('lmao')) return '\u{1F602}'; // 😂
-        if (t.includes('sad') || t.includes('iyak') || t.includes('cry') || t.includes('lungkot')) return '\u{1F622}'; // 😢
-        if (t.includes('gago') || t.includes('tanga') || t.includes('bwisit') || t.includes('putangina')) return '\u{1F624}'; // 😤
-        if (t.includes('?') || t.includes('ano') || t.includes('bakit') || t.includes('paano')) return '\u{1F928}'; // 🤨
-        if (t.includes('slay') || t.includes('werk') || t.includes('bongga') || t.includes('pak na pak')) return '\u{2728}'; // ✨
-        return '\u{2764}\u{FE0F}'; // ❤️
+        if (/[!?]{2,}/.test(t)) return "\u{1F92F}"; // 🤯
+        if (
+          t.includes("haha") ||
+          t.includes("hehe") ||
+          t.includes("lol") ||
+          t.includes("lmao")
+        )
+          return "\u{1F602}"; // 😂
+        if (
+          t.includes("sad") ||
+          t.includes("iyak") ||
+          t.includes("cry") ||
+          t.includes("lungkot")
+        )
+          return "\u{1F622}"; // 😢
+        if (
+          t.includes("gago") ||
+          t.includes("tanga") ||
+          t.includes("bwisit") ||
+          t.includes("putangina")
+        )
+          return "\u{1F624}"; // 😤
+        if (
+          t.includes("?") ||
+          t.includes("ano") ||
+          t.includes("bakit") ||
+          t.includes("paano")
+        )
+          return "\u{1F928}"; // 🤨
+        if (
+          t.includes("slay") ||
+          t.includes("werk") ||
+          t.includes("bongga") ||
+          t.includes("pak na pak")
+        )
+          return "\u{2728}"; // ✨
+        return "\u{2764}\u{FE0F}"; // ❤️
       }
 
       async function maybeReactPersona(message, text, intensity = 0.25) {
         if (!message?.react) return;
-        if (!text || text.startsWith('j!')) return;
+        if (!text || text.startsWith("j!")) return;
         if (Math.random() > intensity) return;
         const emoji = pickPersonaReactionEmoji(text);
-        await message.react(emoji).catch(() => { });
+        await message.react(emoji).catch(() => {});
       }
 
       // (extractAndStoreUserFacts is defined globally)
@@ -3201,24 +3873,25 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
       function keepChikaEmojisLight(text) {
         // Keep chat replies basically emoji-free.
         // Only ~2% chance to append ONE chika-relevant emoji.
-        const raw = (text || '').trim();
+        const raw = (text || "").trim();
         if (!raw) return raw;
 
         // Strip ALL pictographic emojis from model output
-        let cleaned = raw.replace(/[\p{Extended_Pictographic}]/gu, '');
-        cleaned = cleaned.replace(/\s{2,}/g, ' ').trim();
+        let cleaned = raw.replace(/[\p{Extended_Pictographic}]/gu, "");
+        cleaned = cleaned.replace(/\s{2,}/g, " ").trim();
 
         if (Math.random() >= 0.02) return cleaned;
 
         const lower = cleaned.toLowerCase();
-        let addon = '❤️';
-        if (/(haha|hehe|lol|lmao|tawa|wa(h)+)/i.test(lower)) addon = '😂';
-        else if (/[!?]{2,}/.test(cleaned)) addon = '🤯';
-        else if (/\?/.test(cleaned)) addon = '🤨';
-        else if (/(sad|iyak|cry|lungkot)/i.test(lower)) addon = '😢';
-        else if (/(slay|werk|bongga|pak na pak)/i.test(lower)) addon = '✨';
-        else if (/(inis|bwisit|galit|as in)/i.test(lower)) addon = '😤';
-        else if (/(hi|hello|hey|kumusta|kamusta|musta)/i.test(lower)) addon = '❤️';
+        let addon = "❤️";
+        if (/(haha|hehe|lol|lmao|tawa|wa(h)+)/i.test(lower)) addon = "😂";
+        else if (/[!?]{2,}/.test(cleaned)) addon = "🤯";
+        else if (/\?/.test(cleaned)) addon = "🤨";
+        else if (/(sad|iyak|cry|lungkot)/i.test(lower)) addon = "😢";
+        else if (/(slay|werk|bongga|pak na pak)/i.test(lower)) addon = "✨";
+        else if (/(inis|bwisit|galit|as in)/i.test(lower)) addon = "😤";
+        else if (/(hi|hello|hey|kumusta|kamusta|musta)/i.test(lower))
+          addon = "❤️";
 
         return `${cleaned} ${addon}`.trim();
       }
@@ -3231,40 +3904,43 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
           message.author.username ||
           message.author.tag;
         await pool.query(
-          'INSERT INTO messages (guild_id, channel_id, author_id, author_tag, content) VALUES ($1, $2, $3, $4, $5)',
+          "INSERT INTO messages (guild_id, channel_id, author_id, author_tag, content) VALUES ($1, $2, $3, $4, $5)",
           [
-            message.guild?.id || 'DM',
+            message.guild?.id || "DM",
             message.channel.id,
             message.author.id,
             displayAuthor,
-            message.content || ''
-          ]
+            message.content || "",
+          ],
         );
 
         // Auto trigger summary every 20 messages in that channel
-        const countRes = await pool.query('SELECT COUNT(*) FROM messages WHERE channel_id = $1', [message.channel.id]);
+        const countRes = await pool.query(
+          "SELECT COUNT(*) FROM messages WHERE channel_id = $1",
+          [message.channel.id],
+        );
         const msgCount = parseInt(countRes.rows[0].count);
         if (msgCount % 20 === 0) {
           updateChannelSummary(message.channel.id);
         }
       } catch (dbErr) {
-        console.error('[DB] Message save error:', dbErr.message);
+        console.error("[DB] Message save error:", dbErr.message);
       }
 
       const me = client.user;
       if (!me) return;
 
-      const rawContent = message.content || '';
-      const prefix = 'j!';
+      const rawContent = message.content || "";
+      const prefix = "j!";
 
       if (rawContent.startsWith(prefix)) {
         const args = rawContent.slice(prefix.length).trim().split(/\s+/);
-        const command = (args.shift() || '').toLowerCase();
+        const command = (args.shift() || "").toLowerCase();
 
         // j!stats — bot health dashboard
-        if (command === 'stats') {
+        if (command === "stats") {
           if (!message.guild) {
-            await message.reply('`j!stats` is server-only.');
+            await message.reply("`j!stats` is server-only.");
             return;
           }
           const embed = buildStatsEmbed({
@@ -3277,15 +3953,20 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
         }
 
         // j!status — view / set bot bubble (admin to set)
-        if (command === 'status' || command === 'bubble' || command === 'botstatus') {
+        if (
+          command === "status" ||
+          command === "bubble" ||
+          command === "botstatus"
+        ) {
           if (!message.guild) {
-            await message.reply('`j!status` is server-only.');
+            await message.reply("`j!status` is server-only.");
             return;
           }
           const member = message.member;
           const isAdmin =
-            member?.permissions?.has(PermissionsBitField.Flags.Administrator) ?? false;
-          const note = args.join(' ').trim();
+            member?.permissions?.has(PermissionsBitField.Flags.Administrator) ??
+            false;
+          const note = args.join(" ").trim();
 
           if (!note) {
             const embed = buildStatusViewEmbed({
@@ -3300,22 +3981,28 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
 
           if (!isAdmin) {
             await message.reply(
-              'Only admins can set the bot bubble. Example: `j!status Listening to the server`\nMember card: `j!view`',
+              "Only admins can set the bot bubble. Example: `j!status Listening to the server`\nMember card: `j!view`",
             );
             return;
           }
           const key = `${message.guild.id}:${member.id}`;
           userCustomStatus.set(key, note);
           await setBotCustomStatus(note);
-          const embed = buildBubbleUpdatedEmbed(note, message.guild, message.author.tag);
+          const embed = buildBubbleUpdatedEmbed(
+            note,
+            message.guild,
+            message.author.tag,
+          );
           await message.reply({ embeds: [embed] });
           return;
         }
 
         // j!join
-        if (command === 'join') {
+        if (command === "join") {
           if (!message.guild) {
-            await message.reply('Kailangan nasa server ka para pwede ako sumali sa voice channel.');
+            await message.reply(
+              "Kailangan nasa server ka para pwede ako sumali sa voice channel.",
+            );
             return;
           }
 
@@ -3326,44 +4013,60 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
             member = message.member;
           }
 
-          const voiceChannel = member && member.voice && member.voice.channel
-            ? member.voice.channel
-            : null;
+          const voiceChannel =
+            member && member.voice && member.voice.channel
+              ? member.voice.channel
+              : null;
 
           if (!voiceChannel) {
-            await message.reply('Sumali ka muna sa isang voice channel, tapos tawagin mo ko ulit, bro.');
+            await message.reply(
+              "Sumali ka muna sa isang voice channel, tapos tawagin mo ko ulit, bro.",
+            );
             return;
           }
 
           const existing = getVoiceConnection(message.guild.id);
           if (existing) {
             if (existing.joinConfig.channelId === voiceChannel.id) {
-              await message.reply('Nasa call na kita bro, nandito na ako.');
+              await message.reply("Nasa call na kita bro, nandito na ako.");
               return;
             } else {
-              try { existing.destroy(); } catch { }
+              try {
+                existing.destroy();
+              } catch {}
             }
           }
 
-          setSavedVoiceState({ channelId: voiceChannel.id, guildId: voiceChannel.guild.id });
+          setSavedVoiceState({
+            channelId: voiceChannel.id,
+            guildId: voiceChannel.guild.id,
+          });
           // Save to DB for 24/7 persistence across restarts
           await saveVoiceStateToDB(voiceChannel.guild.id, voiceChannel.id);
           voiceReconnectAttempts = 0;
-          joinAndWatch(voiceChannel.id, voiceChannel.guild.id, voiceChannel.guild.voiceAdapterCreator);
+          joinAndWatch(
+            voiceChannel.id,
+            voiceChannel.guild.id,
+            voiceChannel.guild.voiceAdapterCreator,
+          );
 
-          await message.reply(`O ayan, pumasok na ako sa ${voiceChannel.name}. Nandito na ako, bro.`);
+          await message.reply(
+            `O ayan, pumasok na ako sa ${voiceChannel.name}. Nandito na ako, bro.`,
+          );
           return;
         }
 
         // j!leave
-        if (command === 'leave') {
+        if (command === "leave") {
           if (!message.guild) {
-            await message.reply('Wala naman tayong server dito, bro.');
+            await message.reply("Wala naman tayong server dito, bro.");
             return;
           }
           const connection = getVoiceConnection(message.guild.id);
           if (!connection) {
-            await message.reply('Wala naman ako sa kahit anong voice channel ngayon, bro.');
+            await message.reply(
+              "Wala naman ako sa kahit anong voice channel ngayon, bro.",
+            );
             return;
           }
           clearSavedVoiceStateForGuild(message.guild.id);
@@ -3371,25 +4074,33 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
           // Clear from DB so bot doesn't auto-rejoin on restart
           await clearVoiceStateFromDB(message.guild.id);
           connection.destroy();
-          await message.reply('Umalis na ako sa voice channel. Tawagin mo ulit kapag kailangan mo ko.');
+          await message.reply(
+            "Umalis na ako sa voice channel. Tawagin mo ulit kapag kailangan mo ko.",
+          );
           return;
         }
 
         // j!vc <message> â€” Text-to-speech in voice channel
-        if (command === 'vc' || command === 'speak' || command === 'tts') {
+        if (command === "vc" || command === "speak" || command === "tts") {
           if (!message.guild) return;
-          const text = args.join(' ').trim();
+          const text = args.join(" ").trim();
           if (!text) {
-            await message.reply('Loka, ano namang sasabihin ko? Bigyan mo ko ng text.');
+            await message.reply(
+              "Loka, ano namang sasabihin ko? Bigyan mo ko ng text.",
+            );
             return;
           }
 
           let member = message.member;
           if (!member && message.guild) {
-            member = await message.guild.members.fetch(message.author.id).catch(() => null);
+            member = await message.guild.members
+              .fetch(message.author.id)
+              .catch(() => null);
           }
           if (!member?.voice?.channel) {
-            await message.reply('Sumali ka muna sa voice bago mo ko pagalitain, bro!');
+            await message.reply(
+              "Sumali ka muna sa voice bago mo ko pagalitain, bro!",
+            );
             return;
           }
 
@@ -3402,61 +4113,81 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
               useTtsJoin: true,
             });
           } catch (voiceErr) {
-            console.error('[TTS] j!vc voice not ready:', voiceErr.code || voiceErr.message);
-            runtimeState.voice.lastConnectError = voiceErr.code || voiceErr.message;
+            console.error(
+              "[TTS] j!vc voice not ready:",
+              voiceErr.code || voiceErr.message,
+            );
+            runtimeState.voice.lastConnectError =
+              voiceErr.code || voiceErr.message;
             await message.reply(formatVoiceConnectError(voiceErr));
             return;
           }
 
-          const spoke = await speakMessage(message.guild.id, text, message.author.id);
+          const spoke = await speakMessage(
+            message.guild.id,
+            text,
+            message.author.id,
+          );
           if (!spoke?.ok) {
             await message.reply(
-              spoke?.reason === 'music-active'
-                ? 'Busy sa music — stop muna bago TTS.'
-                : 'Naka-connect na pero hindi ako nakapagsalita (TTS). Subukan j!leave → j!vc ulit.',
+              spoke?.reason === "music-active"
+                ? "Busy sa music — stop muna bago TTS."
+                : "Naka-connect na pero hindi ako nakapagsalita (TTS). Subukan j!leave → j!vc ulit.",
             );
             return;
           }
-          await message.react('ðŸ”Š').catch(() => { });
+          await message.react("ðŸ”Š").catch(() => {});
           return;
         }
 
         // j!autotts â€” Toggle auto tts in current channel
-        if (command === 'autotts') {
-          if (!message.guild || !message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-            return message.reply('Admins lang ang bida-bida dito, bro.');
+        if (command === "autotts") {
+          if (
+            !message.guild ||
+            !message.member.permissions.has(
+              PermissionsBitField.Flags.Administrator,
+            )
+          ) {
+            return message.reply("Admins lang ang bida-bida dito, bro.");
           }
 
           const guildId = message.guild.id;
           const channelId = message.channel.id;
 
-          if (!autoTtsChannels.has(guildId)) autoTtsChannels.set(guildId, new Set());
+          if (!autoTtsChannels.has(guildId))
+            autoTtsChannels.set(guildId, new Set());
           const channels = autoTtsChannels.get(guildId);
 
           if (channels.has(channelId)) {
             channels.delete(channelId);
-            await message.reply('AUTO TTS DISABLED na para sa channel na to, bro.');
+            await message.reply(
+              "AUTO TTS DISABLED na para sa channel na to, bro.",
+            );
           } else {
             channels.add(channelId);
-            await message.reply('AUTO TTS ENABLED! Bawat chat niyo dito, babasahin ko (kung nasa voice ako).');
+            await message.reply(
+              "AUTO TTS ENABLED! Bawat chat niyo dito, babasahin ko (kung nasa voice ako).",
+            );
           }
           return;
         }
 
         // j!voice / j!change <m/f> â€” Set voice (same as gnslgbot2's g!change m/f)
         // After changing: speaks "Voice changed to X. This is how I sound now!" with new voice
-        if (command === 'voice' || command === 'change') {
+        if (command === "voice" || command === "change") {
           const type = args[0]?.toLowerCase();
 
           let genderName = null;
-          if (type === 'm' || type === 'male' || type === 'angelo') {
-            userVoicePrefs.set(message.author.id, 'm');
-            genderName = 'male';
-          } else if (type === 'f' || type === 'female' || type === 'blessica') {
-            userVoicePrefs.set(message.author.id, 'f');
-            genderName = 'female';
+          if (type === "m" || type === "male" || type === "angelo") {
+            userVoicePrefs.set(message.author.id, "m");
+            genderName = "male";
+          } else if (type === "f" || type === "female" || type === "blessica") {
+            userVoicePrefs.set(message.author.id, "f");
+            genderName = "female";
           } else {
-            await message.reply('Gamitin: `j!change m` (Angelo) o `j!change f` (Blessica).');
+            await message.reply(
+              "Gamitin: `j!change m` (Angelo) o `j!change f` (Blessica).",
+            );
             return;
           }
 
@@ -3475,9 +4206,10 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
               return;
             }
             if (getVoiceConnection(message.guild.id)) {
-              const sample = genderName === 'male'
-                ? `Ito na ang bagong boses ko, bro! `
-                : `Ito na ang bagong boses ko, bro! Game. `;
+              const sample =
+                genderName === "male"
+                  ? `Ito na ang bagong boses ko, bro! `
+                  : `Ito na ang bagong boses ko, bro! Game. `;
               speakMessage(message.guild.id, sample, message.author.id);
             }
           }
@@ -3487,12 +4219,12 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
         // j!ask â€” EXACT same as gnslgbot2's g!ask:
         //   j!ask <question>  â†’ text â†’ AI â†’ TTS response
         //   j!ask (no args)   â†’ start STT voice listening mode (same as g!ask / g!listen)
-        if (command === 'ask') {
+        if (command === "ask") {
           if (!message.guild) return;
 
           const member = message.member;
           if (!member || !member.voice.channel) {
-            await message.reply('Sumali ka muna sa voice channel, bro.');
+            await message.reply("Sumali ka muna sa voice channel, bro.");
             return;
           }
 
@@ -3508,44 +4240,76 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
             return;
           }
 
-          const question = args.join(' ').trim();
+          const question = args.join(" ").trim();
 
           if (question) {
             // === MODE 1: j!ask <question> â†’ text â†’ AI â†’ speak ===
             await message.channel.sendTyping();
             let voiceMembers = [];
             const myVC = message.guild.members.me.voice.channel;
-            if (myVC) voiceMembers = myVC.members.filter(m => !m.user.bot).map(m => m.displayName || m.user.username);
-            const aiResponse = await callGroqChat(question, message.author.id, message.channel.id, voiceMembers);
+            if (myVC)
+              voiceMembers = myVC.members
+                .filter((m) => !m.user.bot)
+                .map((m) => m.displayName || m.user.username);
+            const aiResponse = await callGroqChat(
+              question,
+              message.author.id,
+              message.channel.id,
+              voiceMembers,
+            );
             await speakMessage(message.guild.id, aiResponse, message.author.id);
-            await message.react('ðŸ¤–').catch(() => { });
+            await message.react("ðŸ¤–").catch(() => {});
           } else {
             // === MODE 2: j!ask (no args) â†’ start STT listening mode ===
             // Exactly like gnslgbot2's g!ask without args
-            if (activeVoiceUsers.has(message.guild.id) && activeVoiceUsers.get(message.guild.id) !== message.author.id) {
-              await message.reply('May nagpaparinig na ngayon! Hintayin mo muna mag-`j!stop`, bro.');
+            if (
+              activeVoiceUsers.has(message.guild.id) &&
+              activeVoiceUsers.get(message.guild.id) !== message.author.id
+            ) {
+              await message.reply(
+                "May nagpaparinig na ngayon! Hintayin mo muna mag-`j!stop`, bro.",
+              );
               return;
             }
             listeningGuilds.add(message.guild.id);
             activeVoiceUsers.set(message.guild.id, message.author.id);
-            const memberNames = member.voice.channel.members.filter(m => !m.user.bot).map(m => m.displayName || m.user.username);
-            await message.reply(`GAME NA! Listening ako sa "${member.voice.channel.name}". Magsalita ka ${memberNames.join(', ') || ''}! Mag-\`j!stop\` para tumigil.`);
-            speakMessage(message.guild.id, 'Handa na ako, magsalita ka!', message.author.id);
-            startVoiceListening(message.guild.id, message.author.id, message.channel);
+            const memberNames = member.voice.channel.members
+              .filter((m) => !m.user.bot)
+              .map((m) => m.displayName || m.user.username);
+            await message.reply(
+              `GAME NA! Listening ako sa "${member.voice.channel.name}". Magsalita ka ${memberNames.join(", ") || ""}! Mag-\`j!stop\` para tumigil.`,
+            );
+            speakMessage(
+              message.guild.id,
+              "Handa na ako, magsalita ka!",
+              message.author.id,
+            );
+            startVoiceListening(
+              message.guild.id,
+              message.author.id,
+              message.channel,
+            );
           }
           return;
         }
 
         // j!listen â€” alias for j!ask (no args) â€” same as gnslgbot2's g!listen
-        if (command === 'listen' || command === 'makinig') {
+        if (command === "listen" || command === "makinig") {
           if (!message.guild) return;
           const member = message.member;
           if (!member || !member.voice.channel) {
-            await message.reply('Sumali ka muna sa voice channel para makinig ako, bro.');
+            await message.reply(
+              "Sumali ka muna sa voice channel para makinig ako, bro.",
+            );
             return;
           }
-          if (activeVoiceUsers.has(message.guild.id) && activeVoiceUsers.get(message.guild.id) !== message.author.id) {
-            await message.reply('May nagpaparinig na ngayon! Hintayin mo muna mag-`j!stop`, bro.');
+          if (
+            activeVoiceUsers.has(message.guild.id) &&
+            activeVoiceUsers.get(message.guild.id) !== message.author.id
+          ) {
+            await message.reply(
+              "May nagpaparinig na ngayon! Hintayin mo muna mag-`j!stop`, bro.",
+            );
             return;
           }
           try {
@@ -3562,47 +4326,74 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
 
           listeningGuilds.add(message.guild.id);
           activeVoiceUsers.set(message.guild.id, message.author.id);
-          const memberNames = member.voice.channel.members.filter(m => !m.user.bot).map(m => m.displayName || m.user.username);
-          await message.reply(`NAKIKINIG NA AKO. Magsalita ka ${memberNames.join(', ') || ''}! Mag-\`j!stop\` para tumigil.`);
-          speakMessage(message.guild.id, 'Handa na ako, magsalita ka!', message.author.id);
-          startVoiceListening(message.guild.id, message.author.id, message.channel);
+          const memberNames = member.voice.channel.members
+            .filter((m) => !m.user.bot)
+            .map((m) => m.displayName || m.user.username);
+          await message.reply(
+            `NAKIKINIG NA AKO. Magsalita ka ${memberNames.join(", ") || ""}! Mag-\`j!stop\` para tumigil.`,
+          );
+          speakMessage(
+            message.guild.id,
+            "Handa na ako, magsalita ka!",
+            message.author.id,
+          );
+          startVoiceListening(
+            message.guild.id,
+            message.author.id,
+            message.channel,
+          );
           return;
         }
 
         // j!stop / j!stoplisten â€” Stop voice listening (same as gnslgbot2's g!stoplisten)
-        if (command === 'stop' || command === 'stoplisten' || command === 'tigil') {
+        if (
+          command === "stop" ||
+          command === "stoplisten" ||
+          command === "tigil"
+        ) {
           if (!message.guild) return;
           if (!listeningGuilds.has(message.guild.id)) {
-            await message.reply('Hindi naman ako nakikinig ng voice ngayon, bro.');
+            await message.reply(
+              "Hindi naman ako nakikinig ng voice ngayon, bro.",
+            );
             return;
           }
           listeningGuilds.delete(message.guild.id);
           activeVoiceUsers.delete(message.guild.id);
           // Call cleanup to remove speaking event listener
           const cleanup = listeningCleanup.get(message.guild.id);
-          if (cleanup) { cleanup(); listeningCleanup.delete(message.guild.id); }
-          await message.reply('TUMIGIL NA AKO. Naupong na ang tenga ko, bro.');
+          if (cleanup) {
+            cleanup();
+            listeningCleanup.delete(message.guild.id);
+          }
+          await message.reply("TUMIGIL NA AKO. Naupong na ang tenga ko, bro.");
           return;
         }
         // j!view — introduction + role menu + verify progress
-        if (command === 'view' || command === 'profile') {
+        if (command === "view" || command === "profile") {
           if (!message.guild) {
-            await message.reply('`j!view` is server-only.');
+            await message.reply("`j!view` is server-only.");
             return;
           }
 
           const target =
             message.mentions.users.first() ||
-            (args[0] ? await client.users.fetch(args[0]).catch(() => null) : null) ||
+            (args[0]
+              ? await client.users.fetch(args[0]).catch(() => null)
+              : null) ||
             message.author;
           if (!target) {
-            await message.reply('Mention a user or provide an ID. Example: `j!view @User`');
+            await message.reply(
+              "Mention a user or provide an ID. Example: `j!view @User`",
+            );
             return;
           }
 
-          const member = await message.guild.members.fetch(target.id).catch(() => null);
+          const member = await message.guild.members
+            .fetch(target.id)
+            .catch(() => null);
           if (!member) {
-            await message.reply('That user is not in this server.');
+            await message.reply("That user is not in this server.");
             return;
           }
 
@@ -3618,117 +4409,158 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
 
         // j!chat â€” owner only. Mirrors g!g from gnslgbot2.
         // j!chat <channel_id or message_id> <text>
-        if (command === 'chat') {
-          const OWNERS = ['1477683173520572568', '705770837399306332'];
+        if (command === "chat") {
+          const OWNERS = ["1477683173520572568", "705770837399306332"];
           const originChannel = message.channel;
           const originGuild = message.guild;
           const authorUser = message.author;
 
           // Verify owner ID or Administrator perm
           const isOwner = OWNERS.includes(message.author.id);
-          const isAdmin = message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator);
+          const isAdmin =
+            message.member &&
+            message.member.permissions.has(
+              PermissionsBitField.Flags.Administrator,
+            );
 
           if (!isOwner && !isAdmin) return; // Silent ignore for non-admins
 
           const targetId = args.shift();
-          const customMessage = args.join(' ').trim();
+          const customMessage = args.join(" ").trim();
 
           // Delete the command message for stealth
-          await message.delete().catch(() => { });
+          await message.delete().catch(() => {});
 
           if (!targetId || !customMessage) {
             try {
-              await authorUser.send(`j!chat: Kulang ang info, bro! Format: j!chat <id> <message>\nID na binigay mo: ${targetId || 'wala'}\nMessage: ${customMessage || 'wala'}`);
-            } catch { }
+              await authorUser.send(
+                `j!chat: Kulang ang info, bro! Format: j!chat <id> <message>\nID na binigay mo: ${targetId || "wala"}\nMessage: ${customMessage || "wala"}`,
+              );
+            } catch {}
             return;
           }
 
           // 1. Try as a channel ID
           let targetChannel = client.channels.cache.get(targetId) || null;
-          if (targetChannel && !targetChannel.isTextBased()) targetChannel = null;
+          if (targetChannel && !targetChannel.isTextBased())
+            targetChannel = null;
 
           if (!targetChannel) {
             try {
-              const fetched = await client.channels.fetch(targetId).catch(() => null);
+              const fetched = await client.channels
+                .fetch(targetId)
+                .catch(() => null);
               if (fetched && fetched.isTextBased()) targetChannel = fetched;
-            } catch { }
+            } catch {}
           }
 
           if (targetChannel) {
             try {
               await targetChannel.send(customMessage);
-              await authorUser.send(`Sent to #${targetChannel.name} in ${targetChannel.guild?.name || 'DM'}.`);
+              await authorUser.send(
+                `Sent to #${targetChannel.name} in ${targetChannel.guild?.name || "DM"}.`,
+              );
             } catch (e) {
-              try { await authorUser.send(`Failed to send: ${e.message}`); } catch { }
+              try {
+                await authorUser.send(`Failed to send: ${e.message}`);
+              } catch {}
             }
             return;
           }
 
           // 2. Try as a message ID (reply mode)
           let targetMessage = null;
-          try { targetMessage = await originChannel.messages.fetch(targetId).catch(() => null); } catch { }
+          try {
+            targetMessage = await originChannel.messages
+              .fetch(targetId)
+              .catch(() => null);
+          } catch {}
 
           if (!targetMessage && originGuild) {
             // If not in current channel, try cached channels in the same guild
             for (const ch of originGuild.channels.cache.values()) {
               if (!ch.isTextBased() || targetMessage) continue;
               try {
-                targetMessage = await ch.messages.fetch(targetId).catch(() => null);
-              } catch { }
+                targetMessage = await ch.messages
+                  .fetch(targetId)
+                  .catch(() => null);
+              } catch {}
             }
           }
 
           if (targetMessage) {
             try {
               await targetMessage.reply(customMessage);
-              await authorUser.send(`Replied in #${targetMessage.channel.name}.`);
+              await authorUser.send(
+                `Replied in #${targetMessage.channel.name}.`,
+              );
             } catch (e) {
-              try { await authorUser.send(`Failed to reply: ${e.message}`); } catch { }
+              try {
+                await authorUser.send(`Failed to reply: ${e.message}`);
+              } catch {}
             }
             return;
           }
 
           // 3. Fallback: ID not found
           try {
-            await authorUser.send(`j!chat failed. Wala akong makitang channel o message sa ID: ${targetId}`);
-          } catch { }
+            await authorUser.send(
+              `j!chat failed. Wala akong makitang channel o message sa ID: ${targetId}`,
+            );
+          } catch {}
           return;
         }
 
         // j!whoami â€” Verify user ID for permissions
-        if (command === 'whoami' || command === 'myid') {
-          const owners = ['1477683173520572568', '705770837399306332'];
+        if (command === "whoami" || command === "myid") {
+          const owners = ["1477683173520572568", "705770837399306332"];
           const isOwner = owners.includes(message.author.id);
           const idEmbed = new EmbedBuilder()
-            .setTitle('Identity Check')
-            .setDescription(`Your ID: \`${message.author.id}\`\n\nChecking permissions...\n${isOwner ? 'You are an **Authorized Owner**.' : 'You are not in the owner whitelist.'}`)
+            .setTitle("Identity Check")
+            .setDescription(
+              `Your ID: \`${message.author.id}\`\n\nChecking permissions...\n${isOwner ? "You are an **Authorized Owner**." : "You are not in the owner whitelist."}`,
+            )
             .setColor(isOwner ? 0x00ff00 : 0xff0000);
           await message.reply({ embeds: [idEmbed] });
           return;
         }
 
         // j!ping â€” Bot status check
-        if (command === 'ping') {
-          await message.reply(`Pong! Latency is ${Math.round(client.ws.ping)}ms.`);
+        if (command === "ping") {
+          await message.reply(
+            `Pong! Latency is ${Math.round(client.ws.ping)}ms.`,
+          );
           return;
         }
 
         // j!tulog — Admin-only sleep toggle (pauses auto-epal/auto-interact in this server)
-        if (command === 'tulog' || command === 'sleep') {
+        if (command === "tulog" || command === "sleep") {
           if (!message.guild) {
-            await message.reply('Teh, tulog mode pang-server lang.');
+            await message.reply("Teh, tulog mode pang-server lang.");
             return;
           }
-          const isAdmin = message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator);
+          const isAdmin =
+            message.member &&
+            message.member.permissions.has(
+              PermissionsBitField.Flags.Administrator,
+            );
           if (!isAdmin) {
-            await message.reply('Admins lang pwede magpatulog sakin, bro.');
+            await message.reply("Admins lang pwede magpatulog sakin, bro.");
             return;
           }
 
           const guildId = message.guild.id;
-          const action = (args[0] || '').toLowerCase();
-          const wantsOn = action === 'on' || action === 'true' || action === '1' || action === 'enable';
-          const wantsOff = action === 'off' || action === 'false' || action === '0' || action === 'disable';
+          const action = (args[0] || "").toLowerCase();
+          const wantsOn =
+            action === "on" ||
+            action === "true" ||
+            action === "1" ||
+            action === "enable";
+          const wantsOff =
+            action === "off" ||
+            action === "false" ||
+            action === "0" ||
+            action === "disable";
 
           if (wantsOn) sleepGuilds.add(guildId);
           else if (wantsOff) sleepGuilds.delete(guildId);
@@ -3741,72 +4573,99 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
           const isSleeping = sleepGuilds.has(guildId);
           await message.reply(
             isSleeping
-              ? 'Sige, tulog mode ON. Di muna ako sasabat sa random chats (pero pag minention/reply niyo ko, gising ako).'
-              : 'Tulog mode OFF. Sige, pwede na ulit ako maging epal minsan.'
+              ? "Sige, tulog mode ON. Di muna ako sasabat sa random chats (pero pag minention/reply niyo ko, gising ako)."
+              : "Tulog mode OFF. Sige, pwede na ulit ako maging epal minsan.",
           );
           return;
         }
 
         // j!research on/off — Admin-only toggle for web research + Sources
-        if (command === 'research' || command === 'sources') {
+        if (command === "research" || command === "sources") {
           if (!message.guild) {
-            await message.reply('Teh, pang-server lang to.');
+            await message.reply("Teh, pang-server lang to.");
             return;
           }
-          const isAdmin = message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator);
+          const isAdmin =
+            message.member &&
+            message.member.permissions.has(
+              PermissionsBitField.Flags.Administrator,
+            );
           if (!isAdmin) {
-            await message.reply('Admins lang pwede mag toggle ng research, bro.');
+            await message.reply(
+              "Admins lang pwede mag toggle ng research, bro.",
+            );
             return;
           }
 
-          const action = (args[0] || '').toLowerCase();
-          if (action === 'on' || action === 'enable' || action === 'true' || action === '1') {
+          const action = (args[0] || "").toLowerCase();
+          if (
+            action === "on" ||
+            action === "enable" ||
+            action === "true" ||
+            action === "1"
+          ) {
             researchEnabledGuilds.add(message.guild.id);
-          } else if (action === 'off' || action === 'disable' || action === 'false' || action === '0') {
+          } else if (
+            action === "off" ||
+            action === "disable" ||
+            action === "false" ||
+            action === "0"
+          ) {
             researchEnabledGuilds.delete(message.guild.id);
           } else {
             // toggle if no arg/unknown
-            if (researchEnabledGuilds.has(message.guild.id)) researchEnabledGuilds.delete(message.guild.id);
+            if (researchEnabledGuilds.has(message.guild.id))
+              researchEnabledGuilds.delete(message.guild.id);
             else researchEnabledGuilds.add(message.guild.id);
           }
 
           const enabled = researchEnabledGuilds.has(message.guild.id);
           await message.reply(
             enabled
-              ? 'Sige, research ON. Magso-sources lang ako pag minention/reply mo ko at research/latest yung tanong.'
-              : 'Research OFF. Wala munang sources kahit anong mangyari.'
+              ? "Sige, research ON. Magso-sources lang ako pag minention/reply mo ko at research/latest yung tanong."
+              : "Research OFF. Wala munang sources kahit anong mangyari.",
           );
           return;
         }
 
         // j!ragseed — bot command chunks ONLY (hindi chismis memory — yun auto sa Postgres per user)
-        if (command === 'ragseed' || command === 'ragreload' || command === 'memsync') {
+        if (
+          command === "ragseed" ||
+          command === "ragreload" ||
+          command === "memsync"
+        ) {
           const isAdmin =
             message.member &&
-            message.member.permissions.has(PermissionsBitField.Flags.Administrator);
+            message.member.permissions.has(
+              PermissionsBitField.Flags.Administrator,
+            );
           if (!isAdmin) {
-            await message.reply('Admins lang pwede mag ragseed, bro.');
+            await message.reply("Admins lang pwede mag ragseed, bro.");
             return;
           }
           await message.reply(
-            'Bot command index seed lang (j!help stuff) — HINDI chismis memory. Human memory per user = automatic sa DB.',
+            "Bot command index seed lang (j!help stuff) — HINDI chismis memory. Human memory per user = automatic sa DB.",
           );
           try {
-            const { spawn } = require('child_process');
+            const { spawn } = require("child_process");
             await new Promise((resolve, reject) => {
-              const child = spawn(process.execPath, ['scripts/seed-rag-chunks.js'], {
-                cwd: process.cwd(),
-                env: process.env,
-              });
-              let errText = '';
-              child.stderr.on('data', (d) => {
+              const child = spawn(
+                process.execPath,
+                ["scripts/seed-rag-chunks.js"],
+                {
+                  cwd: process.cwd(),
+                  env: process.env,
+                },
+              );
+              let errText = "";
+              child.stderr.on("data", (d) => {
                 errText += d.toString();
               });
-              child.on('close', (code) => {
+              child.on("close", (code) => {
                 if (code === 0) resolve();
                 else reject(new Error(errText.trim() || `seed exit ${code}`));
               });
-              child.on('error', reject);
+              child.on("error", reject);
             });
             const count = await reloadRag();
             await message.channel.send(
@@ -3821,81 +4680,106 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
         }
 
         // j!permcheck — Admin-only permission diagnostics for current channel
-        if (command === 'permcheck') {
+        if (command === "permcheck") {
           if (!message.guild) {
-            await message.reply('Teh, pang-server lang to. Walang perms-perms sa DM.');
+            await message.reply(
+              "Teh, pang-server lang to. Walang perms-perms sa DM.",
+            );
             return;
           }
-          const isAdmin = message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator);
+          const isAdmin =
+            message.member &&
+            message.member.permissions.has(
+              PermissionsBitField.Flags.Administrator,
+            );
           if (!isAdmin) {
-            await message.reply('Admins lang pwede mag-permcheck dito, bro.');
+            await message.reply("Admins lang pwede mag-permcheck dito, bro.");
             return;
           }
 
           const ch = message.channel;
           const missing = getMissingTextPermsForChannel(ch);
-          const ok = missing.length === 0 || missing[0] === 'unknown-channel';
+          const ok = missing.length === 0 || missing[0] === "unknown-channel";
           const base =
             `Channel: <#${ch.id}>\n` +
             `Bot: ${client.user.tag}\n` +
-            `Result: ${ok ? 'OK' : 'MISSING'}`;
+            `Result: ${ok ? "OK" : "MISSING"}`;
 
           if (ok) {
-            await message.reply(`${base}\nPerms: OK na. Kung di pa rin siya nakaka-backread, check Developer Portal > Message Content Intent.`);
+            await message.reply(
+              `${base}\nPerms: OK na. Kung di pa rin siya nakaka-backread, check Developer Portal > Message Content Intent.`,
+            );
           } else {
             await message.reply(
-              `${base}\nMissing: ${missing.join(', ')}\n` +
-              `Ayusin sa channel overrides/role perms. Also: Developer Portal > Message Content Intent must be ON.`
+              `${base}\nMissing: ${missing.join(", ")}\n` +
+                `Ayusin sa channel overrides/role perms. Also: Developer Portal > Message Content Intent must be ON.`,
             );
           }
           return;
         }
 
         // j!usersummary @user — summarize a person from DB (facts + recent messages)
-        if (command === 'usersummary' || command === 'usersum' || command === 'summaryuser') {
+        if (
+          command === "usersummary" ||
+          command === "usersum" ||
+          command === "summaryuser"
+        ) {
           if (!message.guild) {
-            await message.reply('Teh, sa server lang to. Mention mo yung tao dito.');
+            await message.reply(
+              "Teh, sa server lang to. Mention mo yung tao dito.",
+            );
             return;
           }
 
           const targetUser =
             message.mentions.users.first() ||
-            (args[0] ? await client.users.fetch(args[0]).catch(() => null) : null);
+            (args[0]
+              ? await client.users.fetch(args[0]).catch(() => null)
+              : null);
 
           if (!targetUser) {
-            await message.reply('Sino yun? Mention mo: `j!usersummary @user`');
+            await message.reply("Sino yun? Mention mo: `j!usersummary @user`");
             return;
           }
 
           // Pull stored facts + recent messages authored by the target across the SERVER
-          let facts = '';
+          let facts = "";
           let recentLines = [];
           try {
-            const factsRes = await pool.query('SELECT facts FROM user_memory WHERE user_id = $1', [targetUser.id]);
-            facts = factsRes.rows?.[0]?.facts || '';
-          } catch { }
+            const factsRes = await pool.query(
+              "SELECT facts FROM user_memory WHERE user_id = $1",
+              [targetUser.id],
+            );
+            facts = factsRes.rows?.[0]?.facts || "";
+          } catch {}
           try {
             const msgRes = message.guild
               ? await pool.query(
-                  'SELECT channel_id, author_tag, content, created_at FROM messages WHERE guild_id = $1 AND author_id = $2 ORDER BY created_at DESC LIMIT 35',
-                  [message.guild.id, targetUser.id]
+                  "SELECT channel_id, author_tag, content, created_at FROM messages WHERE guild_id = $1 AND author_id = $2 ORDER BY created_at DESC LIMIT 35",
+                  [message.guild.id, targetUser.id],
                 )
               : await pool.query(
-                  'SELECT channel_id, author_tag, content, created_at FROM messages WHERE channel_id = $1 AND author_id = $2 ORDER BY created_at DESC LIMIT 35',
-                  [message.channel.id, targetUser.id]
+                  "SELECT channel_id, author_tag, content, created_at FROM messages WHERE channel_id = $1 AND author_id = $2 ORDER BY created_at DESC LIMIT 35",
+                  [message.channel.id, targetUser.id],
                 );
             recentLines = (msgRes.rows || [])
               .reverse()
               .map((r) => {
-                const ts = r.created_at ? new Date(r.created_at).toISOString() : 'unknown-time';
-                const who = r.author_tag || (targetUser.globalName || targetUser.username || 'someone');
-                const msg = (r.content || '').replace(/\s+/g, ' ').trim();
+                const ts = r.created_at
+                  ? new Date(r.created_at).toISOString()
+                  : "unknown-time";
+                const who =
+                  r.author_tag ||
+                  targetUser.globalName ||
+                  targetUser.username ||
+                  "someone";
+                const msg = (r.content || "").replace(/\s+/g, " ").trim();
                 if (!msg) return null;
-                const where = r.channel_id ? ` (ch:${r.channel_id})` : '';
+                const where = r.channel_id ? ` (ch:${r.channel_id})` : "";
                 return `[${ts}] ${who}${where}: ${msg}`;
               })
               .filter(Boolean);
-          } catch { }
+          } catch {}
 
           const displayName =
             message.guild.members.cache.get(targetUser.id)?.displayName ||
@@ -3909,43 +4793,64 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
             `Output: (1) 5-8 bullets: personality/vibe/typical topics, (2) 1 short paragraph "how to talk to them", (3) any notable facts with uncertainty labels if weak. ` +
             `If DB info is thin, say "kulang pa info" and list what you do know.\n\n` +
             `[TARGET]: ${displayName}\n` +
-            `[USER FACTS FROM DB]: ${facts || '(none)'}\n` +
-            `[RECENT MESSAGES FROM THIS CHANNEL]:\n${recentLines.join('\n') || '(none)'}\n`;
+            `[USER FACTS FROM DB]: ${facts || "(none)"}\n` +
+            `[RECENT MESSAGES FROM THIS CHANNEL]:\n${recentLines.join("\n") || "(none)"}\n`;
 
           await message.channel.sendTyping();
           const voiceMembers = [];
-          const discordContext = await buildDiscordAwarenessContext(message, false);
+          const discordContext = await buildDiscordAwarenessContext(
+            message,
+            false,
+          );
           const mentionContext = buildMentionContext(message);
-          const summary = await callGroqChat(prompt, message.author.id, message.channel.id, voiceMembers, {
-            fastMode: false,
-            researchContext: [],
-            discordContext,
-            mentionContext,
-            forceResearchGrounding: false,
-            forceSexualGuard: false
-          });
+          const summary = await callGroqChat(
+            prompt,
+            message.author.id,
+            message.channel.id,
+            voiceMembers,
+            {
+              fastMode: false,
+              researchContext: [],
+              discordContext,
+              mentionContext,
+              forceResearchGrounding: false,
+              forceSexualGuard: false,
+            },
+          );
 
-          await message.reply(summary || 'Teh, wala akong ma-summarize. Kulang pa DB info.');
+          await message.reply(
+            summary || "Teh, wala akong ma-summarize. Kulang pa DB info.",
+          );
           return;
         }
 
         // j!checkdb — Admin-only DB storage usage report (Neon/Postgres)
-        if (command === 'checkdb' || command === 'dbsize' || command === 'storage') {
+        if (
+          command === "checkdb" ||
+          command === "dbsize" ||
+          command === "storage"
+        ) {
           if (!message.guild) {
-            await message.reply('Teh, pang-server lang to.');
+            await message.reply("Teh, pang-server lang to.");
             return;
           }
-          const isAdmin = message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator);
+          const isAdmin =
+            message.member &&
+            message.member.permissions.has(
+              PermissionsBitField.Flags.Administrator,
+            );
           if (!isAdmin) {
-            await message.reply('Admins lang pwede mag-checkdb dito, bro.');
+            await message.reply("Admins lang pwede mag-checkdb dito, bro.");
             return;
           }
 
           await message.channel.sendTyping();
           try {
-            const dbSizeRes = await pool.query('SELECT pg_database_size(current_database())::bigint AS bytes');
+            const dbSizeRes = await pool.query(
+              "SELECT pg_database_size(current_database())::bigint AS bytes",
+            );
             const dbBytes = Number(dbSizeRes.rows?.[0]?.bytes || 0);
-            const dbGb = dbBytes / (1024 ** 3);
+            const dbGb = dbBytes / 1024 ** 3;
 
             const tableRes = await pool.query(`
               SELECT 'messages' AS t,
@@ -3968,62 +4873,87 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
             const tableInfo = (tableRes.rows || []).map((r) => ({
               t: r.t,
               bytes: Number(r.bytes || 0),
-              rows: String(r.rows || 0)
+              rows: String(r.rows || 0),
             }));
 
             tableInfo.sort((a, b) => b.bytes - a.bytes);
             const lines = tableInfo.map((x) => {
-              const gb = (x.bytes / (1024 ** 3)).toFixed(3);
+              const gb = (x.bytes / 1024 ** 3).toFixed(3);
               return `- ${x.t}: ${gb} GB | rows: ${x.rows}`;
             });
 
             const header =
-              `DB storage (approx): ${(dbGb).toFixed(3)} GB\n` +
+              `DB storage (approx): ${dbGb.toFixed(3)} GB\n` +
               `DB bytes: ${dbBytes}\n`;
 
-            await message.reply(`${header}\nTop tables:\n${lines.join('\n')}\n\nTip: kung lumalaki masyado ang \`messages\`, mag-rotate/cleanup tayo.`);
+            await message.reply(
+              `${header}\nTop tables:\n${lines.join("\n")}\n\nTip: kung lumalaki masyado ang \`messages\`, mag-rotate/cleanup tayo.`,
+            );
           } catch (e) {
-            await message.reply(`Teh, di ko ma-check DB size ngayon. Error: ${e.message}`);
+            await message.reply(
+              `Teh, di ko ma-check DB size ngayon. Error: ${e.message}`,
+            );
           }
           return;
         }
 
         // j!img — generate an image via Leonardo
         // Usage: j!img <prompt>
-        if (command === 'img' || command === 'image' || command === 'pic' || command === 'picture') {
-          const prompt = args.join(' ').trim();
+        if (
+          command === "img" ||
+          command === "image" ||
+          command === "pic" ||
+          command === "picture"
+        ) {
+          const prompt = args.join(" ").trim();
           if (!prompt) {
-            await message.reply('Format: `j!img <prompt>`');
+            await message.reply("Format: `j!img <prompt>`");
             return;
           }
           if (!LEONARDO_API_KEY) {
-            await message.reply('Teh, wala pang `LEONARDO_API_KEY` sa .env. Lagay mo muna.');
+            await message.reply(
+              "Teh, wala pang `LEONARDO_API_KEY` sa .env. Lagay mo muna.",
+            );
             return;
           }
 
           try {
-            await leonardoGenerateAndSend({ channel: message.channel, replyToMessage: message, prompt, caption: `ayan na pre: **${prompt.slice(0, 140)}**` });
+            await leonardoGenerateAndSend({
+              channel: message.channel,
+              replyToMessage: message,
+              prompt,
+              caption: `ayan na pre: **${prompt.slice(0, 140)}**`,
+            });
           } catch (e) {
-            await message.reply(`Teh, di ko magawa yung pic ngayon. ${e.message}`);
+            await message.reply(
+              `Teh, di ko magawa yung pic ngayon. ${e.message}`,
+            );
           }
           return;
         }
 
         // j!portray / j!portrait — portray a Discord user as an image (Groq drafts prompt, Leonardo renders)
         // Usage: j!portray @user <optional style notes>
-        if (command === 'portray' || command === 'portrait') {
+        if (command === "portray" || command === "portrait") {
           if (!LEONARDO_API_KEY) {
-            await message.reply('Teh, wala pang `LEONARDO_API_KEY` sa .env. Lagay mo muna.');
+            await message.reply(
+              "Teh, wala pang `LEONARDO_API_KEY` sa .env. Lagay mo muna.",
+            );
             return;
           }
           if (!message.guild) {
-            await message.reply('Teh, pang-server lang to. Mention mo yung tao.');
+            await message.reply(
+              "Teh, pang-server lang to. Mention mo yung tao.",
+            );
             return;
           }
           const targetUser = message.mentions.users.first() || null;
-          const extra = args.filter((a) => !a.startsWith('<@')).join(' ').trim();
+          const extra = args
+            .filter((a) => !a.startsWith("<@"))
+            .join(" ")
+            .trim();
           if (!targetUser) {
-            await message.reply('Format: `j!portray @user <style notes>`');
+            await message.reply("Format: `j!portray @user <style notes>`");
             return;
           }
 
@@ -4033,88 +4963,100 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
             targetUser.username ||
             targetUser.tag;
 
-          lastPortrayByChannel.set(message.channel.id, { userId: targetUser.id, displayName });
+          lastPortrayByChannel.set(message.channel.id, {
+            userId: targetUser.id,
+            displayName,
+          });
 
-          let facts = '';
+          let facts = "";
           try {
-            const factsRes = await pool.query('SELECT facts FROM user_memory WHERE user_id = $1', [targetUser.id]);
-            facts = factsRes.rows?.[0]?.facts || '';
-          } catch { }
+            const factsRes = await pool.query(
+              "SELECT facts FROM user_memory WHERE user_id = $1",
+              [targetUser.id],
+            );
+            facts = factsRes.rows?.[0]?.facts || "";
+          } catch {}
 
-          let recentMsgs = '';
+          let recentMsgs = "";
           try {
             const msgRes = await pool.query(
-              'SELECT content FROM messages WHERE guild_id = $1 AND author_id = $2 ORDER BY created_at DESC LIMIT 12',
-              [message.guild.id, targetUser.id]
+              "SELECT content FROM messages WHERE guild_id = $1 AND author_id = $2 ORDER BY created_at DESC LIMIT 12",
+              [message.guild.id, targetUser.id],
             );
             recentMsgs = (msgRes.rows || [])
-              .map((r) => String(r.content || '').replace(/\s+/g, ' ').trim())
+              .map((r) =>
+                String(r.content || "")
+                  .replace(/\s+/g, " ")
+                  .trim(),
+              )
               .filter(Boolean)
               .slice(0, 12)
-              .join(' | ');
-          } catch { }
+              .join(" | ");
+          } catch {}
 
           await message.channel.sendTyping();
           try {
             const promptDraftRes = await performChatRequest({
-              model: 'llama-3.1-8b-instant',
+              model: "llama-3.1-8b-instant",
               messages: [
                 {
-                  role: 'system',
+                  role: "system",
                   content:
-                    'Create a Leonardo.ai image prompt + a Tagalog caption. Output STRICT JSON only.\n' +
-                    'JSON schema:\n' +
+                    "Create a Leonardo.ai image prompt + a Tagalog caption. Output STRICT JSON only.\n" +
+                    "JSON schema:\n" +
                     '{ "leonardo_prompt_en": string, "prompt_idea_tl": string, "caption_tl": string, "basehan_tl": string }\n' +
-                    'Rules:\n' +
-                    '- No raw Discord IDs.\n' +
-                    '- No sexual content.\n' +
-                    '- leonardo_prompt_en must be ENGLISH, optimized, <= 280 chars.\n' +
-                    '- prompt_idea_tl, caption_tl, basehan_tl MUST be Tagalog/Taglish only (no English), Yuma persona (bad boy, witty), COMPLETE.\n' +
-                    '- basehan_tl should say pano mo siya "nakilala": base sa stored memory + recent chat vibe.\n'
+                    "Rules:\n" +
+                    "- No raw Discord IDs.\n" +
+                    "- No sexual content.\n" +
+                    "- leonardo_prompt_en must be ENGLISH, optimized, <= 280 chars.\n" +
+                    "- prompt_idea_tl, caption_tl, basehan_tl MUST be Tagalog/Taglish only (no English), Yuma persona (bad boy, witty), COMPLETE.\n" +
+                    '- basehan_tl should say pano mo siya "nakilala": base sa stored memory + recent chat vibe.\n',
                 },
                 {
-                  role: 'user',
+                  role: "user",
                   content:
                     `Portray this person as an image.\n` +
                     `Name: ${displayName}\n` +
-                    `Known facts: ${facts || 'none'}\n` +
-                    `Recent chat vibe: ${recentMsgs || 'none'}\n` +
-                    `Extra style notes: ${extra || 'none'}`
-                }
+                    `Known facts: ${facts || "none"}\n` +
+                    `Recent chat vibe: ${recentMsgs || "none"}\n` +
+                    `Extra style notes: ${extra || "none"}`,
+                },
               ],
               temperature: 0.6,
-              max_tokens: 220
+              max_tokens: 220,
             });
 
-            const raw = (promptDraftRes.data?.choices?.[0]?.message?.content || '').trim();
-            let leonardoPromptEn = '';
-            let promptIdeaTl = '';
-            let captionTl = '';
-            let basehanTl = '';
+            const raw = (
+              promptDraftRes.data?.choices?.[0]?.message?.content || ""
+            ).trim();
+            let leonardoPromptEn = "";
+            let promptIdeaTl = "";
+            let captionTl = "";
+            let basehanTl = "";
             try {
               const parsed = JSON.parse(raw);
-              leonardoPromptEn = String(parsed.leonardo_prompt_en || '').trim();
-              promptIdeaTl = String(parsed.prompt_idea_tl || '').trim();
-              captionTl = String(parsed.caption_tl || '').trim();
-              basehanTl = String(parsed.basehan_tl || '').trim();
+              leonardoPromptEn = String(parsed.leonardo_prompt_en || "").trim();
+              promptIdeaTl = String(parsed.prompt_idea_tl || "").trim();
+              captionTl = String(parsed.caption_tl || "").trim();
+              basehanTl = String(parsed.basehan_tl || "").trim();
             } catch {
               leonardoPromptEn = raw;
             }
 
             const finalPrompt =
-              leonardoPromptEn.replace(/\s+/g, ' ').slice(0, 280) ||
+              leonardoPromptEn.replace(/\s+/g, " ").slice(0, 280) ||
               `${displayName}, photoreal portrait, confident expression, modern gym background, cinematic lighting`;
 
             const caption =
               `${captionTl || `ayan na si ${displayName}, ganyan ko siya i-portray.`}\n` +
               `${basehanTl ? `\nbasehan: ${basehanTl}` : `\nbasehan: base sa mga chat niya at sa vibes niya dito.`}` +
-              (promptIdeaTl ? `\nprompt idea: ${promptIdeaTl}` : '');
+              (promptIdeaTl ? `\nprompt idea: ${promptIdeaTl}` : "");
 
             await leonardoGenerateAndSend({
               channel: message.channel,
               replyToMessage: message,
               prompt: finalPrompt,
-              caption
+              caption,
             });
           } catch (e) {
             await message.reply(`Teh, di ko ma-portray ngayon. ${e.message}`);
@@ -4126,29 +5068,40 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
         // Usage:
         //   j!summarize              -> last 10 messages (quick)
         //   j!summarize 18:29 19:33  -> time window
-        if (command === 'summarize' || command === 'backread' || command === 'sumchat') {
-          const fromTime = (args[0] || '').trim();
-          const toTime = (args[1] || '').trim();
+        if (
+          command === "summarize" ||
+          command === "backread" ||
+          command === "sumchat"
+        ) {
+          const fromTime = (args[0] || "").trim();
+          const toTime = (args[1] || "").trim();
           const hasWindow = Boolean(fromTime) || Boolean(toTime);
-          const timeOk = !hasWindow || (/^\d{1,2}:\d{2}$/.test(fromTime) && /^\d{1,2}:\d{2}$/.test(toTime));
+          const timeOk =
+            !hasWindow ||
+            (/^\d{1,2}:\d{2}$/.test(fromTime) &&
+              /^\d{1,2}:\d{2}$/.test(toTime));
           if (!timeOk) {
-            await message.reply('Format: `j!summarize` or `j!summarize 18:29 19:33`');
+            await message.reply(
+              "Format: `j!summarize` or `j!summarize 18:29 19:33`",
+            );
             return;
           }
 
           await message.channel.sendTyping();
           try {
             const rowsRes = await pool.query(
-              'SELECT author_tag, content, created_at FROM messages WHERE channel_id = $1 ORDER BY created_at DESC LIMIT 160',
-              [message.channel.id]
+              "SELECT author_tag, content, created_at FROM messages WHERE channel_id = $1 ORDER BY created_at DESC LIMIT 160",
+              [message.channel.id],
             );
             const rows = (rowsRes.rows || []).reverse();
             const limit = hasWindow ? 120 : 10;
             const lines = rows
               .map((r) => {
-                const ts = r.created_at ? new Date(r.created_at).toISOString() : 'unknown-time';
-                const who = r.author_tag || 'someone';
-                const msg = (r.content || '').replace(/\s+/g, ' ').trim();
+                const ts = r.created_at
+                  ? new Date(r.created_at).toISOString()
+                  : "unknown-time";
+                const who = r.author_tag || "someone";
+                const msg = (r.content || "").replace(/\s+/g, " ").trim();
                 if (!msg) return null;
                 return `[${ts}] ${who}: ${msg}`;
               })
@@ -4156,8 +5109,7 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
               .slice(-limit);
 
             const prompt = hasWindow
-              ? (
-                `Yuma persona ka pa rin (bad boy, taglish, witty). Wag formal report voice. ` +
+              ? `Yuma persona ka pa rin (bad boy, taglish, witty). Wag formal report voice. ` +
                 `Summarize the chat in THIS CHANNEL between ${fromTime} and ${toTime} (PH time) today. ` +
                 `Use the backread transcript below (timestamps are ISO; align them to the requested window). ` +
                 `Output format ONLY:\n` +
@@ -4165,59 +5117,80 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
                 `- 1 short paragraph: ano nangyari (taglish)\n` +
                 `- optional: 1-3 unresolved questions\n` +
                 `Rules: bawal maglagay ng "Recap:" or "Chat Summary:" labels. Bawal mag-imbento. If little happened, sabihin mo straight.\n\n` +
-                `[BACKREAD TRANSCRIPT]\n${lines.join('\n')}\n`
-              )
-              : (
-                `Yuma persona ka pa rin (bad boy, taglish, witty). Wag formal. ` +
+                `[BACKREAD TRANSCRIPT]\n${lines.join("\n")}\n`
+              : `Yuma persona ka pa rin (bad boy, taglish, witty). Wag formal. ` +
                 `Quick backread: summarize the LAST 10 messages in THIS CHANNEL. ` +
                 `Output format ONLY:\n` +
                 `- 3-6 bullets (chika style)\n` +
                 `- 1 short line: ano vibe/ganap\n` +
                 `Rules: bawal "Recap:" label. Bawal mag-imbento.\n\n` +
-                `[BACKREAD TRANSCRIPT]\n${lines.join('\n')}\n`
-              );
+                `[BACKREAD TRANSCRIPT]\n${lines.join("\n")}\n`;
 
-            const discordContext = await buildDiscordAwarenessContext(message, false);
+            const discordContext = await buildDiscordAwarenessContext(
+              message,
+              false,
+            );
             const mentionContext = buildMentionContext(message);
             const voiceMembers = [];
-            const summary = await callGroqChat(prompt, message.author.id, message.channel.id, voiceMembers, {
-              fastMode: false,
-              researchContext: [],
-              discordContext,
-              mentionContext,
-              forceResearchGrounding: false,
-              forceSexualGuard: false
-            });
+            const summary = await callGroqChat(
+              prompt,
+              message.author.id,
+              message.channel.id,
+              voiceMembers,
+              {
+                fastMode: false,
+                researchContext: [],
+                discordContext,
+                mentionContext,
+                forceResearchGrounding: false,
+                forceSexualGuard: false,
+              },
+            );
 
-            const out = summary || 'Teh, may error sa summary. Try ulit mamaya.';
+            const out =
+              summary || "Teh, may error sa summary. Try ulit mamaya.";
             const embed = new EmbedBuilder()
-              .setColor(0x7B61FF)
-              .setTitle('🧠 BACKREAD SUMMARY')
+              .setColor(0x7b61ff)
+              .setTitle("🧠 BACKREAD SUMMARY")
               .setDescription(out)
-              .setFooter({ text: hasWindow ? `Window: ${fromTime} → ${toTime} • #${message.channel.name}` : `Quick: last 10 • #${message.channel.name}` })
+              .setFooter({
+                text: hasWindow
+                  ? `Window: ${fromTime} → ${toTime} • #${message.channel.name}`
+                  : `Quick: last 10 • #${message.channel.name}`,
+              })
               .setTimestamp();
             await message.reply({ embeds: [embed] });
           } catch (e) {
-            await message.reply(`Teh, di ko ma-backread ngayon. Error: ${e.message}`);
+            await message.reply(
+              `Teh, di ko ma-backread ngayon. Error: ${e.message}`,
+            );
           }
           return;
         }
 
         // j!setupverify — create verify channel + lock server behind Verified role
-        if (command === 'setupverify' || command === 'verifysetup') {
+        if (command === "setupverify" || command === "verifysetup") {
           if (!message.guild) {
-            await message.reply('Server lang, bro.');
+            await message.reply("Server lang, bro.");
             return;
           }
           const isAdmin =
-            message.member?.permissions?.has(PermissionsBitField.Flags.Administrator) ||
-            message.member?.permissions?.has(PermissionsBitField.Flags.ManageGuild);
+            message.member?.permissions?.has(
+              PermissionsBitField.Flags.Administrator,
+            ) ||
+            message.member?.permissions?.has(
+              PermissionsBitField.Flags.ManageGuild,
+            );
           if (!isAdmin) {
-            await message.reply('Admin / Manage Server lang pwede mag-setup ng verify, pre.');
+            await message.reply(
+              "Admin / Manage Server lang pwede mag-setup ng verify, pre.",
+            );
             return;
           }
-          const roleId = args[0] || '1426746102903738432';
-          await message.reply('Sige, setup ko verify channel + i-lock ang server… wait lang, slay.');
+          const roleId = args[0] || "1426746102903738432";
+          await message.reply(
+            "Sige, setup ko verify channel + i-lock ang server… wait lang, slay.",
+          );
           try {
             const result = await setupVerifyChannel(client, {
               guildId: message.guild.id,
@@ -4226,26 +5199,36 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
             });
             await message.reply(
               `Tapos na, bro! Verify: <#${result.channel.id}> | Role: <@&${result.verifiedRoleId}> | Locked **${result.lockedChannels}** channels.\n` +
-                'React ✅ sa verify message para makapasok. Hindi verified = verify channel lang makikita.',
+                "React ✅ sa verify message para makapasok. Hindi verified = verify channel lang makikita.",
             );
           } catch (err) {
-            await message.reply(`Ay nagkulang: ${err.message}. Kailangan bot may **Manage Channels** + **Manage Roles**.`);
+            await message.reply(
+              `Ay nagkulang: ${err.message}. Kailangan bot may **Manage Channels** + **Manage Roles**.`,
+            );
           }
           return;
         }
 
         // j!setuprolemenu — post/update column role menu embeds + reactions
-        if (command === 'setuprolemenu' || command === 'rolemenu') {
+        if (command === "setuprolemenu" || command === "rolemenu") {
           if (!message.guild) return;
           const isAdmin =
-            message.member?.permissions?.has(PermissionsBitField.Flags.Administrator) ||
-            message.member?.permissions?.has(PermissionsBitField.Flags.ManageRoles);
+            message.member?.permissions?.has(
+              PermissionsBitField.Flags.Administrator,
+            ) ||
+            message.member?.permissions?.has(
+              PermissionsBitField.Flags.ManageRoles,
+            );
           if (!isAdmin) {
-            await message.reply('Administrator or Manage Roles permission required.');
+            await message.reply(
+              "Administrator or Manage Roles permission required.",
+            );
             return;
           }
           try {
-            await message.reply('Setting up role menu (embeds + reactions). This may take a minute…');
+            await message.reply(
+              "Setting up role menu (embeds + reactions). This may take a minute…",
+            );
             const result = await setupRoleMenu(client, {
               guildId: message.guild.id,
               channelId: message.channel.id,
@@ -4262,17 +5245,25 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
         }
 
         // j!fixrolemenu — create missing roles, fix mappings, refresh embeds/reactions
-        if (command === 'fixrolemenu' || command === 'rolemenufix') {
+        if (command === "fixrolemenu" || command === "rolemenufix") {
           if (!message.guild) return;
           const isAdmin =
-            message.member?.permissions?.has(PermissionsBitField.Flags.Administrator) ||
-            message.member?.permissions?.has(PermissionsBitField.Flags.ManageRoles);
+            message.member?.permissions?.has(
+              PermissionsBitField.Flags.Administrator,
+            ) ||
+            message.member?.permissions?.has(
+              PermissionsBitField.Flags.ManageRoles,
+            );
           if (!isAdmin) {
-            await message.reply('Administrator or Manage Roles permission required.');
+            await message.reply(
+              "Administrator or Manage Roles permission required.",
+            );
             return;
           }
           try {
-            await message.reply('Fixing role menu (roles + embeds + reactions)…');
+            await message.reply(
+              "Fixing role menu (roles + embeds + reactions)…",
+            );
             const result = await repairRoleMenu(client, message.guild.id);
             await message.channel.send(
               `Role menu fixed — **${Object.keys(result.mappings).length}** roles linked. ` +
@@ -4285,19 +5276,27 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
         }
 
         // j!fixverifyperms — re-apply channel locks + public verify/rules channels
-        if (command === 'fixverifyperms' || command === 'verifyfixperms') {
+        if (command === "fixverifyperms" || command === "verifyfixperms") {
           if (!message.guild) return;
           const isAdmin =
-            message.member?.permissions?.has(PermissionsBitField.Flags.Administrator) ||
-            message.member?.permissions?.has(PermissionsBitField.Flags.ManageGuild);
+            message.member?.permissions?.has(
+              PermissionsBitField.Flags.Administrator,
+            ) ||
+            message.member?.permissions?.has(
+              PermissionsBitField.Flags.ManageGuild,
+            );
           if (!isAdmin) {
-            await message.reply('Administrator permission required.');
+            await message.reply("Administrator permission required.");
             return;
           }
           try {
             const cfg = await repairVerifyPermissions(client, message.guild.id);
-            const pub = (cfg.publicChannelIds || []).map((id) => `<#${id}>`).join(', ');
-            const chat = (cfg.chatChannelIds || []).map((id) => `<#${id}>`).join(', ');
+            const pub = (cfg.publicChannelIds || [])
+              .map((id) => `<#${id}>`)
+              .join(", ");
+            const chat = (cfg.chatChannelIds || [])
+              .map((id) => `<#${id}>`)
+              .join(", ");
             await message.reply(
               `Permissions fixed.\n**Visible to unverified:** ${pub}\n**Can chat (non-admin):** ${chat}\n**Verified role:** <@&${cfg.roleId}>`,
             );
@@ -4308,20 +5307,27 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
         }
 
         // j!setupintro — post introduction template in intro channel
-        if (command === 'setupintro' || command === 'introsetup') {
+        if (command === "setupintro" || command === "introsetup") {
           if (!message.guild) return;
           const isAdmin =
-            message.member?.permissions?.has(PermissionsBitField.Flags.Administrator) ||
-            message.member?.permissions?.has(PermissionsBitField.Flags.ManageGuild);
+            message.member?.permissions?.has(
+              PermissionsBitField.Flags.Administrator,
+            ) ||
+            message.member?.permissions?.has(
+              PermissionsBitField.Flags.ManageGuild,
+            );
           if (!isAdmin) {
-            await message.reply('Administrator permission required.');
+            await message.reply("Administrator permission required.");
             return;
           }
           try {
-            const { channel, message: introMsg } = await setupIntroChannel(client, message.guild.id);
+            const { channel, message: introMsg } = await setupIntroChannel(
+              client,
+              message.guild.id,
+            );
             await message.reply(
               `Introduction guide posted in <#${channel.id}> (message \`${introMsg.id}\`).\n` +
-                'Members: get roles → post intro → verify ✅ · Card: `j!view`',
+                "Members: get roles → post intro → verify ✅ · Card: `j!view`",
             );
           } catch (err) {
             await message.reply(`Setup intro failed: ${err.message}`);
@@ -4330,18 +5336,24 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
         }
 
         // j!refreshverify — update verify embed text (formal English)
-        if (command === 'refreshverify' || command === 'verifyrefresh') {
+        if (command === "refreshverify" || command === "verifyrefresh") {
           if (!message.guild) return;
           const isAdmin =
-            message.member?.permissions?.has(PermissionsBitField.Flags.Administrator) ||
-            message.member?.permissions?.has(PermissionsBitField.Flags.ManageGuild);
+            message.member?.permissions?.has(
+              PermissionsBitField.Flags.Administrator,
+            ) ||
+            message.member?.permissions?.has(
+              PermissionsBitField.Flags.ManageGuild,
+            );
           if (!isAdmin) {
-            await message.reply('Administrator permission required.');
+            await message.reply("Administrator permission required.");
             return;
           }
           try {
             await refreshVerifyMessage(client, message.guild.id);
-            await message.reply('Verification message updated to formal English. Toggle ✅ still grants/revokes access.');
+            await message.reply(
+              "Verification message updated to formal English. Toggle ✅ still grants/revokes access.",
+            );
           } catch (err) {
             await message.reply(`Could not refresh: ${err.message}`);
           }
@@ -4349,20 +5361,32 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
         }
 
         // j!setuptickets — post/update support ticket panel
-        if (command === 'setuptickets' || command === 'ticketsetup' || command === 'setupverificationtickets') {
+        if (
+          command === "setuptickets" ||
+          command === "ticketsetup" ||
+          command === "setupverificationtickets"
+        ) {
           if (!message.guild) return;
           const isAdmin =
-            message.member?.permissions?.has(PermissionsBitField.Flags.Administrator) ||
-            message.member?.permissions?.has(PermissionsBitField.Flags.ManageGuild);
+            message.member?.permissions?.has(
+              PermissionsBitField.Flags.Administrator,
+            ) ||
+            message.member?.permissions?.has(
+              PermissionsBitField.Flags.ManageGuild,
+            );
           if (!isAdmin) {
-            await message.reply('Administrator permission required.');
+            await message.reply("Administrator permission required.");
             return;
           }
           try {
             const channelId = args[0] || DEFAULT_SPAWNPOINT_CHANNEL;
-            const result = await setupVerificationTicketPanel(client, message.guild.id, {
-              channelId,
-            });
+            const result = await setupVerificationTicketPanel(
+              client,
+              message.guild.id,
+              {
+                channelId,
+              },
+            );
             await message.reply(
               `Support ticket panel ready in <#${result.channel.id}> (message \`${result.message.id}\`).\n` +
                 `New tickets will notify <@${result.staffUserId}> and <@&${result.staffRoleId}>.`,
@@ -4374,24 +5398,26 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
         }
 
         // j!admin â€” show admin command list
-        if (command === 'admin' || command === 'commandslist') {
+        if (command === "admin" || command === "commandslist") {
           const adminEmbed = new EmbedBuilder()
-            .setTitle('Yuma Admin Panel')
-            .setDescription('**Exclusive commands para sa mga diyosa ng server:**\n\n' +
-              '- `j!stats` - Bot health dashboard\n' +
-              '- `j!status [text]` - Bot bubble (view / admin set)\n' +
-              '- `j!view [@user]` - Intro + roles + verify card\n' +
-              '- `j!setupintro` - Post intro template in intro channel\n' +
-              '- `j!setuptickets` - Post support ticket panel\n' +
-              '- `j!chat <id> <msg>` - Ghost message/reply (Owner only)\n' +
-              '- `j!greetnow [morning|night|auto] [here]` - Force scheduled greeting test\n' +
-              '- `j!test` - Trigger mapang-lait greeting/roast\n' +
-              '- `j!vc <text>` - Male TTS in voice channel\n' +
-              '- `j!ask <question>` - Voice-only AI response\n' +
-              '- `j!autotts` - Toggle Auto TTS in channel\n' +
-              '- `j!join` / `j!leave` - Reset voice connection')
+            .setTitle("Yuma Admin Panel")
+            .setDescription(
+              "**Exclusive commands para sa mga diyosa ng server:**\n\n" +
+                "- `j!stats` - Bot health dashboard\n" +
+                "- `j!status [text]` - Bot bubble (view / admin set)\n" +
+                "- `j!view [@user]` - Intro + roles + verify card\n" +
+                "- `j!setupintro` - Post intro template in intro channel\n" +
+                "- `j!setuptickets` - Post support ticket panel\n" +
+                "- `j!chat <id> <msg>` - Ghost message/reply (Owner only)\n" +
+                "- `j!greetnow [morning|night|auto] [here]` - Force scheduled greeting test\n" +
+                "- `j!test` - Trigger mapang-lait greeting/roast\n" +
+                "- `j!vc <text>` - Male TTS in voice channel\n" +
+                "- `j!ask <question>` - Voice-only AI response\n" +
+                "- `j!autotts` - Toggle Auto TTS in channel\n" +
+                "- `j!join` / `j!leave` - Reset voice connection",
+            )
             .setColor(0xff0000)
-            .setFooter({ text: 'Yuma Bot | Created by drei' });
+            .setFooter({ text: "Yuma Bot | Created by drei" });
 
           await message.reply({ embeds: [adminEmbed] });
           return;
@@ -4399,61 +5425,77 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
 
         // j!greetnow [morning|night|auto] [here]
         // Manual trigger for scheduled greetings for quick diagnostics.
-        if (command === 'greetnow') {
+        if (command === "greetnow") {
           if (!message.guild) {
-            await message.reply('Pang-server lang to, bro.');
+            await message.reply("Pang-server lang to, bro.");
             return;
           }
-          const isAdmin = message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator);
+          const isAdmin =
+            message.member &&
+            message.member.permissions.has(
+              PermissionsBitField.Flags.Administrator,
+            );
           if (!isAdmin) {
-            await message.reply('Admins lang puwedeng mag-force greet, pre.');
+            await message.reply("Admins lang puwedeng mag-force greet, pre.");
             return;
           }
 
-          const modeArg = (args[0] || 'auto').toLowerCase();
-          const whereArg = (args[1] || '').toLowerCase();
-          if (!['auto', 'morning', 'night'].includes(modeArg)) {
-            await message.reply('Format: `j!greetnow [morning|night|auto] [here]`');
+          const modeArg = (args[0] || "auto").toLowerCase();
+          const whereArg = (args[1] || "").toLowerCase();
+          if (!["auto", "morning", "night"].includes(modeArg)) {
+            await message.reply(
+              "Format: `j!greetnow [morning|night|auto] [here]`",
+            );
             return;
           }
 
           const nowParts = getNowInPhilippinesParts();
-          const type = modeArg === 'auto'
-            ? ((nowParts.hour >= 15) ? 'night' : 'morning')
-            : modeArg;
-          const forcedChannelId = whereArg === 'here' ? message.channel.id : null;
+          const type =
+            modeArg === "auto"
+              ? nowParts.hour >= 15
+                ? "night"
+                : "morning"
+              : modeArg;
+          const forcedChannelId =
+            whereArg === "here" ? message.channel.id : null;
           const sent = await sendScheduledGreeting(type, { forcedChannelId });
 
           if (sent) {
             lastGreetings[type] = nowParts.dateKey;
-            const scopeLabel = forcedChannelId ? `this channel (<#${forcedChannelId}>)` : `configured channel (<#${GREET_CHANNEL_ID}>)`;
-            await message.reply(`Ayan na. Nag-force send ako ng **${type}** greeting sa ${scopeLabel}.`);
+            const scopeLabel = forcedChannelId
+              ? `this channel (<#${forcedChannelId}>)`
+              : `configured channel (<#${GREET_CHANNEL_ID}>)`;
+            await message.reply(
+              `Ayan na. Nag-force send ako ng **${type}** greeting sa ${scopeLabel}.`,
+            );
           } else {
             await message.reply(
               `Hindi nasend yung forced ${type} greeting. ` +
-              'Check logs for `[GREET]` details (`channel fetch`, `permissions`, o `AI generation` issue).'
+                "Check logs for `[GREET]` details (`channel fetch`, `permissions`, o `AI generation` issue).",
             );
           }
           return;
         }
 
         // j!test
-        if (command === 'test') {
+        if (command === "test") {
           const now = getNowInPhilippinesParts();
           const hour = now.hour;
           const minute = now.minute;
           const channel = message.channel;
-          const members = message.guild ? await collectActiveMembersForChannel(channel) : [];
+          const members = message.guild
+            ? await collectActiveMembersForChannel(channel)
+            : [];
           const mentions =
             members.length > 0
-              ? members.map((m) => `<@${m.id}>`).join(' ')
-              : 'Walang online na ulikba ngayon.';
+              ? members.map((m) => `<@${m.id}>`).join(" ")
+              : "Walang online na ulikba ngayon.";
 
-          let timeBand = 'gabi';
-          if (hour >= 5 && hour < 12) timeBand = 'umaga';
-          else if (hour >= 12 && hour < 18) timeBand = 'hapon';
+          let timeBand = "gabi";
+          if (hour >= 5 && hour < 12) timeBand = "umaga";
+          else if (hour >= 12 && hour < 18) timeBand = "hapon";
 
-          const phTimeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+          const phTimeString = `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`;
           const aiPrompt =
             `Gumawa ka ng mapang-lait na greeting para sa lahat ng nasa channel. ` +
             `Oras na: ${phTimeString} (${timeBand}). ` +
@@ -4467,12 +5509,19 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
           if (message.guild) {
             const myVC = message.guild.members.me.voice.channel;
             if (myVC) {
-              voiceMembers = myVC.members.filter(m => !m.user.bot).map(m => m.displayName || m.user.username);
+              voiceMembers = myVC.members
+                .filter((m) => !m.user.bot)
+                .map((m) => m.displayName || m.user.username);
             }
           }
 
-          const aiText = await callGroqChat(aiPrompt, message.author.id, message.channel.id, voiceMembers);
-          const header = members.length > 0 ? `**${mentions}**\n\n` : '';
+          const aiText = await callGroqChat(
+            aiPrompt,
+            message.author.id,
+            message.channel.id,
+            voiceMembers,
+          );
+          const header = members.length > 0 ? `**${mentions}**\n\n` : "";
           await message.reply({ content: `${header}${aiText}` });
 
           // Speak the roast if in voice
@@ -4482,133 +5531,140 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
           return;
         }
         // j!help / j!tulong
-        if (command === 'help' || command === 'tulong') {
+        if (command === "help" || command === "tulong") {
           const menuEmbed = new EmbedBuilder()
-            .setColor(0xFF4D8D)
+            .setColor(0xff4d8d)
             .setAuthor({
-              name: 'YUMA - COMMAND MENU',
-              iconURL: client.user.displayAvatarURL({ dynamic: true })
+              name: "YUMA - COMMAND MENU",
+              iconURL: client.user.displayAvatarURL({ dynamic: true }),
             })
             .setThumbnail(client.user.displayAvatarURL({ dynamic: true }))
             .setDescription(
-              '**about me**\n' +
-              '- mention/reply ka pre replyan kita\n' +
-              '- minsan sasabat ako kahit di ako tinatanong, pake mo ba\n' +
-              '- default ko latest-chat focus (hindi ako hukay ng old issue)\n' +
-              '- memory recall ko on-demand: `naalala mo ba...`, `kanina...`, `balikan natin...`\n' +
-              '- pag gusto mo tumigil ako: `j!tulog on`'
+              "**about me**\n" +
+                "- mention/reply ka pre replyan kita\n" +
+                "- minsan sasabat ako kahit di ako tinatanong, pake mo ba\n" +
+                "- default ko latest-chat focus (hindi ako hukay ng old issue)\n" +
+                "- memory recall ko on-demand: `naalala mo ba...`, `kanina...`, `balikan natin...`\n" +
+                "- pag gusto mo tumigil ako: `j!tulog on`",
             )
             .addFields(
               {
-                name: 'CONVO FLOW (LATEST)',
+                name: "CONVO FLOW (LATEST)",
                 value:
-                  '- natural and human-like\n' +
-                  '- less oversharing, less redundancy\n' +
-                  '- no past callback unless needed or explicitly requested',
-                inline: false
+                  "- natural and human-like\n" +
+                  "- less oversharing, less redundancy\n" +
+                  "- no past callback unless needed or explicitly requested",
+                inline: false,
               },
               {
-                name: 'CHIKA / PROFILE',
+                name: "CHIKA / PROFILE",
                 value:
-                  '```' +
-                  'j!stats              - bot dashboard\n' +
-                  'j!status [text]      - bot bubble (admin sets)\n' +
-                  'j!view [@User]       - intro + roles card\n' +
-                  'j!usersummary @User - summary ng tao (DB)\n' +
-                  'j!img <prompt>      - generate picture\n' +
-                  'j!portray @User     - portray a user as image\n' +
-                  '```' +
+                  "```" +
+                  "j!stats              - bot dashboard\n" +
+                  "j!status [text]      - bot bubble (admin sets)\n" +
+                  "j!view [@User]       - intro + roles card\n" +
+                  "j!usersummary @User - summary ng tao (DB)\n" +
+                  "j!img <prompt>      - generate picture\n" +
+                  "j!portray @User     - portray a user as image\n" +
+                  "```" +
                   '**No command needed:** "kilala mo ba ko?" / "kilala mo ba si @X?" / "naalala mo ba sinabi ko kanina?"',
-                inline: false
+                inline: false,
               },
               {
-                name: 'SUMMARIZE / BACKREAD',
+                name: "SUMMARIZE / BACKREAD",
                 value:
-                  '```' +
-                  'j!summarize or j!backread\n' +
-                  '```' +
-                  'Bullets + short recap + unresolved questions (based sa backread).',
-                inline: false
+                  "```" +
+                  "j!summarize or j!backread\n" +
+                  "```" +
+                  "Bullets + short recap + unresolved questions (based sa backread).",
+                inline: false,
               },
               {
-                name: 'VOICE / TTS',
+                name: "VOICE / TTS",
                 value:
-                  '```' +
-                  'j!join              - pasok ako sa VC mo\n' +
-                  'j!leave             - alis sa VC\n' +
-                  'j!vc <text>         - TTS speak\n' +
-                  'j!ask <question>    - AI answer then speak\n' +
-                  'j!listen            - start STT listening\n' +
-                  'j!stop              - stop STT listening\n' +
-                  'j!voice / j!change m|f - change voice\n' +
-                  'j!autotts           - toggle auto TTS in channel\n' +
-                  '```',
-                inline: false
+                  "```" +
+                  "j!join              - pasok ako sa VC mo\n" +
+                  "j!leave             - alis sa VC\n" +
+                  "j!vc <text>         - TTS speak\n" +
+                  "j!ask <question>    - AI answer then speak\n" +
+                  "j!listen            - start STT listening\n" +
+                  "j!stop              - stop STT listening\n" +
+                  "j!voice / j!change m|f - change voice\n" +
+                  "j!autotts           - toggle auto TTS in channel\n" +
+                  "```",
+                inline: false,
               },
               {
-                name: 'MUSIC PLAYER',
+                name: "MUSIC PLAYER",
                 value:
-                  '```' +
-                  'j!play <link/name>  - tugtog na pre!\n' +
-                  'j!mstop             - tigil ang kanta\n' +
-                  'j!skip              - next song na, chaka\n' +
-                  'j!pause / j!resume  - hold muna / go tuloy\n' +
-                  'j!queue             - tingnan ang listahan\n' +
-                  'j!nowplaying        - ano tugtog natin?\n' +
-                  'j!loop / j!shuffle  - pa-ikot ikot / mix mix\n' +
-                  'j!volume <1-100>    - hinaan or lakasan\n' +
-                  '```',
-                inline: false
+                  "```" +
+                  "j!play <link/name>  - tugtog na pre!\n" +
+                  "j!mstop             - tigil ang kanta\n" +
+                  "j!skip              - next song na, chaka\n" +
+                  "j!pause / j!resume  - hold muna / go tuloy\n" +
+                  "j!queue             - tingnan ang listahan\n" +
+                  "j!nowplaying        - ano tugtog natin?\n" +
+                  "j!loop / j!shuffle  - pa-ikot ikot / mix mix\n" +
+                  "j!volume <1-100>    - hinaan or lakasan\n" +
+                  "```",
+                inline: false,
               },
               {
-                name: 'ADMIN / DIAGNOSTICS',
+                name: "ADMIN / DIAGNOSTICS",
                 value:
-                  '```' +
-                  'j!admin             - admin panel\n' +
-                  'j!greetnow [mode] [here] - force scheduled greeting\n' +
-                  'j!permcheck         - check channel perms\n' +
-                  'j!checkdb           - DB size/storage (GB)\n' +
-                  'j!status <note>     - set bot status\n' +
-                  'j!tulog on|off      - pause auto-epal\n' +
-                  '```',
-                inline: false
+                  "```" +
+                  "j!admin             - admin panel\n" +
+                  "j!greetnow [mode] [here] - force scheduled greeting\n" +
+                  "j!permcheck         - check channel perms\n" +
+                  "j!checkdb           - DB size/storage (GB)\n" +
+                  "j!status <note>     - set bot status\n" +
+                  "j!tulog on|off      - pause auto-epal\n" +
+                  "```",
+                inline: false,
               },
               {
-                name: 'QUICK',
+                name: "QUICK",
                 value:
-                  '```' +
-                  'j!ping              - latency\n' +
-                  'j!test              - roast greeting\n' +
-                  '```',
-                inline: false
-              }
+                  "```" +
+                  "j!ping              - latency\n" +
+                  "j!test              - roast greeting\n" +
+                  "```",
+                inline: false,
+              },
             )
-            .setFooter({ text: 'Yuma Bot - created by Drei - tip: j!admin (admins)' })
+            .setFooter({
+              text: "Yuma Bot - created by Drei - tip: j!admin (admins)",
+            })
             .setTimestamp();
 
           const examplesEmbed = new EmbedBuilder()
-            .setColor(0x7B61FF)
-            .setTitle('EXAMPLES (copy-paste)')
+            .setColor(0x7b61ff)
+            .setTitle("EXAMPLES (copy-paste)")
             .setDescription(
-              '```' +
-              '@Yuma hi\n' +
-              'iba na topic\n' +
-              'naalala mo ba sinabi ko kanina?\n' +
-              'j!summarize\n' +
-              'kilala mo ba ko?\n' +
-              'kilala mo ba si @Name?\n' +
-              'j!checkdb\n' +
-              '```'
+              "```" +
+                "@Yuma hi\n" +
+                "iba na topic\n" +
+                "naalala mo ba sinabi ko kanina?\n" +
+                "j!summarize\n" +
+                "kilala mo ba ko?\n" +
+                "kilala mo ba si @Name?\n" +
+                "j!checkdb\n" +
+                "```",
             )
-            .setFooter({ text: 'Pro tip: gamitin `j!permcheck` pag di ako nakikita sa channel.' });
+            .setFooter({
+              text: "Pro tip: gamitin `j!permcheck` pag di ako nakikita sa channel.",
+            });
 
           await message.reply({ embeds: [menuEmbed, examplesEmbed] });
           return;
         }
-}
+      }
 
       if (!rawContent.startsWith(prefix)) {
-        const movedByNaturalChat = await tryNaturalVoiceMoveFromChat(message, rawContent);
+        const movedByNaturalChat = await tryNaturalVoiceMoveFromChat(
+          message,
+          rawContent,
+        );
         if (movedByNaturalChat) return;
       }
 
@@ -4629,24 +5685,34 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
 
       // Support tickets have their own formal/helpful handler. Do not let the
       // normal JanJan chismis persona answer there too.
-      if (isSupportTicketChannel(message.channel) && (isMention || isReplyToBot)) {
+      if (
+        isSupportTicketChannel(message.channel) &&
+        (isMention || isReplyToBot)
+      ) {
         return;
       }
 
-      const isSleepMode = message.guild?.id ? sleepGuilds.has(message.guild.id) : false;
+      const isSleepMode = message.guild?.id
+        ? sleepGuilds.has(message.guild.id)
+        : false;
 
       // Soft auto-chat: sometimes JanJan interjects when her name is mentioned in normal chat
       // (no @ mention needed). This is rate-limited + random to avoid spam.
-      const lowerRaw = (rawContent || '').toLowerCase();
-      const mentionsJanJanName =
-        /(^|[^a-z0-9])(yuma)([^a-z0-9]|$)/i.test(lowerRaw);
+      const lowerRaw = (rawContent || "").toLowerCase();
+      const mentionsJanJanName = /(^|[^a-z0-9])(yuma)([^a-z0-9]|$)/i.test(
+        lowerRaw,
+      );
 
       const nowMs = Date.now();
-      const autoChatScopeKey = message.guild?.id ? `guild:${message.guild.id}` : `dm:${message.channel.id}`;
+      const autoChatScopeKey = message.guild?.id
+        ? `guild:${message.guild.id}`
+        : `dm:${message.channel.id}`;
       const lastAuto = autoChatCooldowns.get(autoChatScopeKey) || 0;
-      const isPriorityChannel = priorityAutoChatChannels.has(message.channel.id);
+      const isPriorityChannel = priorityAutoChatChannels.has(
+        message.channel.id,
+      );
       const AUTO_CHAT_COOLDOWN_MS = isPriorityChannel ? 45 * 1000 : 75 * 1000;
-      const autoChatEligible = (nowMs - lastAuto) >= AUTO_CHAT_COOLDOWN_MS;
+      const autoChatEligible = nowMs - lastAuto >= AUTO_CHAT_COOLDOWN_MS;
       const looksLowSignal =
         !rawContent ||
         rawContent.trim().length < 4 ||
@@ -4655,17 +5721,19 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
       // If user explicitly says the convo is still connected / they are still talking to JanJan,
       // and JanJan was recently active in this channel, reply reliably (even without @ mention).
       const connectedHint =
-        /\b(still\s+connected|context\s+is\s+still\s+connected|connected\s+pa(la)?|tuloy\s+pa|continu(e|ing)|same\s+topic|same\s+lang|usap\s+pa|kausap\s+ka\s+pa|talking\s+to\s+yuma|still\s+talking\s+to\s+yuma)\b/i
-          .test(rawContent || '');
+        /\b(still\s+connected|context\s+is\s+still\s+connected|connected\s+pa(la)?|tuloy\s+pa|continu(e|ing)|same\s+topic|same\s+lang|usap\s+pa|kausap\s+ka\s+pa|talking\s+to\s+yuma|still\s+talking\s+to\s+yuma)\b/i.test(
+          rawContent || "",
+        );
 
       let botRecentlyActive = false;
       if (connectedHint && message.channel?.id) {
         try {
           const recentBotRes = await pool.query(
-            'SELECT COUNT(*) FROM messages WHERE channel_id = $1 AND author_id = $2 AND created_at > (NOW() - INTERVAL \'20 minutes\')',
-            [message.channel.id, client.user.id]
+            "SELECT COUNT(*) FROM messages WHERE channel_id = $1 AND author_id = $2 AND created_at > (NOW() - INTERVAL '20 minutes')",
+            [message.channel.id, client.user.id],
           );
-          botRecentlyActive = parseInt(recentBotRes.rows?.[0]?.count || '0', 10) > 0;
+          botRecentlyActive =
+            parseInt(recentBotRes.rows?.[0]?.count || "0", 10) > 0;
         } catch {
           botRecentlyActive = false;
         }
@@ -4677,10 +5745,11 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
       if (!connectedHint && message.channel?.id) {
         try {
           const recentBotRes = await pool.query(
-            'SELECT COUNT(*) FROM messages WHERE channel_id = $1 AND author_id = $2 AND created_at > (NOW() - INTERVAL \'12 minutes\')',
-            [message.channel.id, client.user.id]
+            "SELECT COUNT(*) FROM messages WHERE channel_id = $1 AND author_id = $2 AND created_at > (NOW() - INTERVAL '12 minutes')",
+            [message.channel.id, client.user.id],
           );
-          botThreadActive = parseInt(recentBotRes.rows?.[0]?.count || '0', 10) > 0;
+          botThreadActive =
+            parseInt(recentBotRes.rows?.[0]?.count || "0", 10) > 0;
         } catch {
           botThreadActive = false;
         }
@@ -4690,8 +5759,11 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
 
       // "Epal mode": can auto-interject sometimes even without mention/keyword,
       // but stays rare + cooldown-protected to avoid spam.
-      const baseAutoChatChance =
-        botThreadActive ? 0.55 : (isPriorityChannel ? 0.45 : 0.25);
+      const baseAutoChatChance = botThreadActive
+        ? 0.55
+        : isPriorityChannel
+          ? 0.45
+          : 0.25;
       const autoChatChance = mentionsJanJanName ? 1.0 : baseAutoChatChance; // 100% when name is mentioned
       // Only "epal without mention" when it likely connects to an ongoing convo:
       // require recent activity in channel; name-mention bypasses this.
@@ -4699,10 +5771,10 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
       if (!mentionsJanJanName && message.channel?.id) {
         try {
           const recentRes = await pool.query(
-            'SELECT COUNT(*) FROM messages WHERE channel_id = $1 AND created_at > (NOW() - INTERVAL \'10 minutes\')',
-            [message.channel.id]
+            "SELECT COUNT(*) FROM messages WHERE channel_id = $1 AND created_at > (NOW() - INTERVAL '10 minutes')",
+            [message.channel.id],
           );
-          const recentCount = parseInt(recentRes.rows?.[0]?.count || '0', 10);
+          const recentCount = parseInt(recentRes.rows?.[0]?.count || "0", 10);
           hasRecentBackreadContext = recentCount >= 6;
         } catch {
           hasRecentBackreadContext = true;
@@ -4712,16 +5784,24 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
       const shouldAutoChat =
         !rawContent.startsWith(prefix) &&
         !looksLowSignal &&
-        (autoChatEligible || (connectedHint && botRecentlyActive) || botThreadActive) &&
+        (autoChatEligible ||
+          (connectedHint && botRecentlyActive) ||
+          botThreadActive) &&
         (mentionsJanJanName || hasRecentBackreadContext || botThreadActive) &&
         !isSleepMode &&
-        (connectedHint && botRecentlyActive ? true : (Math.random() < autoChatChance));
+        (connectedHint && botRecentlyActive
+          ? true
+          : Math.random() < autoChatChance);
 
       if (!isMention && !isReplyToBot && !shouldAutoChat) {
         // Auto TTS check
         if (message.guild && autoTtsChannels.has(message.guild.id)) {
           const channels = autoTtsChannels.get(message.guild.id);
-          if (channels.has(message.channel.id) && message.content && !message.content.startsWith(prefix)) {
+          if (
+            channels.has(message.channel.id) &&
+            message.content &&
+            !message.content.startsWith(prefix)
+          ) {
             // Speak the message autotts style
             const ttsText = `${message.member?.displayName || message.author.username} says: ${message.content}`;
             speakMessage(message.guild.id, ttsText);
@@ -4732,497 +5812,607 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
 
       // Queue AI replies per channel so fast message bursts are processed in order.
       await enqueueChannelAI(message.channel.id, async () => {
-      const backlog = aiChannelQueueDepths.get(message.channel.id) || 0;
-      const fastMode = backlog > 1;
+        const backlog = aiChannelQueueDepths.get(message.channel.id) || 0;
+        const fastMode = backlog > 1;
 
-      let content = message.content || '';
-      if (isMention) {
-        content = content
-          .replaceAll(`<@${me.id}>`, '')
-          .replaceAll(`<@!${me.id}>`, '')
-          .trim();
-      }
+        let content = message.content || "";
+        if (isMention) {
+          content = content
+            .replaceAll(`<@${me.id}>`, "")
+            .replaceAll(`<@!${me.id}>`, "")
+            .trim();
+        }
 
-      if (!content) {
-        content = 'Wala siyang sinabi, pero gusto lang daw makipagchikahan.';
-      }
+        if (!content) {
+          content = "Wala siyang sinabi, pero gusto lang daw makipagchikahan.";
+        }
 
-      // If user corrects a portrayal (e.g., "babae si Keia"), apologize and re-generate.
-      // Works even without mention when the convo is still connected.
-      const lastPortray = lastPortrayByChannel.get(message.channel.id) || null;
-      const genderFix = (content || '').match(/\b(babae|lalaki)\s+si\s+([^\n\r]+)$/i);
-      if (lastPortray && genderFix && LEONARDO_API_KEY) {
-        const saidGender = genderFix[1].toLowerCase();
-        const namePart = String(genderFix[2] || '').toLowerCase();
-        const targetName = String(lastPortray.displayName || '').toLowerCase();
-        if (namePart && targetName && (namePart.includes(targetName) || targetName.includes(namePart))) {
-          const genderWord = saidGender === 'babae' ? 'woman' : 'man';
-          await message.reply(`sorry, my bad. ${saidGender} nga si ${lastPortray.displayName}. sige ulitin ko.`);
-          try {
-            const promptDraftRes = await performChatRequest({
-              model: 'llama-3.1-8b-instant',
-              messages: [
-                {
-                  role: 'system',
-                  content:
-                    'You are crafting an image prompt for Leonardo.ai. Output ONLY the prompt text, no labels. ' +
-                    'Make it vivid but safe. No raw Discord IDs. No sexual content. Keep under 280 chars.'
-                },
-                {
-                  role: 'user',
-                  content:
-                    `Portray: ${lastPortray.displayName}\n` +
-                    `Hard constraint: gender = ${genderWord}\n` +
-                    `Style: photoreal portrait unless specified.\n` +
-                    `Extra: gymrat vibe, modern gym background, cinematic lighting.`
-                }
-              ],
-              temperature: 0.6,
-              max_tokens: 120
-            });
-            const drafted = (promptDraftRes.data?.choices?.[0]?.message?.content || '').trim();
-            const finalPrompt = drafted.replace(/\s+/g, ' ').slice(0, 280);
-            const caption = `sorry, my bad. ${saidGender} nga si ${lastPortray.displayName}. ayan ulit, inayos ko na.`;
-            await leonardoGenerateAndSend({ channel: message.channel, replyToMessage: message, prompt: finalPrompt, caption });
-          } catch (e) {
-            await message.reply(`pre, fail ulit. ${e.message}`);
-          }
-          return;
-        }
-      }
-
-      // Natural image request (mention/reply mode): "send ka picture ng ..."
-      // Converts to Leonardo generation and replies with an attachment.
-      // Natural image requests (allow missing "picture" keyword, since users sometimes just say "gawa ka ng X")
-      const imgMatch = content.match(/\b(send|gawa|generate|create)\b[\s\S]{0,25}\b(picture|pic|image|larawan)?\b[\s\S]{0,12}\b(ng|of|na)\b[\s:,-]*(.+)$/i);
-      if (imgMatch && (isMention || isReplyToBot) && LEONARDO_API_KEY) {
-        const prompt = (imgMatch[4] || '').trim();
-        if (prompt.length >= 3) {
-          try {
-            await leonardoGenerateAndSend({ channel: message.channel, replyToMessage: message, prompt, caption: `ayan pre: **${prompt.slice(0, 140)}**` });
-          } catch (e) {
-            await message.reply(`Teh, fail yung pic. ${e.message}`);
-          }
-          return;
-        }
-      }
-
-      // If user adds a meta-instruction like "reply okay if connected",
-      // treat it as a connectivity hint but still reply normally.
-      const okMetaPattern =
-        /(if you feel like[\s\S]*?connected[\s\S]*?reply\s+okay)|(reply\s+okay[\s\S]*?connected)|(connected\s*100%[\s\S]*?reply\s*okay)/i;
-      if (okMetaPattern.test(content)) {
-        content = content.replace(okMetaPattern, '').replace(/\s{2,}/g, ' ').trim() || content;
-      }
-
-      const authorDisplayName =
-        message.member?.displayName ||
-        message.author.globalName ||
-        message.author.username ||
-        'teh';
-      const memoryScopeKey = `${message.channel.id}:${message.author.id}`;
-      const deterministicTermReply = buildDeterministicTermReply(content);
-      if (deterministicTermReply) {
-        await message.reply(deterministicTermReply);
-        try {
-          await pool.query(
-            'INSERT INTO messages (guild_id, channel_id, author_id, author_tag, content) VALUES ($1, $2, $3, $4, $5)',
-            [
-              message.guild?.id || 'DM',
-              message.channel.id,
-              client.user.id,
-              client.user.tag,
-              deterministicTermReply
-            ]
-          );
-        } catch (dbErr) {
-          console.error('[DB] Term reply save error:', dbErr.message);
-        }
-        return;
-      }
-      const deterministicMemoryReply = buildDeterministicMemoryRecallReply({
-        content,
-        scopeKey: memoryScopeKey
-      });
-      if (deterministicMemoryReply) {
-        registerRecentPhrases(`vague-recall:${memoryScopeKey}`, deterministicMemoryReply);
-        await message.reply(deterministicMemoryReply);
-        try {
-          await pool.query(
-            'INSERT INTO messages (guild_id, channel_id, author_id, author_tag, content) VALUES ($1, $2, $3, $4, $5)',
-            [
-              message.guild?.id || 'DM',
-              message.channel.id,
-              client.user.id,
-              client.user.tag,
-              deterministicMemoryReply
-            ]
-          );
-        } catch (dbErr) {
-          console.error('[DB] Memory recall reply save error:', dbErr.message);
-        }
-        return;
-      }
-      const resetIntentNow = isTopicResetIntent(content);
-      if (resetIntentNow) {
-        topicResetByChannel.set(message.channel.id, Date.now() + (15 * 60 * 1000));
-      }
-      const explicitRetopic = isRetopicIntent(content);
-      if (explicitRetopic) {
-        topicResetByChannel.delete(message.channel.id);
-      }
-      const topicResetMode = !explicitRetopic && (topicResetByChannel.get(message.channel.id) || 0) > Date.now();
-      if (topicResetByChannel.size > 2000) {
-        for (const [k, until] of topicResetByChannel) {
-          if (!until || until <= Date.now()) topicResetByChannel.delete(k);
-        }
-      }
-      const rageScopeKey = `rage:${message.channel.id}:${message.author.id}`;
-      const rudeToBot = isRudeTowardBot(content, { isMention, isReplyToBot, shouldAutoChat, botThreadActive });
-      if (rudeToBot) {
-        const rageReply = buildPikonManagedReply(rageScopeKey, content);
-        await message.reply(rageReply);
-        try {
-          await pool.query(
-            'INSERT INTO messages (guild_id, channel_id, author_id, author_tag, content) VALUES ($1, $2, $3, $4, $5)',
-            [
-              message.guild?.id || 'DM',
-              message.channel.id,
-              client.user.id,
-              client.user.tag,
-              rageReply
-            ]
-          );
-        } catch (dbErr) {
-          console.error('[DB] Rage reply save error:', dbErr.message);
-        }
-        return;
-      }
-      const deterministicIdentityReply = buildDeterministicIdentityReply({
-        content,
-        authorId: message.author.id,
-        authorDisplay: authorDisplayName
-      });
-      if (deterministicIdentityReply) {
-        await message.reply(deterministicIdentityReply);
-        try {
-          await pool.query(
-            'INSERT INTO messages (guild_id, channel_id, author_id, author_tag, content) VALUES ($1, $2, $3, $4, $5)',
-            [
-              message.guild?.id || 'DM',
-              message.channel.id,
-              client.user.id,
-              client.user.tag,
-              deterministicIdentityReply
-            ]
-          );
-        } catch (dbErr) {
-          console.error('[DB] Deterministic reply save error:', dbErr.message);
-        }
-        return;
-      }
-
-      // Anti-repeat + naturalness guard: if JanJan is looping, force variety and user-focus.
-      // Pull last few JanJan replies + last few user messages for context and "do not repeat" rules.
-      try {
-        const lastBotRes = await pool.query(
-          'SELECT content FROM messages WHERE channel_id = $1 AND author_id = $2 ORDER BY created_at DESC LIMIT 3',
-          [message.channel.id, client.user.id]
+        // If user corrects a portrayal (e.g., "babae si Keia"), apologize and re-generate.
+        // Works even without mention when the convo is still connected.
+        const lastPortray =
+          lastPortrayByChannel.get(message.channel.id) || null;
+        const genderFix = (content || "").match(
+          /\b(babae|lalaki)\s+si\s+([^\n\r]+)$/i,
         );
-        const lastUserRes = await pool.query(
-          'SELECT author_tag, content FROM messages WHERE channel_id = $1 AND author_id <> $2 ORDER BY created_at DESC LIMIT 3',
-          [message.channel.id, client.user.id]
+        if (lastPortray && genderFix && LEONARDO_API_KEY) {
+          const saidGender = genderFix[1].toLowerCase();
+          const namePart = String(genderFix[2] || "").toLowerCase();
+          const targetName = String(
+            lastPortray.displayName || "",
+          ).toLowerCase();
+          if (
+            namePart &&
+            targetName &&
+            (namePart.includes(targetName) || targetName.includes(namePart))
+          ) {
+            const genderWord = saidGender === "babae" ? "woman" : "man";
+            await message.reply(
+              `sorry, my bad. ${saidGender} nga si ${lastPortray.displayName}. sige ulitin ko.`,
+            );
+            try {
+              const promptDraftRes = await performChatRequest({
+                model: "llama-3.1-8b-instant",
+                messages: [
+                  {
+                    role: "system",
+                    content:
+                      "You are crafting an image prompt for Leonardo.ai. Output ONLY the prompt text, no labels. " +
+                      "Make it vivid but safe. No raw Discord IDs. No sexual content. Keep under 280 chars.",
+                  },
+                  {
+                    role: "user",
+                    content:
+                      `Portray: ${lastPortray.displayName}\n` +
+                      `Hard constraint: gender = ${genderWord}\n` +
+                      `Style: photoreal portrait unless specified.\n` +
+                      `Extra: gymrat vibe, modern gym background, cinematic lighting.`,
+                  },
+                ],
+                temperature: 0.6,
+                max_tokens: 120,
+              });
+              const drafted = (
+                promptDraftRes.data?.choices?.[0]?.message?.content || ""
+              ).trim();
+              const finalPrompt = drafted.replace(/\s+/g, " ").slice(0, 280);
+              const caption = `sorry, my bad. ${saidGender} nga si ${lastPortray.displayName}. ayan ulit, inayos ko na.`;
+              await leonardoGenerateAndSend({
+                channel: message.channel,
+                replyToMessage: message,
+                prompt: finalPrompt,
+                caption,
+              });
+            } catch (e) {
+              await message.reply(`pre, fail ulit. ${e.message}`);
+            }
+            return;
+          }
+        }
+
+        // Natural image request (mention/reply mode): "send ka picture ng ..."
+        // Converts to Leonardo generation and replies with an attachment.
+        // Natural image requests (allow missing "picture" keyword, since users sometimes just say "gawa ka ng X")
+        const imgMatch = content.match(
+          /\b(send|gawa|generate|create)\b[\s\S]{0,25}\b(picture|pic|image|larawan)?\b[\s\S]{0,12}\b(ng|of|na)\b[\s:,-]*(.+)$/i,
         );
+        if (imgMatch && (isMention || isReplyToBot) && LEONARDO_API_KEY) {
+          const prompt = (imgMatch[4] || "").trim();
+          if (prompt.length >= 3) {
+            try {
+              await leonardoGenerateAndSend({
+                channel: message.channel,
+                replyToMessage: message,
+                prompt,
+                caption: `ayan pre: **${prompt.slice(0, 140)}**`,
+              });
+            } catch (e) {
+              await message.reply(`Teh, fail yung pic. ${e.message}`);
+            }
+            return;
+          }
+        }
 
-        const lastBotTexts = (lastBotRes.rows || [])
-          .map((r) => String(r.content || '').trim())
-          .filter(Boolean)
-          .map((t) => t.slice(0, 220));
-        const lastUserTexts = (lastUserRes.rows || [])
-          .map((r) => `${String(r.author_tag || 'user').trim()}: ${String(r.content || '').trim()}`)
-          .filter(Boolean)
-          .map((t) => t.replace(/\s+/g, ' ').slice(0, 220));
-
-        if (lastBotTexts.length > 0 || lastUserTexts.length > 0) {
+        // If user adds a meta-instruction like "reply okay if connected",
+        // treat it as a connectivity hint but still reply normally.
+        const okMetaPattern =
+          /(if you feel like[\s\S]*?connected[\s\S]*?reply\s+okay)|(reply\s+okay[\s\S]*?connected)|(connected\s*100%[\s\S]*?reply\s*okay)/i;
+        if (okMetaPattern.test(content)) {
           content =
-            `${content}\n\n[NATURAL CHAT GUARD]:\n` +
-            `- BAWAL paulit-ulit ng exact na salita, phrase, o pattern sa iyong mga nakaraang reply\n` +
-            `- BAWAL gumamit ng canned opener template — wag mag-"OT NAMAN", "KORNY KA BA" bilang laging buksan\n` +
-            `- Reply ONLY to the CURRENT MESSAGE — huwag i-address ang ibang user na nakita mo sa history\n` +
-            `- Huwag mag-hallucinate ng sagot mula sa ibang topic sa history — focus ka sa NGAYON na sinabi\n` +
-            `- Wag palaging may tanong sa dulo — statement lang kapag statement ang tama\n` +
-            `- if user says "paulit ulit", acknowledge and switch topic\n` +
-            (lastBotTexts.length ? `\n[YOUR LAST REPLIES — HUWAG ULITIN ANG PATTERN]:\n- ${lastBotTexts.join('\n- ')}` : '') +
-            (lastUserTexts.length ? `\n\n[CONTEXT LANG ITO — REPLY SA PINAKABAGO, HINDI DITO]:\n- ${lastUserTexts.join('\n- ')}` : '');
+            content
+              .replace(okMetaPattern, "")
+              .replace(/\s{2,}/g, " ")
+              .trim() || content;
         }
-      } catch { }
 
-      // Always store user facts on interaction so summaries work
-      if (isMention || isReplyToBot || shouldAutoChat) {
-        const displayAuthor =
+        const authorDisplayName =
           message.member?.displayName ||
           message.author.globalName ||
           message.author.username ||
-          message.author.tag;
-        await extractAndStoreUserFacts({
-          userId: message.author.id,
-          displayName: displayAuthor,
-          messageText: rawContent
-        });
-      }
-
-      // "Kilala mo ba..." questions: auto-summarize from DB (no special command needed)
-      const lowerContent = (content || '').toLowerCase();
-      const isWhoAmIPrompt =
-        /\b(kilala\s+mo\s+ba\s+ko|kilala\s+mo\s+ba\s+ako|do\s+you\s+know\s+me|who\s+am\s+i)\b/i.test(lowerContent);
-      const isKnowTargetPrompt =
-        /\b(kilala\s+mo\s+ba\s+(si|ito|to)|kilala\s+mo\s+ba\s+yan|do\s+you\s+know\s+him|do\s+you\s+know\s+her|do\s+you\s+know\s+this)\b/i
-          .test(lowerContent);
-      const isPersonMemoryRequest = Boolean(isWhoAmIPrompt || isKnowTargetPrompt);
-
-      if ((isWhoAmIPrompt || isKnowTargetPrompt) && message.channel?.id) {
-        const targets = [];
-        if (message.mentions?.users?.size) {
-          for (const [, u] of message.mentions.users) targets.push(u);
-        }
-        if (targets.length === 0 && isKnowTargetPrompt && message.guild) {
-          const guessedName = extractKnowTargetName(content);
-          const guessedUser = await resolveGuildUserByName(message.guild, guessedName);
-          if (guessedUser) targets.push(guessedUser);
-        }
-        if (targets.length === 0) {
-          targets.push(message.author);
-        }
-
-        const blocks = [];
-        for (const u of targets.slice(0, 2)) {
-          let facts = '';
-          let recentLines = [];
+          "teh";
+        const memoryScopeKey = `${message.channel.id}:${message.author.id}`;
+        const deterministicTermReply = buildDeterministicTermReply(content);
+        if (deterministicTermReply) {
+          await message.reply(deterministicTermReply);
           try {
-            const factsRes = await pool.query('SELECT facts FROM user_memory WHERE user_id = $1', [u.id]);
-            facts = factsRes.rows?.[0]?.facts || '';
-          } catch { }
-          try {
-            const msgRes = message.guild
-              ? await pool.query(
-                  'SELECT channel_id, author_tag, content, created_at FROM messages WHERE guild_id = $1 AND author_id = $2 ORDER BY created_at DESC LIMIT 35',
-                  [message.guild.id, u.id]
-                )
-              : await pool.query(
-                  'SELECT channel_id, author_tag, content, created_at FROM messages WHERE channel_id = $1 AND author_id = $2 ORDER BY created_at DESC LIMIT 35',
-                  [message.channel.id, u.id]
-                );
-            recentLines = (msgRes.rows || [])
-              .reverse()
-              .map((r) => {
-                const ts = r.created_at ? new Date(r.created_at).toISOString() : 'unknown-time';
-                const who = r.author_tag || (u.globalName || u.username || 'someone');
-                const msg = (r.content || '').replace(/\s+/g, ' ').trim();
-                if (!msg) return null;
-                const where = r.channel_id ? ` (ch:${r.channel_id})` : '';
-                return `[${ts}] ${who}${where}: ${msg}`;
-              })
-              .filter(Boolean);
-          } catch { }
-
-          const displayName =
-            message.guild?.members?.cache?.get(u.id)?.displayName ||
-            u.globalName ||
-            u.username ||
-            u.tag;
-
-          blocks.push(
-            `[TARGET PERSON]: ${displayName}\n` +
-            `[DB FACTS]: ${facts || '(none)'}\n` +
-            `[RECENT MESSAGES IN THIS CHANNEL]:\n${recentLines.join('\n') || '(none)'}\n`
-          );
-        }
-
-        const instruction =
-          `\n\n[DB-BASED PERSON SUMMARY MODE]: The user asked if you know someone. ` +
-          `Answer based ONLY on the DB info blocks below. ` +
-          `Do NOT output raw Discord IDs. ` +
-          `If info is thin, say kulang pa info and ask 1 short follow-up question.\n\n` +
-          blocks.join('\n---\n');
-
-        content = `${content}${instruction}`;
-      }
-
-      // Explicit summarize requests: pull recent channel messages with timestamps.
-      // This prevents JanJan from being dismissive and forces a real summary grounded in backread.
-      const summarizeMatch = content.match(/summarize\s+chat\s+from\s+(\d{1,2}:\d{2})\s+to\s+(\d{1,2}:\d{2})/i);
-      const isBackreadSummaryRequest = Boolean(summarizeMatch) || /\b(j!summarize|j!backread)\b/i.test(message.content || '');
-      if (summarizeMatch && message.channel?.id) {
-        const fromTime = summarizeMatch[1];
-        const toTime = summarizeMatch[2];
-        try {
-          const rowsRes = await pool.query(
-            'SELECT author_tag, content, created_at FROM messages WHERE channel_id = $1 ORDER BY created_at DESC LIMIT 120',
-            [message.channel.id]
-          );
-          const rows = (rowsRes.rows || []).reverse();
-          const lines = rows
-            .map((r) => {
-              const ts = r.created_at ? new Date(r.created_at).toISOString() : 'unknown-time';
-              const who = r.author_tag || 'someone';
-              const msg = (r.content || '').replace(/\s+/g, ' ').trim();
-              if (!msg) return null;
-              return `[${ts}] ${who}: ${msg}`;
-            })
-            .filter(Boolean)
-            .slice(-90);
-
-          const summaryContext =
-            `\n\n[SUMMARY REQUEST]: Summarize the chat in THIS CHANNEL between ${fromTime} and ${toTime} (PH time) today. ` +
-            `Use the backread transcript below (timestamps are ISO; align them to the requested window). ` +
-            `IMPORTANT STYLE: Keep Yuma's bad boy persona while summarizing (taglish, witty, may dating). ` +
-            `Output format ONLY: 4-8 bullets + 1 short paragraph (ano nangyari) + optional unresolved questions. ` +
-            `Do NOT say "wala akong nakita" — if little happened, say that clearly and state what DID happen.\n` +
-            `[BACKREAD TRANSCRIPT]\n${lines.join('\n')}\n`;
-
-          content = `${content}${summaryContext}`;
-        } catch (e) {
-          // If DB fails, still proceed with normal chat (model will rely on its history context)
-        }
-      }
-
-      // Light persona reaction for mentions/replies (no spam)
-      await maybeReactPersona(
-        message,
-        content,
-        shouldAutoChat ? 1.0 : (isMention || isReplyToBot ? 0.9 : 0.35)
-      );
-
-      const sexualGuardMode = isSexualEscalationText(content);
-
-      // Never use web research for backread/summarize or person-memory requests.
-      // These must be grounded in channel history / stored memory only (no "Sources:" spam).
-      const researchEnabled = message.guild?.id ? researchEnabledGuilds.has(message.guild.id) : false;
-      const allowResearchAndSources = researchEnabled && (isMention || isReplyToBot) && !shouldAutoChat;
-      const researchMode =
-        allowResearchAndSources && !(isBackreadSummaryRequest || isPersonMemoryRequest)
-          ? shouldUseResearchMode(content)
-          : false;
-      const tavilyResults = researchMode ? await searchWithTavily(content, fastMode ? 3 : 5) : [];
-      const discordContext = await buildDiscordAwarenessContext(message, fastMode);
-      const mentionContext = buildMentionContext(message);
-
-      if (shouldAutoChat) {
-        autoChatCooldowns.set(autoChatScopeKey, nowMs);
-        // Make it feel like she backread the convo before jumping in
-        content =
-          `AUTO-INTERACT MODE (NOT SPAM): You decided to join the conversation because your name was mentioned ("${rawContent}"). ` +
-          `Backread the last messages in the channel first (use the conversation history). ` +
-          `Then do a natural chat-interaction: react in a varied way (wag laging WAHAHAHA; pwede hala/luh/jusko/kaloka/sige/pre). ` +
-          `Reply to ONE specific point/person you saw in the backread (use their nickname), and keep it as normal conversation with a clear agree/disagree stance when bagay sa usapan. ` +
-          `Do not force a follow-up question every time and never use canned line like "ano ng chika mo today". ` +
-          `Optional: mini-story minsan lang, and dapat related + hindi ikaw lagi ang topic. ` +
-          `ANTI-REPEAT: bawal paulit-ulit na same opener/brag/joke/question. If user calls you out for repeating, apologize briefly and switch angle. ` +
-          `Keep it short and not formal.\n\n` +
-          `Name-trigger message you are reacting to: ${rawContent}`;
-      }
-
-      if (researchMode && tavilyResults.length === 0) {
-        const noSourceReply =
-          'Teh, latest yan pero wala akong ma-pull na fresh sources ngayon gusto mo mag research ka nalang pre! tanong ka ng tanong sakin bobayta ka tlga. ' +
-          'Pa-try ulit in a bit or pakilinaw yung query para di tayo hula-hula.';
-        await message.reply(noSourceReply);
-        try {
-          await pool.query(
-            'INSERT INTO messages (guild_id, channel_id, author_id, author_tag, content) VALUES ($1, $2, $3, $4, $5)',
-            [
-              message.guild?.id || 'DM',
-              message.channel.id,
-              client.user.id,
-              client.user.tag,
-              noSourceReply
-            ]
-          );
-        } catch (dbErr) {
-          console.error('[DB] Bot reply save error:', dbErr.message);
-        }
-        return;
-      }
-
-      await message.channel.sendTyping();
-
-      // --- UNIVERSAL AWARENESS & LEARNING ---
-      // JanJan learns from EVERY message, not just mentions.
-      // This builds her 'CHANNEL_SUMMARY' and 'USER_FACTS' automatically.
-      let voiceMembers = [];
-      if (message.guild) {
-        let targetVC = message.guild.members.me.voice.channel || message.member?.voice?.channel;
-        if (targetVC) {
-          voiceMembers = targetVC.members
-            .filter(m => !m.user.bot)
-            .map(m => m.displayName || m.user.username);
-        }
-      }
-      const allowedNameSet = buildAllowedNameSet(message, content, rawContent, voiceMembers);
-
-      const reply = await callGroqChat(content, message.author.id, message.channel.id, voiceMembers, {
-        fastMode,
-        authorDisplayName,
-        researchContext: tavilyResults,
-        discordContext,
-        mentionContext,
-        topicResetMode,
-        allowRetopic: explicitRetopic,
-        memoryRecallMode: Boolean(isPersonMemoryRequest || isBackreadSummaryRequest || isMemoryRecallIntent(rawContent)),
-        forceResearchGrounding: researchMode,
-        forceSexualGuard: sexualGuardMode
-      });
-
-      if (reply && reply.length > 0) {
-        const strippedReply = stripUnexpectedNameClaims(reply, allowedNameSet);
-        const identitySafeReply = enforceBotIdentityReply(strippedReply);
-        const groundedReply =
-          identitySafeReply && identitySafeReply.length > 0
-            ? identitySafeReply
-            : 'teh, linawin natin para walang imbentong issue. ano mismo gusto mong i-confirm?';
-        const sourceLines = (allowResearchAndSources ? tavilyResults : [])
-          .slice(0, 3)
-          .map((r) => `- [${r.title}](${r.url})`);
-        const finalReply = (allowResearchAndSources && sourceLines.length > 0)
-          ? `${groundedReply}\n\nSources:\n${sourceLines.join('\n')}`
-          : groundedReply;
-        let safeReplyRaw = finalReply.length > 1900 ? `${finalReply.slice(0, 1900)}...` : finalReply;
-        // Strip any hallucinated Sources block unless research is explicitly enabled/allowed.
-        if (!allowResearchAndSources) {
-          safeReplyRaw = safeReplyRaw.replace(/\n\nSources:\s*[\s\S]*$/i, '').trim();
-        }
-        const safeReply = keepChikaEmojisLight(safeReplyRaw);
-
-        await message.reply(safeReply);
-
-        // NOTE: For normal chat/mentions, we DO NOT autoâ€‘TTS the reply anymore.
-        // TTS is only triggered explicitly via j!vc / j!ask / j!test / voice events.
-
-        // Save the bot's reply to DB so it remembers what it said
-        try {
-          await pool.query(
-            'INSERT INTO messages (guild_id, channel_id, author_id, author_tag, content) VALUES ($1, $2, $3, $4, $5)',
-            [
-              message.guild?.id || 'DM',
-              message.channel.id,
-              client.user.id,
-              client.user.tag,
-                safeReply
-              ]
+            await pool.query(
+              "INSERT INTO messages (guild_id, channel_id, author_id, author_tag, content) VALUES ($1, $2, $3, $4, $5)",
+              [
+                message.guild?.id || "DM",
+                message.channel.id,
+                client.user.id,
+                client.user.tag,
+                deterministicTermReply,
+              ],
             );
-        } catch (dbErr) {
-          console.error('[DB] Bot reply save error:', dbErr.message);
+          } catch (dbErr) {
+            console.error("[DB] Term reply save error:", dbErr.message);
+          }
+          return;
         }
-      }
+        const deterministicMemoryReply = buildDeterministicMemoryRecallReply({
+          content,
+          scopeKey: memoryScopeKey,
+        });
+        if (deterministicMemoryReply) {
+          registerRecentPhrases(
+            `vague-recall:${memoryScopeKey}`,
+            deterministicMemoryReply,
+          );
+          await message.reply(deterministicMemoryReply);
+          try {
+            await pool.query(
+              "INSERT INTO messages (guild_id, channel_id, author_id, author_tag, content) VALUES ($1, $2, $3, $4, $5)",
+              [
+                message.guild?.id || "DM",
+                message.channel.id,
+                client.user.id,
+                client.user.tag,
+                deterministicMemoryReply,
+              ],
+            );
+          } catch (dbErr) {
+            console.error(
+              "[DB] Memory recall reply save error:",
+              dbErr.message,
+            );
+          }
+          return;
+        }
+        const resetIntentNow = isTopicResetIntent(content);
+        if (resetIntentNow) {
+          topicResetByChannel.set(
+            message.channel.id,
+            Date.now() + 15 * 60 * 1000,
+          );
+        }
+        const explicitRetopic = isRetopicIntent(content);
+        if (explicitRetopic) {
+          topicResetByChannel.delete(message.channel.id);
+        }
+        const topicResetMode =
+          !explicitRetopic &&
+          (topicResetByChannel.get(message.channel.id) || 0) > Date.now();
+        if (topicResetByChannel.size > 2000) {
+          for (const [k, until] of topicResetByChannel) {
+            if (!until || until <= Date.now()) topicResetByChannel.delete(k);
+          }
+        }
+        const rageScopeKey = `rage:${message.channel.id}:${message.author.id}`;
+        const rudeToBot = isRudeTowardBot(content, {
+          isMention,
+          isReplyToBot,
+          shouldAutoChat,
+          botThreadActive,
+        });
+        if (rudeToBot) {
+          const rageReply = buildPikonManagedReply(rageScopeKey, content);
+          await message.reply(rageReply);
+          try {
+            await pool.query(
+              "INSERT INTO messages (guild_id, channel_id, author_id, author_tag, content) VALUES ($1, $2, $3, $4, $5)",
+              [
+                message.guild?.id || "DM",
+                message.channel.id,
+                client.user.id,
+                client.user.tag,
+                rageReply,
+              ],
+            );
+          } catch (dbErr) {
+            console.error("[DB] Rage reply save error:", dbErr.message);
+          }
+          return;
+        }
+        const deterministicIdentityReply = buildDeterministicIdentityReply({
+          content,
+          authorId: message.author.id,
+          authorDisplay: authorDisplayName,
+        });
+        if (deterministicIdentityReply) {
+          await message.reply(deterministicIdentityReply);
+          try {
+            await pool.query(
+              "INSERT INTO messages (guild_id, channel_id, author_id, author_tag, content) VALUES ($1, $2, $3, $4, $5)",
+              [
+                message.guild?.id || "DM",
+                message.channel.id,
+                client.user.id,
+                client.user.tag,
+                deterministicIdentityReply,
+              ],
+            );
+          } catch (dbErr) {
+            console.error(
+              "[DB] Deterministic reply save error:",
+              dbErr.message,
+            );
+          }
+          return;
+        }
+
+        // Anti-repeat + naturalness guard: if JanJan is looping, force variety and user-focus.
+        // Pull last few JanJan replies + last few user messages for context and "do not repeat" rules.
+        try {
+          const lastBotRes = await pool.query(
+            "SELECT content FROM messages WHERE channel_id = $1 AND author_id = $2 ORDER BY created_at DESC LIMIT 3",
+            [message.channel.id, client.user.id],
+          );
+          const lastUserRes = await pool.query(
+            "SELECT author_tag, content FROM messages WHERE channel_id = $1 AND author_id <> $2 ORDER BY created_at DESC LIMIT 3",
+            [message.channel.id, client.user.id],
+          );
+
+          const lastBotTexts = (lastBotRes.rows || [])
+            .map((r) => String(r.content || "").trim())
+            .filter(Boolean)
+            .map((t) => t.slice(0, 220));
+          const lastUserTexts = (lastUserRes.rows || [])
+            .map(
+              (r) =>
+                `${String(r.author_tag || "user").trim()}: ${String(r.content || "").trim()}`,
+            )
+            .filter(Boolean)
+            .map((t) => t.replace(/\s+/g, " ").slice(0, 220));
+
+          if (lastBotTexts.length > 0 || lastUserTexts.length > 0) {
+            content =
+              `${content}\n\n[NATURAL CHAT GUARD]:\n` +
+              `- BAWAL paulit-ulit ng exact na salita, phrase, o pattern sa iyong mga nakaraang reply\n` +
+              `- BAWAL gumamit ng canned opener template — wag mag-"OT NAMAN", "KORNY KA BA" bilang laging buksan\n` +
+              `- Reply ONLY to the CURRENT MESSAGE — huwag i-address ang ibang user na nakita mo sa history\n` +
+              `- Huwag mag-hallucinate ng sagot mula sa ibang topic sa history — focus ka sa NGAYON na sinabi\n` +
+              `- Wag palaging may tanong sa dulo — statement lang kapag statement ang tama\n` +
+              `- if user says "paulit ulit", acknowledge and switch topic\n` +
+              (lastBotTexts.length
+                ? `\n[YOUR LAST REPLIES — HUWAG ULITIN ANG PATTERN]:\n- ${lastBotTexts.join("\n- ")}`
+                : "") +
+              (lastUserTexts.length
+                ? `\n\n[CONTEXT LANG ITO — REPLY SA PINAKABAGO, HINDI DITO]:\n- ${lastUserTexts.join("\n- ")}`
+                : "");
+          }
+        } catch {}
+
+        // Always store user facts on interaction so summaries work
+        if (isMention || isReplyToBot || shouldAutoChat) {
+          const displayAuthor =
+            message.member?.displayName ||
+            message.author.globalName ||
+            message.author.username ||
+            message.author.tag;
+          await extractAndStoreUserFacts({
+            userId: message.author.id,
+            displayName: displayAuthor,
+            messageText: rawContent,
+          });
+        }
+
+        // "Kilala mo ba..." questions: auto-summarize from DB (no special command needed)
+        const lowerContent = (content || "").toLowerCase();
+        const isWhoAmIPrompt =
+          /\b(kilala\s+mo\s+ba\s+ko|kilala\s+mo\s+ba\s+ako|do\s+you\s+know\s+me|who\s+am\s+i)\b/i.test(
+            lowerContent,
+          );
+        const isKnowTargetPrompt =
+          /\b(kilala\s+mo\s+ba\s+(si|ito|to)|kilala\s+mo\s+ba\s+yan|do\s+you\s+know\s+him|do\s+you\s+know\s+her|do\s+you\s+know\s+this)\b/i.test(
+            lowerContent,
+          );
+        const isPersonMemoryRequest = Boolean(
+          isWhoAmIPrompt || isKnowTargetPrompt,
+        );
+
+        if ((isWhoAmIPrompt || isKnowTargetPrompt) && message.channel?.id) {
+          const targets = [];
+          if (message.mentions?.users?.size) {
+            for (const [, u] of message.mentions.users) targets.push(u);
+          }
+          if (targets.length === 0 && isKnowTargetPrompt && message.guild) {
+            const guessedName = extractKnowTargetName(content);
+            const guessedUser = await resolveGuildUserByName(
+              message.guild,
+              guessedName,
+            );
+            if (guessedUser) targets.push(guessedUser);
+          }
+          if (targets.length === 0) {
+            targets.push(message.author);
+          }
+
+          const blocks = [];
+          for (const u of targets.slice(0, 2)) {
+            let facts = "";
+            let recentLines = [];
+            try {
+              const factsRes = await pool.query(
+                "SELECT facts FROM user_memory WHERE user_id = $1",
+                [u.id],
+              );
+              facts = factsRes.rows?.[0]?.facts || "";
+            } catch {}
+            try {
+              const msgRes = message.guild
+                ? await pool.query(
+                    "SELECT channel_id, author_tag, content, created_at FROM messages WHERE guild_id = $1 AND author_id = $2 ORDER BY created_at DESC LIMIT 35",
+                    [message.guild.id, u.id],
+                  )
+                : await pool.query(
+                    "SELECT channel_id, author_tag, content, created_at FROM messages WHERE channel_id = $1 AND author_id = $2 ORDER BY created_at DESC LIMIT 35",
+                    [message.channel.id, u.id],
+                  );
+              recentLines = (msgRes.rows || [])
+                .reverse()
+                .map((r) => {
+                  const ts = r.created_at
+                    ? new Date(r.created_at).toISOString()
+                    : "unknown-time";
+                  const who =
+                    r.author_tag || u.globalName || u.username || "someone";
+                  const msg = (r.content || "").replace(/\s+/g, " ").trim();
+                  if (!msg) return null;
+                  const where = r.channel_id ? ` (ch:${r.channel_id})` : "";
+                  return `[${ts}] ${who}${where}: ${msg}`;
+                })
+                .filter(Boolean);
+            } catch {}
+
+            const displayName =
+              message.guild?.members?.cache?.get(u.id)?.displayName ||
+              u.globalName ||
+              u.username ||
+              u.tag;
+
+            blocks.push(
+              `[TARGET PERSON]: ${displayName}\n` +
+                `[DB FACTS]: ${facts || "(none)"}\n` +
+                `[RECENT MESSAGES IN THIS CHANNEL]:\n${recentLines.join("\n") || "(none)"}\n`,
+            );
+          }
+
+          const instruction =
+            `\n\n[DB-BASED PERSON SUMMARY MODE]: The user asked if you know someone. ` +
+            `Answer based ONLY on the DB info blocks below. ` +
+            `Do NOT output raw Discord IDs. ` +
+            `If info is thin, say kulang pa info and ask 1 short follow-up question.\n\n` +
+            blocks.join("\n---\n");
+
+          content = `${content}${instruction}`;
+        }
+
+        // Explicit summarize requests: pull recent channel messages with timestamps.
+        // This prevents JanJan from being dismissive and forces a real summary grounded in backread.
+        const summarizeMatch = content.match(
+          /summarize\s+chat\s+from\s+(\d{1,2}:\d{2})\s+to\s+(\d{1,2}:\d{2})/i,
+        );
+        const isBackreadSummaryRequest =
+          Boolean(summarizeMatch) ||
+          /\b(j!summarize|j!backread)\b/i.test(message.content || "");
+        if (summarizeMatch && message.channel?.id) {
+          const fromTime = summarizeMatch[1];
+          const toTime = summarizeMatch[2];
+          try {
+            const rowsRes = await pool.query(
+              "SELECT author_tag, content, created_at FROM messages WHERE channel_id = $1 ORDER BY created_at DESC LIMIT 120",
+              [message.channel.id],
+            );
+            const rows = (rowsRes.rows || []).reverse();
+            const lines = rows
+              .map((r) => {
+                const ts = r.created_at
+                  ? new Date(r.created_at).toISOString()
+                  : "unknown-time";
+                const who = r.author_tag || "someone";
+                const msg = (r.content || "").replace(/\s+/g, " ").trim();
+                if (!msg) return null;
+                return `[${ts}] ${who}: ${msg}`;
+              })
+              .filter(Boolean)
+              .slice(-90);
+
+            const summaryContext =
+              `\n\n[SUMMARY REQUEST]: Summarize the chat in THIS CHANNEL between ${fromTime} and ${toTime} (PH time) today. ` +
+              `Use the backread transcript below (timestamps are ISO; align them to the requested window). ` +
+              `IMPORTANT STYLE: Keep Yuma's bad boy persona while summarizing (taglish, witty, may dating). ` +
+              `Output format ONLY: 4-8 bullets + 1 short paragraph (ano nangyari) + optional unresolved questions. ` +
+              `Do NOT say "wala akong nakita" — if little happened, say that clearly and state what DID happen.\n` +
+              `[BACKREAD TRANSCRIPT]\n${lines.join("\n")}\n`;
+
+            content = `${content}${summaryContext}`;
+          } catch (e) {
+            // If DB fails, still proceed with normal chat (model will rely on its history context)
+          }
+        }
+
+        // Light persona reaction for mentions/replies (no spam)
+        await maybeReactPersona(
+          message,
+          content,
+          shouldAutoChat ? 1.0 : isMention || isReplyToBot ? 0.9 : 0.35,
+        );
+
+        const sexualGuardMode = isSexualEscalationText(content);
+
+        // Never use web research for backread/summarize or person-memory requests.
+        // These must be grounded in channel history / stored memory only (no "Sources:" spam).
+        const researchEnabled = message.guild?.id
+          ? researchEnabledGuilds.has(message.guild.id)
+          : false;
+        const allowResearchAndSources =
+          researchEnabled && (isMention || isReplyToBot) && !shouldAutoChat;
+        const researchMode =
+          allowResearchAndSources &&
+          !(isBackreadSummaryRequest || isPersonMemoryRequest)
+            ? shouldUseResearchMode(content)
+            : false;
+        const tavilyResults = researchMode
+          ? await searchWithTavily(content, fastMode ? 3 : 5)
+          : [];
+        const discordContext = await buildDiscordAwarenessContext(
+          message,
+          fastMode,
+        );
+        const mentionContext = buildMentionContext(message);
+
+        if (shouldAutoChat) {
+          autoChatCooldowns.set(autoChatScopeKey, nowMs);
+          // Make it feel like she backread the convo before jumping in
+          content =
+            `AUTO-INTERACT MODE (NOT SPAM): You decided to join the conversation because your name was mentioned ("${rawContent}"). ` +
+            `Backread the last messages in the channel first (use the conversation history). ` +
+            `Then do a natural chat-interaction: react in a varied way (wag laging WAHAHAHA; pwede hala/luh/jusko/kaloka/sige/pre). ` +
+            `Reply to ONE specific point/person you saw in the backread (use their nickname), and keep it as normal conversation with a clear agree/disagree stance when bagay sa usapan. ` +
+            `Do not force a follow-up question every time and never use canned line like "ano ng chika mo today". ` +
+            `Optional: mini-story minsan lang, and dapat related + hindi ikaw lagi ang topic. ` +
+            `ANTI-REPEAT: bawal paulit-ulit na same opener/brag/joke/question. If user calls you out for repeating, apologize briefly and switch angle. ` +
+            `Keep it short and not formal.\n\n` +
+            `Name-trigger message you are reacting to: ${rawContent}`;
+        }
+
+        if (researchMode && tavilyResults.length === 0) {
+          const noSourceReply =
+            "Teh, latest yan pero wala akong ma-pull na fresh sources ngayon gusto mo mag research ka nalang pre! tanong ka ng tanong sakin bobayta ka tlga. " +
+            "Pa-try ulit in a bit or pakilinaw yung query para di tayo hula-hula.";
+          await message.reply(noSourceReply);
+          try {
+            await pool.query(
+              "INSERT INTO messages (guild_id, channel_id, author_id, author_tag, content) VALUES ($1, $2, $3, $4, $5)",
+              [
+                message.guild?.id || "DM",
+                message.channel.id,
+                client.user.id,
+                client.user.tag,
+                noSourceReply,
+              ],
+            );
+          } catch (dbErr) {
+            console.error("[DB] Bot reply save error:", dbErr.message);
+          }
+          return;
+        }
+
+        await message.channel.sendTyping();
+
+        // --- UNIVERSAL AWARENESS & LEARNING ---
+        // JanJan learns from EVERY message, not just mentions.
+        // This builds her 'CHANNEL_SUMMARY' and 'USER_FACTS' automatically.
+        let voiceMembers = [];
+        if (message.guild) {
+          let targetVC =
+            message.guild.members.me.voice.channel ||
+            message.member?.voice?.channel;
+          if (targetVC) {
+            voiceMembers = targetVC.members
+              .filter((m) => !m.user.bot)
+              .map((m) => m.displayName || m.user.username);
+          }
+        }
+        const allowedNameSet = buildAllowedNameSet(
+          message,
+          content,
+          rawContent,
+          voiceMembers,
+        );
+
+        const reply = await callGroqChat(
+          content,
+          message.author.id,
+          message.channel.id,
+          voiceMembers,
+          {
+            fastMode,
+            authorDisplayName,
+            researchContext: tavilyResults,
+            discordContext,
+            mentionContext,
+            topicResetMode,
+            allowRetopic: explicitRetopic,
+            memoryRecallMode: Boolean(
+              isPersonMemoryRequest ||
+                isBackreadSummaryRequest ||
+                isMemoryRecallIntent(rawContent),
+            ),
+            forceResearchGrounding: researchMode,
+            forceSexualGuard: sexualGuardMode,
+          },
+        );
+
+        if (reply && reply.length > 0) {
+          const strippedReply = stripUnexpectedNameClaims(
+            reply,
+            allowedNameSet,
+          );
+          const identitySafeReply = enforceBotIdentityReply(strippedReply);
+          const groundedReply =
+            identitySafeReply && identitySafeReply.length > 0
+              ? identitySafeReply
+              : "teh, linawin natin para walang imbentong issue. ano mismo gusto mong i-confirm?";
+          const sourceLines = (allowResearchAndSources ? tavilyResults : [])
+            .slice(0, 3)
+            .map((r) => `- [${r.title}](${r.url})`);
+          const finalReply =
+            allowResearchAndSources && sourceLines.length > 0
+              ? `${groundedReply}\n\nSources:\n${sourceLines.join("\n")}`
+              : groundedReply;
+          let safeReplyRaw =
+            finalReply.length > 1900
+              ? `${finalReply.slice(0, 1900)}...`
+              : finalReply;
+          // Strip any hallucinated Sources block unless research is explicitly enabled/allowed.
+          if (!allowResearchAndSources) {
+            safeReplyRaw = safeReplyRaw
+              .replace(/\n\nSources:\s*[\s\S]*$/i, "")
+              .trim();
+          }
+          const safeReply = keepChikaEmojisLight(safeReplyRaw);
+
+          await message.reply(safeReply);
+
+          // NOTE: For normal chat/mentions, we DO NOT autoâ€‘TTS the reply anymore.
+          // TTS is only triggered explicitly via j!vc / j!ask / j!test / voice events.
+
+          // Save the bot's reply to DB so it remembers what it said
+          try {
+            await pool.query(
+              "INSERT INTO messages (guild_id, channel_id, author_id, author_tag, content) VALUES ($1, $2, $3, $4, $5)",
+              [
+                message.guild?.id || "DM",
+                message.channel.id,
+                client.user.id,
+                client.user.tag,
+                safeReply,
+              ],
+            );
+          } catch (dbErr) {
+            console.error("[DB] Bot reply save error:", dbErr.message);
+          }
+        }
       });
     } catch (err) {
-      console.error('Error handling messageCreate:', err);
+      console.error("Error handling messageCreate:", err);
     }
   });
 
   // =====================================================================
   // VOICE STATE UPDATE — only tracks bot's own channel movements for 24/7 saved state
-  client.on('voiceStateUpdate', async (oldState, newState) => {
+  client.on("voiceStateUpdate", async (oldState, newState) => {
     try {
       const member = newState.member || oldState.member;
       if (!member || member.id !== client.user.id) return;
@@ -5231,21 +6421,27 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
       const wasInChannel = oldState.channelId;
       const nowInChannel = newState.channelId;
 
-      if (wasInChannel && nowInChannel && wasInChannel !== nowInChannel && savedVoiceStates.has(guildId)) {
-        console.log(`[VOICE 24/7] Bot moved to channel ${nowInChannel}. Updating saved state.`);
+      if (
+        wasInChannel &&
+        nowInChannel &&
+        wasInChannel !== nowInChannel &&
+        savedVoiceStates.has(guildId)
+      ) {
+        console.log(
+          `[VOICE 24/7] Bot moved to channel ${nowInChannel}. Updating saved state.`,
+        );
         setSavedVoiceState({ guildId, channelId: nowInChannel });
         await saveVoiceStateToDB(guildId, nowInChannel);
       }
     } catch (err) {
-      console.error('[VOICE STATE] Error:', err.message);
+      console.error("[VOICE STATE] Error:", err.message);
     }
   });
 
   // Login AFTER sodium is ready and events are registered
   client.login(DISCORD_TOKEN).catch((err) => {
     runtimeState.discord.lastLoginError = err.message;
-    console.error('Failed to login to Discord:', err.message);
+    console.error("Failed to login to Discord:", err.message);
     process.exit(1);
   });
-
 })(); // End of async IIFE
