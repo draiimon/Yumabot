@@ -5549,23 +5549,15 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
             )
             .addFields(
               {
-                name: "CONVO FLOW (LATEST)",
-                value:
-                  "- natural and human-like\n" +
-                  "- less oversharing, less redundancy\n" +
-                  "- no past callback unless needed or explicitly requested",
-                inline: false,
-              },
-              {
-                name: "CHIKA / PROFILE",
+                name: "VIEW",
                 value:
                   "```" +
                   "j!stats              - bot dashboard\n" +
                   "j!status [text]      - bot bubble (admin sets)\n" +
                   "j!view [@User]       - intro + roles card\n" +
-                  "j!usersummary @User - summary ng tao (DB)\n" +
-                  "j!img <prompt>      - generate picture\n" +
-                  "j!portray @User     - portray a user as image\n" +
+                  "j!usersummary @User  - summary ng tao (DB)\n" +
+                  "j!img <prompt>       - generate picture\n" +
+                  "j!portray @User      - portray a user as image\n" +
                   "```" +
                   '**No command needed:** "kilala mo ba ko?" / "kilala mo ba si @X?" / "naalala mo ba sinabi ko kanina?"',
                 inline: false,
@@ -5595,21 +5587,6 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
                 inline: false,
               },
               {
-                name: "MUSIC PLAYER",
-                value:
-                  "```" +
-                  "j!play <link/name>  - tugtog na pre!\n" +
-                  "j!mstop             - tigil ang kanta\n" +
-                  "j!skip              - next song na, chaka\n" +
-                  "j!pause / j!resume  - hold muna / go tuloy\n" +
-                  "j!queue             - tingnan ang listahan\n" +
-                  "j!nowplaying        - ano tugtog natin?\n" +
-                  "j!loop / j!shuffle  - pa-ikot ikot / mix mix\n" +
-                  "j!volume <1-100>    - hinaan or lakasan\n" +
-                  "```",
-                inline: false,
-              },
-              {
                 name: "ADMIN / DIAGNOSTICS",
                 value:
                   "```" +
@@ -5626,36 +5603,18 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
                 name: "QUICK",
                 value:
                   "```" +
-                  "j!ping              - latency\n" +
-                  "j!test              - roast greeting\n" +
+                  "j!ping              - latency check\n" +
+                  "j!test              - bad boy greeting\n" +
                   "```",
                 inline: false,
               },
             )
             .setFooter({
-              text: "Yuma Bot - created by Drei - tip: j!admin (admins)",
+              text: "Yuma Bot - created by Yanna",
             })
             .setTimestamp();
 
-          const examplesEmbed = new EmbedBuilder()
-            .setColor(0x7b61ff)
-            .setTitle("EXAMPLES (copy-paste)")
-            .setDescription(
-              "```" +
-                "@Yuma hi\n" +
-                "iba na topic\n" +
-                "naalala mo ba sinabi ko kanina?\n" +
-                "j!summarize\n" +
-                "kilala mo ba ko?\n" +
-                "kilala mo ba si @Name?\n" +
-                "j!checkdb\n" +
-                "```",
-            )
-            .setFooter({
-              text: "Pro tip: gamitin `j!permcheck` pag di ako nakikita sa channel.",
-            });
-
-          await message.reply({ embeds: [menuEmbed, examplesEmbed] });
+          await message.reply({ embeds: [menuEmbed] });
           return;
         }
       }
