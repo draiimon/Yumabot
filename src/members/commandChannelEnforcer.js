@@ -83,7 +83,7 @@ function registerCommandChannelEnforcer(client) {
   });
 
   console.log(
-    `[CMD-CHANNEL] Bot-command enforcer active — only ${ALLOWED_BOT_COMMAND_CHANNEL} allows foreign-bot commands AND outputs`,
+    `[CMD-CHANNEL] Bot-command enforcer active — user prefix commands restricted to #${ALLOWED_BOT_COMMAND_CHANNEL} (bot/webhook outputs unrestricted)`,
   );
 }
 
