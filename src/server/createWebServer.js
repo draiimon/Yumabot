@@ -107,80 +107,105 @@ function buildListenPageHtml() {
       #app {
         display: none;
         min-height: 100vh;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        background: #0f1117;
-        color: #e8eaf0;
+        background: #000;
         align-items: center;
         justify-content: center;
         padding: 20px;
       }
       #app.visible { display: flex; }
-      .card {
-        width: min(420px, 100%);
-        background: #181b24;
-        border: 1px solid #2a2d3a;
-        border-radius: 16px;
-        padding: 32px 28px;
-        text-align: center;
+      .app-terminal {
+        width: min(500px, 92vw);
+        font-family: 'Courier New', Courier, monospace;
+        color: #00ff41;
+        font-size: 0.82rem;
+        line-height: 1.8;
       }
-      .icon { font-size: 2rem; margin-bottom: 12px; }
-      h1 { font-size: 1.4rem; font-weight: 600; color: #fff; letter-spacing: -0.02em; }
-      .subtitle { margin-top: 6px; font-size: 0.85rem; color: #6b7280; }
-      .divider { border: none; border-top: 1px solid #2a2d3a; margin: 24px 0; }
-      .badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 7px;
-        padding: 6px 14px;
-        border-radius: 999px;
-        font-size: 0.8rem;
-        font-weight: 600;
-        letter-spacing: 0.04em;
-        text-transform: uppercase;
+      .a-line { white-space: pre; }
+      .a-dim  { color: #1a6b22; }
+      .a-warn { color: #ff3c3c; }
+      .a-hi   { color: #00ff41; font-weight: bold; }
+      .a-amber { color: #f59e0b; }
+
+      /* status tag */
+      .status-tag { font-weight: bold; }
+      .status-tag.live        { color: #00ff41; }
+      .status-tag.offline     { color: #ff3c3c; }
+      .status-tag.reconnecting{ color: #f59e0b; }
+
+      /* visualizer bars (shown when live) */
+      .viz {
+        display: none;
+        gap: 3px;
+        align-items: flex-end;
+        height: 18px;
+        margin-left: 8px;
+        vertical-align: middle;
       }
-      .badge.live { background: rgba(52,211,153,0.12); color: #34d399; }
-      .badge.offline { background: rgba(107,114,128,0.15); color: #6b7280; }
-      .badge.reconnecting { background: rgba(251,191,36,0.12); color: #fbbf24; }
-      .rdot {
-        width: 7px; height: 7px;
-        border-radius: 50%;
-        background: currentColor;
+      .viz.active { display: inline-flex; }
+      .viz-bar {
+        width: 3px;
+        background: #00ff41;
+        animation: vbar 0.8s ease-in-out infinite alternate;
       }
-      .rdot.pulse { animation: pulse 1.4s ease-in-out infinite; }
-      @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
-      .channel-info { margin-top: 10px; font-size: 0.83rem; color: #6b7280; min-height: 1.2em; }
-      .select-wrap { margin-top: 20px; text-align: left; }
-      .select-wrap label { font-size: 0.75rem; color: #6b7280; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; display: block; }
+      .viz-bar:nth-child(1){ height: 6px;  animation-delay: 0s;    }
+      .viz-bar:nth-child(2){ height: 14px; animation-delay: .12s;  }
+      .viz-bar:nth-child(3){ height: 10px; animation-delay: .24s;  }
+      .viz-bar:nth-child(4){ height: 16px; animation-delay: .06s;  }
+      .viz-bar:nth-child(5){ height: 8px;  animation-delay: .18s;  }
+      @keyframes vbar { from{opacity:.3} to{opacity:1} }
+
+      /* channel select */
+      .ch-select-wrap { margin-top: 4px; }
+      .ch-select-wrap .a-dim { display: block; margin-bottom: 2px; }
       select {
         width: 100%;
-        padding: 9px 12px;
-        background: #0f1117;
-        color: #e8eaf0;
-        border: 1px solid #2a2d3a;
-        border-radius: 8px;
-        font-size: 0.875rem;
+        padding: 6px 10px;
+        background: #000;
+        color: #00ff41;
+        border: 1px solid #1a6b22;
+        font-family: 'Courier New', Courier, monospace;
+        font-size: 0.82rem;
         outline: none;
         cursor: pointer;
+        appearance: none;
+        -webkit-appearance: none;
       }
-      select:focus { border-color: #4f6ef7; }
-      .btn {
-        margin-top: 24px;
+      select:focus { border-color: #00ff41; }
+      select option { background: #000; color: #00ff41; }
+
+      /* action button */
+      .cmd-btn {
+        margin-top: 20px;
         width: 100%;
-        padding: 12px;
-        font-size: 0.95rem;
-        font-weight: 600;
-        border: none;
-        border-radius: 10px;
+        padding: 10px 14px;
+        background: #000;
+        color: #00ff41;
+        border: 1px solid #00ff41;
+        font-family: 'Courier New', Courier, monospace;
+        font-size: 0.85rem;
+        font-weight: bold;
+        letter-spacing: 0.08em;
         cursor: pointer;
-        transition: opacity .15s, transform .1s;
-        background: #4f6ef7;
-        color: #fff;
-        letter-spacing: -0.01em;
+        text-align: left;
+        transition: background .12s, color .12s;
       }
-      .btn:disabled { opacity: 0.35; cursor: not-allowed; }
-      .btn:not(:disabled):hover { opacity: 0.88; }
-      .btn:not(:disabled):active { transform: scale(0.98); }
-      .btn.stop { background: #374151; }
+      .cmd-btn:disabled {
+        border-color: #1a6b22;
+        color: #1a6b22;
+        cursor: not-allowed;
+      }
+      .cmd-btn:not(:disabled):hover {
+        background: #00ff41;
+        color: #000;
+      }
+      .cmd-btn.stop {
+        border-color: #ff3c3c;
+        color: #ff3c3c;
+      }
+      .cmd-btn.stop:not(:disabled):hover {
+        background: #ff3c3c;
+        color: #000;
+      }
     </style>
   </head>
   <body>
@@ -210,18 +235,25 @@ function buildListenPageHtml() {
 
     <!-- ═══════════════════  APP  ═══════════════════ -->
     <div id="app">
-      <div class="card">
-        <div class="icon">🎧</div>
-        <h1>Listen Live</h1>
-        <p class="subtitle">Yuma · Voice Stream</p>
-        <hr class="divider">
-        <div id="statusBadge" class="badge offline"><span class="rdot" id="dot"></span><span id="statusText">Offline</span></div>
-        <p class="channel-info" id="channelInfo">No active voice channel.</p>
-        <div class="select-wrap" id="selectWrap" style="display:none;">
-          <label for="channelSelect">Channel</label>
+      <div class="app-terminal">
+        <div class="a-line a-dim">──────────────────────────────────────────────</div>
+        <div class="a-line a-hi">  AUDIO INTERCEPT MODULE — STREAM MONITOR</div>
+        <div class="a-line a-dim">──────────────────────────────────────────────</div>
+        <div class="a-line">&nbsp;</div>
+        <div class="a-line a-dim">  [SYS] session authenticated</div>
+        <div class="a-line a-dim">  [SYS] probing voice channels...</div>
+        <div class="a-line">&nbsp;</div>
+        <div class="a-line">  STATUS  &gt; <span class="status-tag offline" id="statusText">[ OFFLINE ]</span><span class="viz" id="viz"><span class="viz-bar"></span><span class="viz-bar"></span><span class="viz-bar"></span><span class="viz-bar"></span><span class="viz-bar"></span></span></div>
+        <div class="a-line a-dim" id="channelInfo">  TARGET  &gt; no active voice channel</div>
+        <div class="a-line">&nbsp;</div>
+        <div class="ch-select-wrap" id="selectWrap" style="display:none;">
+          <div class="a-line a-dim">  CHANNEL &gt; select target feed</div>
           <select id="channelSelect"></select>
+          <div class="a-line">&nbsp;</div>
         </div>
-        <button class="btn" id="listenBtn" disabled>Play</button>
+        <button class="cmd-btn" id="listenBtn" disabled>  &gt; [ INIT STREAM ]</button>
+        <div class="a-line">&nbsp;</div>
+        <div class="a-line a-dim">  root@localhost:~$ <span class="blink">▋</span></div>
       </div>
     </div>
 
@@ -334,15 +366,15 @@ function buildListenPageHtml() {
         let manuallyDisconnected = false;
 
         function setStatus(active, channelName, extra) {
-          const badge = document.getElementById('statusBadge');
-          const dot = document.getElementById('dot');
-          badge.className = 'badge ' + (extra === 'Reconnecting…' ? 'reconnecting' : active ? 'live' : 'offline');
-          dot.className = 'rdot' + (active ? ' pulse' : '');
-          statusText.textContent = extra || (active ? 'Live' : 'Offline');
-          channelInfo.textContent = active
-            ? 'Connected to: ' + (channelName || 'voice channel')
-            : 'No active voice channel.';
-          listenBtn.disabled = !active && extra !== 'Reconnecting…';
+          const viz = document.getElementById('viz');
+          const isRecon = extra === 'Reconnecting…';
+          statusText.className = 'status-tag ' + (isRecon ? 'reconnecting' : active ? 'live' : 'offline');
+          statusText.textContent = isRecon ? '[ RECONNECTING ]' : active ? '[ LIVE ]' : '[ OFFLINE ]';
+          if (viz) viz.className = 'viz' + (active && !isRecon ? ' active' : '');
+          channelInfo.textContent = '  TARGET  > ' + (active
+            ? (channelName || 'voice channel')
+            : 'no active voice channel');
+          listenBtn.disabled = !active && !isRecon;
         }
 
         function scheduleReconnect(guildId) {
@@ -487,7 +519,7 @@ function buildListenPageHtml() {
             audioChainInput = hpf;
             nextStartTime = audioCtx.currentTime + BUFFER_AHEAD_SEC;
             listening = true;
-            listenBtn.textContent = 'Stop';
+            listenBtn.textContent = '  > [ KILL STREAM ]';
             listenBtn.classList.add('stop');
 
             if (!ws || ws.readyState === WebSocket.CLOSED || ws.readyState === WebSocket.CLOSING) {
@@ -501,7 +533,7 @@ function buildListenPageHtml() {
             nextStartTime = 0;
             if (ws) { ws._noReconnect = true; try { ws.close(); } catch {} ws = null; }
             if (audioCtx) { try { await audioCtx.close(); } catch {} audioCtx = null; audioChainInput = null; }
-            listenBtn.textContent = 'Play';
+            listenBtn.textContent = '  > [ INIT STREAM ]';
             listenBtn.classList.remove('stop');
           }
         });
