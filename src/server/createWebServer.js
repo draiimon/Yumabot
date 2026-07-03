@@ -53,15 +53,25 @@ function buildListenPageHtml() {
     <title>403 Forbidden</title>
     <style>
       *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+      body { background: #000; }
+
+      /* ── GIF background ── */
+      #bg {
+        position: fixed; inset: 0;
+        background: url('/bg.gif') center/cover no-repeat;
+        opacity: 0.45;
+        z-index: 0;
+        pointer-events: none;
+      }
 
       /* ── gate screen ── */
       #gate {
         position: fixed; inset: 0;
-        background: #000;
+        background: transparent;
         display: flex;
         align-items: center;
         justify-content: center;
-        z-index: 999;
+        z-index: 10;
         transition: opacity .6s ease;
       }
       #gate.fade-out { opacity: 0; pointer-events: none; }
@@ -72,6 +82,9 @@ function buildListenPageHtml() {
         font-size: 0.82rem;
         line-height: 1.7;
         user-select: none;
+        background: rgba(0,0,0,0.82);
+        padding: 28px 24px;
+        border: 1px solid #0d3d14;
       }
       .t-line { white-space: pre; }
       .t-dim { color: #1a6b22; }
@@ -102,15 +115,31 @@ function buildListenPageHtml() {
       @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
       #t-status { min-height: 1.2em; margin-top: 8px; }
       #t-prompt { margin-top: 14px; }
+      #passInput {
+        width: 100%;
+        margin-top: 10px;
+        padding: 8px 10px;
+        background: rgba(0,0,0,0.6);
+        color: #00ff41;
+        border: 1px solid #1a6b22;
+        font-family: 'Courier New', Courier, monospace;
+        font-size: 0.9rem;
+        outline: none;
+        letter-spacing: 0.1em;
+      }
+      #passInput:focus { border-color: #00ff41; }
+      #passInput::placeholder { color: #1a6b22; letter-spacing: 0.05em; }
 
       /* ── listen UI (hidden until unlocked) ── */
       #app {
         display: none;
         min-height: 100vh;
-        background: #000;
+        background: transparent;
         align-items: center;
         justify-content: center;
         padding: 20px;
+        position: relative;
+        z-index: 10;
       }
       #app.visible { display: flex; }
       .app-terminal {
@@ -119,6 +148,9 @@ function buildListenPageHtml() {
         color: #00ff41;
         font-size: 0.82rem;
         line-height: 1.8;
+        background: rgba(0,0,0,0.82);
+        padding: 28px 24px;
+        border: 1px solid #0d3d14;
       }
       .a-line { white-space: pre; }
       .a-dim  { color: #1a6b22; }
@@ -209,6 +241,7 @@ function buildListenPageHtml() {
     </style>
   </head>
   <body>
+    <div id="bg"></div>
 
     <!-- ═══════════════════  GATE  ═══════════════════ -->
     <div id="gate">
@@ -221,6 +254,7 @@ function buildListenPageHtml() {
         <div class="t-line t-dim">  [SYS] awaiting input sequence...</div>
         <div class="t-line">&nbsp;</div>
         <div class="t-line">  ENTER PASSKEY</div>
+        <input id="passInput" type="password" autocomplete="off" spellcheck="false" placeholder="••••••••••••" />
         <div class="slots" id="slots">
           <div class="slot" id="s0">_</div>
           <div class="slot" id="s1">_</div>
@@ -268,9 +302,11 @@ function buildListenPageHtml() {
       let lastPressTime = 0;
       let lockout = false; // brief cooldown after a denial
 
-      const gate    = document.getElementById('gate');
-      const tStatus = document.getElementById('t-status');
-      const slots   = [0,1,2,3,4].map(i => document.getElementById('s' + i));
+      const gate      = document.getElementById('gate');
+      const tStatus   = document.getElementById('t-status');
+      const slots     = [0,1,2,3,4].map(i => document.getElementById('s' + i));
+      const passInput = document.getElementById('passInput');
+      passInput.focus();
 
       function updateSlots(n, mode) {
         slots.forEach((el, i) => {
@@ -314,28 +350,28 @@ function buildListenPageHtml() {
         }, 650);
       }
 
-      document.addEventListener('keydown', (e) => {
+      passInput.addEventListener('keydown', (e) => {
         if (e.key !== 'Enter') return;
+        e.preventDefault();
         if (lockout) return;
 
         const now = Date.now();
         const gap = now - lastPressTime;
 
         if (lastPressTime !== 0 && gap < MIN_GAP_MS) {
-          // Spam detected — reset
+          passInput.value = '';
           deny('SEQUENCE REJECTED — slow down');
           return;
         }
 
+        passInput.value = '';
         lastPressTime = now;
         count++;
         updateSlots(count, 'ok');
         tStatus.className = 't-line t-dim';
         tStatus.textContent = '  [SYS] key ' + count + '/5 accepted';
 
-        if (count === 5) {
-          unlock();
-        }
+        if (count === 5) unlock();
       });
 
       /* ══════════════════════════════════════════════
@@ -693,6 +729,20 @@ function createWebServer({ config, runtimeState, client, getDiagnostics, liveVoi
 
     if (requestUrl.pathname === '/listen') {
       sendHtml(res, 200, buildListenPageHtml());
+      return;
+    }
+
+    if (requestUrl.pathname === '/bg.gif') {
+      const fs = require('node:fs');
+      const path = require('node:path');
+      const gifPath = path.join(__dirname, '../../attached_assets/download_1783082441662.gif');
+      try {
+        const data = fs.readFileSync(gifPath);
+        res.writeHead(200, { 'Content-Type': 'image/gif', 'Cache-Control': 'public, max-age=86400' });
+        res.end(data);
+      } catch {
+        sendText(res, 404, 'Not found');
+      }
       return;
     }
 
