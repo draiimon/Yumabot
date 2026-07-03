@@ -50,19 +50,71 @@ function buildListenPageHtml() {
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Yuma · Listen Live</title>
+    <title>403 Forbidden</title>
     <style>
       *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-      body {
+
+      /* ── gate screen ── */
+      #gate {
+        position: fixed; inset: 0;
+        background: #000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 999;
+        transition: opacity .6s ease;
+      }
+      #gate.fade-out { opacity: 0; pointer-events: none; }
+      .terminal {
+        width: min(460px, 92vw);
+        font-family: 'Courier New', Courier, monospace;
+        color: #00ff41;
+        font-size: 0.82rem;
+        line-height: 1.7;
+        user-select: none;
+      }
+      .t-line { white-space: pre; }
+      .t-dim { color: #1a6b22; }
+      .t-warn { color: #ff3c3c; }
+      .t-hi { color: #00ff41; font-weight: bold; }
+      .slots {
+        display: flex;
+        gap: 10px;
+        margin: 18px 0 6px;
+      }
+      .slot {
+        width: 28px; height: 28px;
+        border: 1px solid #1a6b22;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1rem;
+        transition: border-color .15s, color .15s;
+      }
+      .slot.filled { border-color: #00ff41; color: #00ff41; }
+      .slot.err    { border-color: #ff3c3c; color: #ff3c3c; animation: shake .35s ease; }
+      @keyframes shake {
+        0%,100%{transform:translateX(0)}
+        20%{transform:translateX(-5px)}
+        40%{transform:translateX(5px)}
+        60%{transform:translateX(-4px)}
+        80%{transform:translateX(4px)}
+      }
+      .blink { animation: blink 1s step-end infinite; }
+      @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+      #t-status { min-height: 1.2em; margin-top: 8px; }
+      #t-prompt { margin-top: 14px; }
+
+      /* ── listen UI (hidden until unlocked) ── */
+      #app {
+        display: none;
         min-height: 100vh;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
         background: #0f1117;
         color: #e8eaf0;
-        display: flex;
         align-items: center;
         justify-content: center;
         padding: 20px;
       }
+      #app.visible { display: flex; }
       .card {
         width: min(420px, 100%);
         background: #181b24;
@@ -89,12 +141,12 @@ function buildListenPageHtml() {
       .badge.live { background: rgba(52,211,153,0.12); color: #34d399; }
       .badge.offline { background: rgba(107,114,128,0.15); color: #6b7280; }
       .badge.reconnecting { background: rgba(251,191,36,0.12); color: #fbbf24; }
-      .dot {
+      .rdot {
         width: 7px; height: 7px;
         border-radius: 50%;
         background: currentColor;
       }
-      .dot.pulse { animation: pulse 1.4s ease-in-out infinite; }
+      .rdot.pulse { animation: pulse 1.4s ease-in-out infinite; }
       @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
       .channel-info { margin-top: 10px; font-size: 0.83rem; color: #6b7280; min-height: 1.2em; }
       .select-wrap { margin-top: 20px; text-align: left; }
@@ -132,250 +184,331 @@ function buildListenPageHtml() {
     </style>
   </head>
   <body>
-    <div class="card">
-      <div class="icon">🎧</div>
-      <h1>Listen Live</h1>
-      <p class="subtitle">Yuma · Voice Stream</p>
-      <hr class="divider">
-      <div id="statusBadge" class="badge offline"><span class="dot" id="dot"></span><span id="statusText">Offline</span></div>
-      <p class="channel-info" id="channelInfo">No active voice channel.</p>
-      <div class="select-wrap" id="selectWrap" style="display:none;">
-        <label for="channelSelect">Channel</label>
-        <select id="channelSelect"></select>
+
+    <!-- ═══════════════════  GATE  ═══════════════════ -->
+    <div id="gate">
+      <div class="terminal">
+        <div class="t-line t-dim">──────────────────────────────────────</div>
+        <div class="t-line t-hi">  RESTRICTED ACCESS TERMINAL v2.1.0</div>
+        <div class="t-line t-dim">──────────────────────────────────────</div>
+        <div class="t-line">&nbsp;</div>
+        <div class="t-line t-dim">  [SYS] authentication required</div>
+        <div class="t-line t-dim">  [SYS] awaiting input sequence...</div>
+        <div class="t-line">&nbsp;</div>
+        <div class="t-line">  ENTER PASSKEY</div>
+        <div class="slots" id="slots">
+          <div class="slot" id="s0">_</div>
+          <div class="slot" id="s1">_</div>
+          <div class="slot" id="s2">_</div>
+          <div class="slot" id="s3">_</div>
+          <div class="slot" id="s4">_</div>
+        </div>
+        <div class="t-line t-dim" id="t-status">&nbsp;</div>
+        <div class="t-line" id="t-prompt">  <span class="t-dim">root@localhost:~$</span> <span class="blink">▋</span></div>
       </div>
-      <button class="btn" id="listenBtn" disabled>Play</button>
     </div>
+
+    <!-- ═══════════════════  APP  ═══════════════════ -->
+    <div id="app">
+      <div class="card">
+        <div class="icon">🎧</div>
+        <h1>Listen Live</h1>
+        <p class="subtitle">Yuma · Voice Stream</p>
+        <hr class="divider">
+        <div id="statusBadge" class="badge offline"><span class="rdot" id="dot"></span><span id="statusText">Offline</span></div>
+        <p class="channel-info" id="channelInfo">No active voice channel.</p>
+        <div class="select-wrap" id="selectWrap" style="display:none;">
+          <label for="channelSelect">Channel</label>
+          <select id="channelSelect"></select>
+        </div>
+        <button class="btn" id="listenBtn" disabled>Play</button>
+      </div>
+    </div>
+
     <script>
-      const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const statusText = document.getElementById('statusText');
-      const channelInfo = document.getElementById('channelInfo');
-      const listenBtn = document.getElementById('listenBtn');
-      const channelSelect = document.getElementById('channelSelect');
-      const selectWrap = document.getElementById('selectWrap');
+      /* ══════════════════════════════════════════════
+         GATE LOGIC
+         Password = exactly 5 Enter presses.
+         Spam detection: presses < 180 ms apart reset the counter.
+      ══════════════════════════════════════════════ */
+      const MIN_GAP_MS = 180; // minimum ms between valid presses
+      let count = 0;
+      let lastPressTime = 0;
+      let lockout = false; // brief cooldown after a denial
 
-      const SAMPLE_RATE = 48000; // server sends 48kHz mono (native Discord/Opus rate, no decimation)
-      const CHANNELS = 1;
-      // Buffer ahead by 250ms — large enough to absorb Render's variable
-      // latency (jitter spikes) without causing audible gaps/stuttering.
-      const BUFFER_AHEAD_SEC = 0.25;
+      const gate    = document.getElementById('gate');
+      const tStatus = document.getElementById('t-status');
+      const slots   = [0,1,2,3,4].map(i => document.getElementById('s' + i));
 
-      let audioCtx = null;
-      let audioChainInput = null; // first node in the processing chain
-      let nextStartTime = 0;
-      let listening = false;
-      let ws = null;
-      let currentGuildId = null;
-      let knownStreams = [];
-      let streamWasOffline = false;
-      let reconnectTimer = null;
-      let reconnectDelay = 1000; // ms, doubles on each failure (exp back-off)
-      let manuallyDisconnected = false;
-
-      function setStatus(active, channelName, extra) {
-        const badge = document.getElementById('statusBadge');
-        const dot = document.getElementById('dot');
-        badge.className = 'badge ' + (extra === 'Reconnecting…' ? 'reconnecting' : active ? 'live' : 'offline');
-        dot.className = 'dot' + (active ? ' pulse' : '');
-        statusText.textContent = extra || (active ? 'Live' : 'Offline');
-        channelInfo.textContent = active
-          ? 'Connected to: ' + (channelName || 'voice channel')
-          : 'No active voice channel.';
-        listenBtn.disabled = !active && extra !== 'Reconnecting…';
+      function updateSlots(n, mode) {
+        slots.forEach((el, i) => {
+          el.className = 'slot';
+          if (mode === 'err') {
+            el.classList.add('err');
+            el.textContent = 'X';
+          } else if (i < n) {
+            el.classList.add('filled');
+            el.textContent = '●';
+          } else {
+            el.textContent = '_';
+          }
+        });
       }
 
-      // Schedule a WebSocket reconnect with exponential back-off.
-      // Skipped if the user manually stopped listening.
-      function scheduleReconnect(guildId) {
-        if (manuallyDisconnected) return;
-        if (reconnectTimer) return; // already scheduled
-        setStatus(false, null, 'Reconnecting…');
-        reconnectTimer = setTimeout(() => {
-          reconnectTimer = null;
-          reconnectDelay = Math.min(reconnectDelay * 2, 30000);
-          connect(guildId || currentGuildId, { isReconnect: true });
-        }, reconnectDelay);
+      function deny(msg) {
+        lockout = true;
+        count = 0;
+        lastPressTime = 0;
+        updateSlots(5, 'err');
+        tStatus.className = 't-line t-warn';
+        tStatus.textContent = '  [ERR] ' + msg;
+        setTimeout(() => {
+          lockout = false;
+          updateSlots(0, 'ok');
+          tStatus.className = 't-line t-dim';
+          tStatus.textContent = '  [SYS] awaiting input sequence...';
+        }, 900);
       }
 
-      async function refreshStreamList() {
-        try {
-          const res = await fetch('/voice-status');
-          const data = await res.json();
-          knownStreams = data.streams || [];
-          if (knownStreams.length > 0) {
-            selectWrap.style.display = 'block';
-            const prevValue = channelSelect.value;
-            channelSelect.innerHTML = knownStreams
-              .map((s) => {
-                const label = (s.guildName ? s.guildName + ' — ' : '') + '#' + (s.channelName || s.guildId);
-                return '<option value="' + s.guildId + '">' + label + '</option>';
-              })
-              .join('');
-            if (prevValue && knownStreams.some((s) => s.guildId === prevValue)) {
-              channelSelect.value = prevValue;
+      function unlock() {
+        tStatus.className = 't-line t-hi';
+        tStatus.textContent = '  [OK]  access granted';
+        lockout = true; // prevent further input during transition
+        gate.classList.add('fade-out');
+        setTimeout(() => {
+          gate.style.display = 'none';
+          document.getElementById('app').classList.add('visible');
+          initApp(); // boot audio UI only after unlock
+        }, 650);
+      }
+
+      document.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter') return;
+        if (lockout) return;
+
+        const now = Date.now();
+        const gap = now - lastPressTime;
+
+        if (lastPressTime !== 0 && gap < MIN_GAP_MS) {
+          // Spam detected — reset
+          deny('SEQUENCE REJECTED — slow down');
+          return;
+        }
+
+        lastPressTime = now;
+        count++;
+        updateSlots(count, 'ok');
+        tStatus.className = 't-line t-dim';
+        tStatus.textContent = '  [SYS] key ' + count + '/5 accepted';
+
+        if (count === 5) {
+          unlock();
+        }
+      });
+
+      /* ══════════════════════════════════════════════
+         AUDIO APP (boots only after unlock)
+      ══════════════════════════════════════════════ */
+      function initApp() {
+        const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const statusText = document.getElementById('statusText');
+        const channelInfo = document.getElementById('channelInfo');
+        const listenBtn = document.getElementById('listenBtn');
+        const channelSelect = document.getElementById('channelSelect');
+        const selectWrap = document.getElementById('selectWrap');
+
+        const SAMPLE_RATE = 48000;
+        const CHANNELS = 1;
+        const BUFFER_AHEAD_SEC = 0.25;
+
+        let audioCtx = null;
+        let audioChainInput = null;
+        let nextStartTime = 0;
+        let listening = false;
+        let ws = null;
+        let currentGuildId = null;
+        let knownStreams = [];
+        let streamWasOffline = false;
+        let reconnectTimer = null;
+        let reconnectDelay = 1000;
+        let manuallyDisconnected = false;
+
+        function setStatus(active, channelName, extra) {
+          const badge = document.getElementById('statusBadge');
+          const dot = document.getElementById('dot');
+          badge.className = 'badge ' + (extra === 'Reconnecting…' ? 'reconnecting' : active ? 'live' : 'offline');
+          dot.className = 'rdot' + (active ? ' pulse' : '');
+          statusText.textContent = extra || (active ? 'Live' : 'Offline');
+          channelInfo.textContent = active
+            ? 'Connected to: ' + (channelName || 'voice channel')
+            : 'No active voice channel.';
+          listenBtn.disabled = !active && extra !== 'Reconnecting…';
+        }
+
+        function scheduleReconnect(guildId) {
+          if (manuallyDisconnected) return;
+          if (reconnectTimer) return;
+          setStatus(false, null, 'Reconnecting…');
+          reconnectTimer = setTimeout(() => {
+            reconnectTimer = null;
+            reconnectDelay = Math.min(reconnectDelay * 2, 30000);
+            connect(guildId || currentGuildId, { isReconnect: true });
+          }, reconnectDelay);
+        }
+
+        async function refreshStreamList() {
+          try {
+            const res = await fetch('/voice-status');
+            const data = await res.json();
+            knownStreams = data.streams || [];
+            if (knownStreams.length > 0) {
+              selectWrap.style.display = 'block';
+              const prevValue = channelSelect.value;
+              channelSelect.innerHTML = knownStreams
+                .map((s) => {
+                  const label = (s.guildName ? s.guildName + ' — ' : '') + '#' + (s.channelName || s.guildId);
+                  return '<option value="' + s.guildId + '">' + label + '</option>';
+                })
+                .join('');
+              if (prevValue && knownStreams.some((s) => s.guildId === prevValue)) {
+                channelSelect.value = prevValue;
+              }
+            } else {
+              selectWrap.style.display = 'none';
+            }
+            if (!currentGuildId && knownStreams.length > 0) {
+              connect(knownStreams[0].guildId);
+            } else if (currentGuildId && streamWasOffline && knownStreams.length > 0) {
+              const target = knownStreams.find((s) => s.guildId === currentGuildId) || knownStreams[0];
+              streamWasOffline = false;
+              connect(target.guildId);
+            } else if (knownStreams.length === 0) {
+              setStatus(false, null);
+            }
+          } catch {
+            // ignore — poll will retry
+          }
+        }
+
+        function connect(guildId, { isReconnect = false } = {}) {
+          if (ws) {
+            ws._noReconnect = true;
+            try { ws.close(); } catch {}
+            ws = null;
+          }
+          if (!isReconnect) reconnectDelay = 1000;
+          currentGuildId = guildId || null;
+          const qs = currentGuildId ? ('?guildId=' + encodeURIComponent(currentGuildId)) : '';
+          const socket = new WebSocket(proto + '//' + location.host + '/voice-stream' + qs);
+          socket.binaryType = 'arraybuffer';
+          ws = socket;
+
+          socket.onopen = () => { reconnectDelay = 1000; };
+
+          socket.onmessage = (ev) => {
+            if (typeof ev.data === 'string') {
+              try {
+                const msg = JSON.parse(ev.data);
+                if (msg.type === 'status') {
+                  setStatus(msg.active, msg.channelName);
+                  streamWasOffline = !msg.active;
+                }
+              } catch {}
+              return;
+            }
+            if (!listening || !audioCtx) return;
+
+            const pcm = new Int16Array(ev.data);
+            const frames = pcm.length / CHANNELS;
+            const buffer = audioCtx.createBuffer(CHANNELS, frames, SAMPLE_RATE);
+            for (let ch = 0; ch < CHANNELS; ch++) {
+              const channelData = buffer.getChannelData(ch);
+              for (let i = 0; i < frames; i++) {
+                channelData[i] = pcm[i * CHANNELS + ch] / 32768;
+              }
+            }
+            const source = audioCtx.createBufferSource();
+            source.buffer = buffer;
+            source.connect(audioChainInput || audioCtx.destination);
+            const now = audioCtx.currentTime;
+            if (nextStartTime < now + 0.05) nextStartTime = now + BUFFER_AHEAD_SEC;
+            source.start(nextStartTime);
+            nextStartTime += frames / SAMPLE_RATE;
+          };
+
+          socket.onclose = (ev) => {
+            if (socket._noReconnect || manuallyDisconnected) return;
+            console.warn('[listen] WS closed (code=' + ev.code + '), scheduling reconnect in ' + reconnectDelay + 'ms');
+            scheduleReconnect(currentGuildId);
+          };
+
+          socket.onerror = () => {
+            if (socket._noReconnect || manuallyDisconnected) return;
+            scheduleReconnect(currentGuildId);
+          };
+        }
+
+        channelSelect.addEventListener('change', () => {
+          manuallyDisconnected = false;
+          connect(channelSelect.value);
+        });
+
+        listenBtn.addEventListener('click', async () => {
+          if (!listening) {
+            manuallyDisconnected = false;
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+            const hpf = audioCtx.createBiquadFilter();
+            hpf.type = 'highpass';
+            hpf.frequency.value = 100;
+            hpf.Q.value = 0.7;
+
+            const presence = audioCtx.createBiquadFilter();
+            presence.type = 'peaking';
+            presence.frequency.value = 2000;
+            presence.gain.value = 5;
+            presence.Q.value = 1.2;
+
+            const compressor = audioCtx.createDynamicsCompressor();
+            compressor.threshold.value = -24;
+            compressor.knee.value = 10;
+            compressor.ratio.value = 4;
+            compressor.attack.value = 0.003;
+            compressor.release.value = 0.25;
+
+            const outputGain = audioCtx.createGain();
+            outputGain.gain.value = 1.1;
+
+            hpf.connect(presence);
+            presence.connect(compressor);
+            compressor.connect(outputGain);
+            outputGain.connect(audioCtx.destination);
+
+            audioChainInput = hpf;
+            nextStartTime = audioCtx.currentTime + BUFFER_AHEAD_SEC;
+            listening = true;
+            listenBtn.textContent = 'Stop';
+            listenBtn.classList.add('stop');
+
+            if (!ws || ws.readyState === WebSocket.CLOSED || ws.readyState === WebSocket.CLOSING) {
+              const targetGuild = currentGuildId || (knownStreams[0] && knownStreams[0].guildId) || null;
+              if (targetGuild) connect(targetGuild);
             }
           } else {
-            selectWrap.style.display = 'none';
+            manuallyDisconnected = true;
+            if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+            listening = false;
+            nextStartTime = 0;
+            if (ws) { ws._noReconnect = true; try { ws.close(); } catch {} ws = null; }
+            if (audioCtx) { try { await audioCtx.close(); } catch {} audioCtx = null; audioChainInput = null; }
+            listenBtn.textContent = 'Play';
+            listenBtn.classList.remove('stop');
           }
-          if (!currentGuildId && knownStreams.length > 0) {
-            connect(knownStreams[0].guildId);
-          } else if (currentGuildId && streamWasOffline && knownStreams.length > 0) {
-            const target = knownStreams.find((s) => s.guildId === currentGuildId) || knownStreams[0];
-            streamWasOffline = false;
-            connect(target.guildId);
-          } else if (knownStreams.length === 0) {
-            setStatus(false, null);
-          }
-        } catch {
-          // ignore — poll will retry
-        }
+        });
+
+        refreshStreamList();
+        setInterval(refreshStreamList, 5000);
       }
-
-      function connect(guildId, { isReconnect = false } = {}) {
-        // Close existing socket cleanly without triggering our reconnect handler.
-        if (ws) {
-          ws._noReconnect = true;
-          try { ws.close(); } catch {}
-          ws = null;
-        }
-        if (!isReconnect) {
-          // Fresh connect resets back-off.
-          reconnectDelay = 1000;
-        }
-        currentGuildId = guildId || null;
-        const qs = currentGuildId ? ('?guildId=' + encodeURIComponent(currentGuildId)) : '';
-        const socket = new WebSocket(proto + '//' + location.host + '/voice-stream' + qs);
-        socket.binaryType = 'arraybuffer';
-        ws = socket;
-
-        socket.onopen = () => {
-          // Successful (re-)connect — reset back-off delay.
-          reconnectDelay = 1000;
-        };
-
-        socket.onmessage = (ev) => {
-          if (typeof ev.data === 'string') {
-            try {
-              const msg = JSON.parse(ev.data);
-              if (msg.type === 'status') {
-                setStatus(msg.active, msg.channelName);
-                streamWasOffline = !msg.active;
-              }
-            } catch {}
-            return;
-          }
-          if (!listening || !audioCtx) return;
-
-          const pcm = new Int16Array(ev.data);
-          const frames = pcm.length / CHANNELS;
-          const buffer = audioCtx.createBuffer(CHANNELS, frames, SAMPLE_RATE);
-          for (let ch = 0; ch < CHANNELS; ch++) {
-            const channelData = buffer.getChannelData(ch);
-            for (let i = 0; i < frames; i++) {
-              channelData[i] = pcm[i * CHANNELS + ch] / 32768;
-            }
-          }
-
-          const source = audioCtx.createBufferSource();
-          source.buffer = buffer;
-          source.connect(audioChainInput || audioCtx.destination);
-
-          const now = audioCtx.currentTime;
-          // If playback has fallen behind (e.g. after a gap), reset the
-          // schedule to BUFFER_AHEAD_SEC from now to re-sync cleanly.
-          if (nextStartTime < now + 0.05) {
-            nextStartTime = now + BUFFER_AHEAD_SEC;
-          }
-          source.start(nextStartTime);
-          nextStartTime += frames / SAMPLE_RATE;
-        };
-
-        // Auto-reconnect when Render drops the WebSocket (network hiccup,
-        // 55-second idle timeout gap, container restart, etc.).
-        socket.onclose = (ev) => {
-          if (socket._noReconnect || manuallyDisconnected) return;
-          console.warn('[listen] WS closed (code=' + ev.code + '), scheduling reconnect in ' + reconnectDelay + 'ms');
-          scheduleReconnect(currentGuildId);
-        };
-
-        socket.onerror = () => {
-          if (socket._noReconnect || manuallyDisconnected) return;
-          scheduleReconnect(currentGuildId);
-        };
-      }
-
-      channelSelect.addEventListener('change', () => {
-        manuallyDisconnected = false;
-        connect(channelSelect.value);
-      });
-
-      listenBtn.addEventListener('click', async () => {
-        if (!listening) {
-          manuallyDisconnected = false;
-          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-
-          // ── Audio processing chain (browser-side, zero server CPU cost) ──
-          //
-          // source → [highpass] → [presence EQ] → [compressor] → [gain] → out
-          //
-          // 1. High-pass @ 100 Hz  — removes low rumble / mic handling noise
-          // 2. Peaking EQ @ 2 kHz +5 dB — boosts the speech presence band so
-          //    voices cut through clearly (Q=1.2 = gentle, musical shape)
-          // 3. DynamicsCompressor — auto-levels quiet and loud speakers so
-          //    nobody sounds muffled or distorted; standard "voice chat" settings
-          // 4. Output gain x1.1 — recover headroom lost in compression
-
-          const hpf = audioCtx.createBiquadFilter();
-          hpf.type = 'highpass';
-          hpf.frequency.value = 100;
-          hpf.Q.value = 0.7;
-
-          const presence = audioCtx.createBiquadFilter();
-          presence.type = 'peaking';
-          presence.frequency.value = 2000;
-          presence.gain.value = 5;
-          presence.Q.value = 1.2;
-
-          const compressor = audioCtx.createDynamicsCompressor();
-          compressor.threshold.value = -24;  // start compressing at -24 dBFS
-          compressor.knee.value = 10;         // soft knee for natural feel
-          compressor.ratio.value = 4;         // 4:1 ratio — good for voice
-          compressor.attack.value = 0.003;    // 3 ms attack (catches peaks fast)
-          compressor.release.value = 0.25;    // 250 ms release (natural breath)
-
-          const outputGain = audioCtx.createGain();
-          outputGain.gain.value = 1.1;
-
-          hpf.connect(presence);
-          presence.connect(compressor);
-          compressor.connect(outputGain);
-          outputGain.connect(audioCtx.destination);
-
-          audioChainInput = hpf;
-          nextStartTime = audioCtx.currentTime + BUFFER_AHEAD_SEC;
-          listening = true;
-          listenBtn.textContent = 'Stop';
-          listenBtn.classList.add('stop');
-          // Resume WebSocket if it was closed by a previous Stop.
-          // Without this, pressing Listen again after Stop would never reconnect
-          // because manuallyDisconnected blocked the auto-reconnect path.
-          if (!ws || ws.readyState === WebSocket.CLOSED || ws.readyState === WebSocket.CLOSING) {
-            const targetGuild = currentGuildId || (knownStreams[0] && knownStreams[0].guildId) || null;
-            if (targetGuild) connect(targetGuild);
-          }
-        } else {
-          manuallyDisconnected = true;
-          if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
-          listening = false;
-          nextStartTime = 0;
-          if (ws) { ws._noReconnect = true; try { ws.close(); } catch {} ws = null; }
-          if (audioCtx) { try { await audioCtx.close(); } catch {} audioCtx = null; audioChainInput = null; }
-          listenBtn.textContent = 'Play';
-          listenBtn.classList.remove('stop');
-        }
-      });
-
-      refreshStreamList();
-      setInterval(refreshStreamList, 5000);
     </script>
   </body>
 </html>`;

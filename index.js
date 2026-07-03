@@ -4146,11 +4146,6 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
         }
 
         // j!voice / j!change — male (Angelo) only
-        if (command === "voice" || command === "change") {
-          await message.reply("Angelo lang ang boses ko, lalake ako. 😤");
-          return;
-        }
-
         // j!ask â€” EXACT same as gnslgbot2's g!ask:
         //   j!ask <question>  â†’ text â†’ AI â†’ TTS response
         //   j!ask (no args)   â†’ start STT voice listening mode (same as g!ask / g!listen)
@@ -4304,45 +4299,31 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
           await message.reply("TUMIGIL NA AKO. Naupong na ang tenga ko, bro.");
           return;
         }
-        // j!view — introduction + role menu + verify progress
+        // j!view / j!profile — member card
         if (command === "view" || command === "profile") {
           if (!message.guild) {
             await message.reply("`j!view` is server-only.");
             return;
           }
-
           const target =
             message.mentions.users.first() ||
-            (args[0]
-              ? await client.users.fetch(args[0]).catch(() => null)
-              : null) ||
+            (args[0] ? await client.users.fetch(args[0]).catch(() => null) : null) ||
             message.author;
           if (!target) {
-            await message.reply(
-              "Mention a user or provide an ID. Example: `j!view @User`",
-            );
+            await message.reply("Mention a user or provide an ID. Example: `j!view @User`");
             return;
           }
-
-          const member = await message.guild.members
-            .fetch(target.id)
-            .catch(() => null);
+          const member = await message.guild.members.fetch(target.id).catch(() => null);
           if (!member) {
             await message.reply("That user is not in this server.");
             return;
           }
-
-          const embed = await buildMemberViewEmbed({
-            member,
-            targetUser: target,
-            guild: message.guild,
-            client,
-          });
+          const embed = await buildMemberViewEmbed({ member, targetUser: target, guild: message.guild, client });
           await message.reply({ embeds: [embed] });
           return;
         }
 
-        // j!chat â€” owner only. Mirrors g!g from gnslgbot2.
+        // j!chat — owner only.
         // j!chat <channel_id or message_id> <text>
         if (command === "chat") {
           const OWNERS = ["1477683173520572568", "705770837399306332"];
@@ -5103,256 +5084,29 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
           return;
         }
 
-        // j!setupverify — create verify channel + lock server behind Verified role
-        if (command === "setupverify" || command === "verifysetup") {
-          if (!message.guild) {
-            await message.reply("Server lang, bro.");
-            return;
-          }
-          const isAdmin =
-            message.member?.permissions?.has(
-              PermissionsBitField.Flags.Administrator,
-            ) ||
-            message.member?.permissions?.has(
-              PermissionsBitField.Flags.ManageGuild,
-            );
-          if (!isAdmin) {
-            await message.reply(
-              "Admin / Manage Server lang pwede mag-setup ng verify, pre.",
-            );
-            return;
-          }
-          const roleId = args[0] || "1426746102903738432";
-          await message.reply(
-            "Sige, setup ko verify channel + i-lock ang server… wait lang, slay.",
-          );
-          try {
-            const result = await setupVerifyChannel(client, {
-              guildId: message.guild.id,
-              verifiedRoleId: roleId,
-              lockServer: true,
-            });
-            await message.reply(
-              `Tapos na, bro! Verify: <#${result.channel.id}> | Role: <@&${result.verifiedRoleId}> | Locked **${result.lockedChannels}** channels.\n` +
-                "React ✅ sa verify message para makapasok. Hindi verified = verify channel lang makikita.",
-            );
-          } catch (err) {
-            await message.reply(
-              `Ay nagkulang: ${err.message}. Kailangan bot may **Manage Channels** + **Manage Roles**.`,
-            );
-          }
-          return;
-        }
-
-        // j!setuprolemenu — post/update column role menu embeds + reactions
-        if (command === "setuprolemenu" || command === "rolemenu") {
-          if (!message.guild) return;
-          const isAdmin =
-            message.member?.permissions?.has(
-              PermissionsBitField.Flags.Administrator,
-            ) ||
-            message.member?.permissions?.has(
-              PermissionsBitField.Flags.ManageRoles,
-            );
-          if (!isAdmin) {
-            await message.reply(
-              "Administrator or Manage Roles permission required.",
-            );
-            return;
-          }
-          try {
-            await message.reply(
-              "Setting up role menu (embeds + reactions). This may take a minute…",
-            );
-            const result = await setupRoleMenu(client, {
-              guildId: message.guild.id,
-              channelId: message.channel.id,
-              editMessageId: null,
-              createRoles: true,
-            });
-            await message.channel.send(
-              `Role menu ready — **${Object.keys(result.mappings).length}** roles mapped across **${result.messages.length}** messages.`,
-            );
-          } catch (err) {
-            await message.reply(`Role menu setup failed: ${err.message}`);
-          }
-          return;
-        }
-
-        // j!fixrolemenu — create missing roles, fix mappings, refresh embeds/reactions
-        if (command === "fixrolemenu" || command === "rolemenufix") {
-          if (!message.guild) return;
-          const isAdmin =
-            message.member?.permissions?.has(
-              PermissionsBitField.Flags.Administrator,
-            ) ||
-            message.member?.permissions?.has(
-              PermissionsBitField.Flags.ManageRoles,
-            );
-          if (!isAdmin) {
-            await message.reply(
-              "Administrator or Manage Roles permission required.",
-            );
-            return;
-          }
-          try {
-            await message.reply(
-              "Fixing role menu (roles + embeds + reactions)…",
-            );
-            const result = await repairRoleMenu(client, message.guild.id);
-            await message.channel.send(
-              `Role menu fixed — **${Object.keys(result.mappings).length}** roles linked. ` +
-                `Try reacting on get-role; @mention works (e.g. @Valorant).`,
-            );
-          } catch (err) {
-            await message.reply(`Role menu fix failed: ${err.message}`);
-          }
-          return;
-        }
-
-        // j!fixverifyperms — re-apply channel locks + public verify/rules channels
-        if (command === "fixverifyperms" || command === "verifyfixperms") {
-          if (!message.guild) return;
-          const isAdmin =
-            message.member?.permissions?.has(
-              PermissionsBitField.Flags.Administrator,
-            ) ||
-            message.member?.permissions?.has(
-              PermissionsBitField.Flags.ManageGuild,
-            );
-          if (!isAdmin) {
-            await message.reply("Administrator permission required.");
-            return;
-          }
-          try {
-            const cfg = await repairVerifyPermissions(client, message.guild.id);
-            const pub = (cfg.publicChannelIds || [])
-              .map((id) => `<#${id}>`)
-              .join(", ");
-            const chat = (cfg.chatChannelIds || [])
-              .map((id) => `<#${id}>`)
-              .join(", ");
-            await message.reply(
-              `Permissions fixed.\n**Visible to unverified:** ${pub}\n**Can chat (non-admin):** ${chat}\n**Verified role:** <@&${cfg.roleId}>`,
-            );
-          } catch (err) {
-            await message.reply(`Fix failed: ${err.message}`);
-          }
-          return;
-        }
-
-        // j!setupintro — post introduction template in intro channel
-        if (command === "setupintro" || command === "introsetup") {
-          if (!message.guild) return;
-          const isAdmin =
-            message.member?.permissions?.has(
-              PermissionsBitField.Flags.Administrator,
-            ) ||
-            message.member?.permissions?.has(
-              PermissionsBitField.Flags.ManageGuild,
-            );
-          if (!isAdmin) {
-            await message.reply("Administrator permission required.");
-            return;
-          }
-          try {
-            const { channel, message: introMsg } = await setupIntroChannel(
-              client,
-              message.guild.id,
-            );
-            await message.reply(
-              `Introduction guide posted in <#${channel.id}> (message \`${introMsg.id}\`).\n` +
-                "Members: get roles → post intro → verify ✅ · Card: `j!view`",
-            );
-          } catch (err) {
-            await message.reply(`Setup intro failed: ${err.message}`);
-          }
-          return;
-        }
-
-        // j!refreshverify — update verify embed text (formal English)
-        if (command === "refreshverify" || command === "verifyrefresh") {
-          if (!message.guild) return;
-          const isAdmin =
-            message.member?.permissions?.has(
-              PermissionsBitField.Flags.Administrator,
-            ) ||
-            message.member?.permissions?.has(
-              PermissionsBitField.Flags.ManageGuild,
-            );
-          if (!isAdmin) {
-            await message.reply("Administrator permission required.");
-            return;
-          }
-          try {
-            await refreshVerifyMessage(client, message.guild.id);
-            await message.reply(
-              "Verification message updated to formal English. Toggle ✅ still grants/revokes access.",
-            );
-          } catch (err) {
-            await message.reply(`Could not refresh: ${err.message}`);
-          }
-          return;
-        }
-
-        // j!setuptickets — post/update support ticket panel
-        if (
-          command === "setuptickets" ||
-          command === "ticketsetup" ||
-          command === "setupverificationtickets"
-        ) {
-          if (!message.guild) return;
-          const isAdmin =
-            message.member?.permissions?.has(
-              PermissionsBitField.Flags.Administrator,
-            ) ||
-            message.member?.permissions?.has(
-              PermissionsBitField.Flags.ManageGuild,
-            );
-          if (!isAdmin) {
-            await message.reply("Administrator permission required.");
-            return;
-          }
-          try {
-            const channelId = args[0] || DEFAULT_SPAWNPOINT_CHANNEL;
-            const result = await setupVerificationTicketPanel(
-              client,
-              message.guild.id,
-              {
-                channelId,
-              },
-            );
-            await message.reply(
-              `Support ticket panel ready in <#${result.channel.id}> (message \`${result.message.id}\`).\n` +
-                `New tickets will notify <@${result.staffUserId}> and <@&${result.staffRoleId}>.`,
-            );
-          } catch (err) {
-            await message.reply(`Ticket setup failed: ${err.message}`);
-          }
-          return;
-        }
-
-        // j!admin â€” show admin command list
+        // j!admin — show admin command list
         if (command === "admin" || command === "commandslist") {
           const adminEmbed = new EmbedBuilder()
             .setTitle("Yuma Admin Panel")
             .setDescription(
-              "**Exclusive commands para sa mga diyosa ng server:**\n\n" +
+              "**Admin commands:**\n\n" +
                 "- `j!stats` - Bot health dashboard\n" +
                 "- `j!status [text]` - Bot bubble (view / admin set)\n" +
-                "- `j!view [@user]` - Intro + roles + verify card\n" +
-                "- `j!setupintro` - Post intro template in intro channel\n" +
-                "- `j!setuptickets` - Post support ticket panel\n" +
+                "- `j!view [@user]` - Member card\n" +
                 "- `j!chat <id> <msg>` - Ghost message/reply (Owner only)\n" +
-                "- `j!greetnow [morning|night|auto] [here]` - Force scheduled greeting test\n" +
-                "- `j!test` - Trigger mapang-lait greeting/roast\n" +
-                "- `j!vc <text>` - Male TTS in voice channel\n" +
-                "- `j!ask <question>` - Voice-only AI response\n" +
+                "- `j!greetnow [morning|night|auto] [here]` - Force scheduled greeting\n" +
+                "- `j!test` - Bad boy greeting test\n" +
+                "- `j!vc <text>` - TTS in voice channel\n" +
+                "- `j!ask <question>` - AI voice response\n" +
                 "- `j!autotts` - Toggle Auto TTS in channel\n" +
-                "- `j!join` / `j!leave` - Reset voice connection",
+                "- `j!join` / `j!leave` - Voice connection\n" +
+                "- `j!tulog on|off` - Pause auto-chat\n" +
+                "- `j!research` - Toggle web research\n" +
+                "- `j!permcheck` - Channel permission check\n" +
+                "- `j!checkdb` - DB storage usage",
             )
             .setColor(0xff0000)
-            .setFooter({ text: "Yuma Bot | Created by drei" });
+            .setFooter({ text: "Yuma Bot | Created by Yanna" });
 
           await message.reply({ embeds: [adminEmbed] });
           return;
