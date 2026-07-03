@@ -115,21 +115,6 @@ function buildListenPageHtml() {
       @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
       #t-status { min-height: 1.2em; margin-top: 6px; }
 
-      /* ── keypad display ── */
-      #kp-display {
-        margin-top: 10px;
-        padding: 8px 12px;
-        background: rgba(0,0,0,0.7);
-        border: 1px solid #1a6b22;
-        font-family: 'Courier New', Courier, monospace;
-        font-size: 1rem;
-        color: #00ff41;
-        letter-spacing: 0.2em;
-        min-height: 2.2em;
-        display: flex;
-        align-items: center;
-      }
-
       /* ── keypad grid ── */
       .keypad {
         display: grid;
@@ -281,9 +266,6 @@ function buildListenPageHtml() {
         <div class="t-line t-dim">  [SYS] awaiting input sequence...</div>
         <div class="t-line">&nbsp;</div>
         <div class="t-line">  ENTER PASSKEY</div>
-        <div id="kp-display">
-          <span id="kp-chars"></span><span class="blink">▋</span>
-        </div>
         <div class="slots" id="slots">
           <div class="slot" id="s0">_</div>
           <div class="slot" id="s1">_</div>
@@ -347,13 +329,6 @@ function buildListenPageHtml() {
       const gate    = document.getElementById('gate');
       const tStatus = document.getElementById('t-status');
       const slots   = [0,1,2,3,4].map(i => document.getElementById('s' + i));
-      const kpChars = document.getElementById('kp-chars');
-      let typed = '';
-
-      function updateDisplay() {
-        kpChars.textContent = typed.replace(/./g, '●');
-      }
-
       function updateSlots(n, mode) {
         slots.forEach((el, i) => {
           el.className = 'slot';
@@ -364,7 +339,7 @@ function buildListenPageHtml() {
       }
 
       function deny(msg) {
-        lockout = true; count = 0; lastPressTime = 0; typed = ''; updateDisplay();
+        lockout = true; count = 0; lastPressTime = 0;
         updateSlots(5, 'err');
         tStatus.className = 't-line t-warn';
         tStatus.textContent = '  [ERR] ' + msg;
@@ -394,7 +369,6 @@ function buildListenPageHtml() {
           deny('SEQUENCE REJECTED — slow down');
           return;
         }
-        typed = ''; updateDisplay();
         lastPressTime = now;
         count++;
         updateSlots(count, 'ok');
@@ -408,8 +382,8 @@ function buildListenPageHtml() {
         btn.addEventListener('click', () => {
           const k = btn.dataset.k;
           if (k === 'ENTER') { handleEnter(); }
-          else if (k === 'CLR') { typed = ''; updateDisplay(); }
-          else if (!lockout && typed.length < 12) { typed += k; updateDisplay(); }
+          else if (k === 'CLR') { /* no display to clear */ }
+          else { /* digit pressed, no display */ }
         });
       });
 
@@ -417,8 +391,8 @@ function buildListenPageHtml() {
       document.addEventListener('keydown', (e) => {
         if (lockout) return;
         if (e.key === 'Enter') { e.preventDefault(); handleEnter(); }
-        else if (e.key === 'Backspace') { typed = typed.slice(0,-1); updateDisplay(); }
-        else if (/^[0-9a-zA-Z]$/.test(e.key) && typed.length < 12) { typed += e.key; updateDisplay(); }
+        else if (e.key === 'Backspace') { /* no display */ }
+        else if (/^[0-9]$/.test(e.key)) { /* digit, no display */ }
       });
 
       /* ══════════════════════════════════════════════
