@@ -113,22 +113,49 @@ function buildListenPageHtml() {
       }
       .blink { animation: blink 1s step-end infinite; }
       @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
-      #t-status { min-height: 1.2em; margin-top: 8px; }
-      #t-prompt { margin-top: 14px; }
-      #passInput {
-        width: 100%;
+      #t-status { min-height: 1.2em; margin-top: 6px; }
+
+      /* ── keypad display ── */
+      #kp-display {
         margin-top: 10px;
-        padding: 8px 10px;
+        padding: 8px 12px;
+        background: rgba(0,0,0,0.7);
+        border: 1px solid #1a6b22;
+        font-family: 'Courier New', Courier, monospace;
+        font-size: 1rem;
+        color: #00ff41;
+        letter-spacing: 0.2em;
+        min-height: 2.2em;
+        display: flex;
+        align-items: center;
+      }
+
+      /* ── keypad grid ── */
+      .keypad {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
+        margin: 12px 0 4px;
+      }
+      .kp {
+        padding: 12px 0;
         background: rgba(0,0,0,0.6);
         color: #00ff41;
         border: 1px solid #1a6b22;
         font-family: 'Courier New', Courier, monospace;
-        font-size: 0.9rem;
-        outline: none;
-        letter-spacing: 0.1em;
+        font-size: 0.95rem;
+        font-weight: bold;
+        cursor: pointer;
+        letter-spacing: 0.05em;
+        transition: background .1s, border-color .1s;
+        user-select: none;
       }
-      #passInput:focus { border-color: #00ff41; }
-      #passInput::placeholder { color: #1a6b22; letter-spacing: 0.05em; }
+      .kp:hover   { background: rgba(0,255,65,0.1); border-color: #00ff41; }
+      .kp:active  { background: rgba(0,255,65,0.25); }
+      .kp-clr     { color: #f59e0b; border-color: #7c5a00; }
+      .kp-clr:hover { background: rgba(245,158,11,0.1); border-color: #f59e0b; }
+      .kp-enter   { color: #00ff41; border-color: #00ff41; background: rgba(0,255,65,0.08); }
+      .kp-enter:hover { background: rgba(0,255,65,0.22); }
 
       /* ── listen UI (hidden until unlocked) ── */
       #app {
@@ -254,7 +281,9 @@ function buildListenPageHtml() {
         <div class="t-line t-dim">  [SYS] awaiting input sequence...</div>
         <div class="t-line">&nbsp;</div>
         <div class="t-line">  ENTER PASSKEY</div>
-        <input id="passInput" type="password" autocomplete="off" spellcheck="false" placeholder="••••••••••••" />
+        <div id="kp-display">
+          <span id="kp-chars"></span><span class="blink">▋</span>
+        </div>
         <div class="slots" id="slots">
           <div class="slot" id="s0">_</div>
           <div class="slot" id="s1">_</div>
@@ -262,8 +291,21 @@ function buildListenPageHtml() {
           <div class="slot" id="s3">_</div>
           <div class="slot" id="s4">_</div>
         </div>
+        <div class="keypad">
+          <button class="kp" data-k="1">1</button>
+          <button class="kp" data-k="2">2</button>
+          <button class="kp" data-k="3">3</button>
+          <button class="kp" data-k="4">4</button>
+          <button class="kp" data-k="5">5</button>
+          <button class="kp" data-k="6">6</button>
+          <button class="kp" data-k="7">7</button>
+          <button class="kp" data-k="8">8</button>
+          <button class="kp" data-k="9">9</button>
+          <button class="kp kp-clr" data-k="CLR">CLR</button>
+          <button class="kp" data-k="0">0</button>
+          <button class="kp kp-enter" data-k="ENTER">ENT</button>
+        </div>
         <div class="t-line t-dim" id="t-status">&nbsp;</div>
-        <div class="t-line" id="t-prompt">  <span class="t-dim">root@localhost:~$</span> <span class="blink">▋</span></div>
       </div>
     </div>
 
@@ -302,37 +344,32 @@ function buildListenPageHtml() {
       let lastPressTime = 0;
       let lockout = false; // brief cooldown after a denial
 
-      const gate      = document.getElementById('gate');
-      const tStatus   = document.getElementById('t-status');
-      const slots     = [0,1,2,3,4].map(i => document.getElementById('s' + i));
-      const passInput = document.getElementById('passInput');
-      passInput.focus();
+      const gate    = document.getElementById('gate');
+      const tStatus = document.getElementById('t-status');
+      const slots   = [0,1,2,3,4].map(i => document.getElementById('s' + i));
+      const kpChars = document.getElementById('kp-chars');
+      let typed = '';
+
+      function updateDisplay() {
+        kpChars.textContent = typed.replace(/./g, '●');
+      }
 
       function updateSlots(n, mode) {
         slots.forEach((el, i) => {
           el.className = 'slot';
-          if (mode === 'err') {
-            el.classList.add('err');
-            el.textContent = 'X';
-          } else if (i < n) {
-            el.classList.add('filled');
-            el.textContent = '●';
-          } else {
-            el.textContent = '_';
-          }
+          if (mode === 'err') { el.classList.add('err'); el.textContent = 'X'; }
+          else if (i < n)     { el.classList.add('filled'); el.textContent = '●'; }
+          else                { el.textContent = '_'; }
         });
       }
 
       function deny(msg) {
-        lockout = true;
-        count = 0;
-        lastPressTime = 0;
+        lockout = true; count = 0; lastPressTime = 0; typed = ''; updateDisplay();
         updateSlots(5, 'err');
         tStatus.className = 't-line t-warn';
         tStatus.textContent = '  [ERR] ' + msg;
         setTimeout(() => {
-          lockout = false;
-          updateSlots(0, 'ok');
+          lockout = false; updateSlots(0, 'ok');
           tStatus.className = 't-line t-dim';
           tStatus.textContent = '  [SYS] awaiting input sequence...';
         }, 900);
@@ -341,37 +378,47 @@ function buildListenPageHtml() {
       function unlock() {
         tStatus.className = 't-line t-hi';
         tStatus.textContent = '  [OK]  access granted';
-        lockout = true; // prevent further input during transition
+        lockout = true;
         gate.classList.add('fade-out');
         setTimeout(() => {
           gate.style.display = 'none';
           document.getElementById('app').classList.add('visible');
-          initApp(); // boot audio UI only after unlock
+          initApp();
         }, 650);
       }
 
-      passInput.addEventListener('keydown', (e) => {
-        if (e.key !== 'Enter') return;
-        e.preventDefault();
+      function handleEnter() {
         if (lockout) return;
-
         const now = Date.now();
-        const gap = now - lastPressTime;
-
-        if (lastPressTime !== 0 && gap < MIN_GAP_MS) {
-          passInput.value = '';
+        if (lastPressTime !== 0 && now - lastPressTime < MIN_GAP_MS) {
           deny('SEQUENCE REJECTED — slow down');
           return;
         }
-
-        passInput.value = '';
+        typed = ''; updateDisplay();
         lastPressTime = now;
         count++;
         updateSlots(count, 'ok');
         tStatus.className = 't-line t-dim';
         tStatus.textContent = '  [SYS] key ' + count + '/5 accepted';
-
         if (count === 5) unlock();
+      }
+
+      /* keypad clicks */
+      document.querySelectorAll('.kp').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const k = btn.dataset.k;
+          if (k === 'ENTER') { handleEnter(); }
+          else if (k === 'CLR') { typed = ''; updateDisplay(); }
+          else if (!lockout && typed.length < 12) { typed += k; updateDisplay(); }
+        });
+      });
+
+      /* physical keyboard still works */
+      document.addEventListener('keydown', (e) => {
+        if (lockout) return;
+        if (e.key === 'Enter') { e.preventDefault(); handleEnter(); }
+        else if (e.key === 'Backspace') { typed = typed.slice(0,-1); updateDisplay(); }
+        else if (/^[0-9a-zA-Z]$/.test(e.key) && typed.length < 12) { typed += e.key; updateDisplay(); }
       });
 
       /* ══════════════════════════════════════════════
@@ -593,111 +640,106 @@ function createWebServer({ config, runtimeState, client, getDiagnostics, liveVoi
 
     if (requestUrl.pathname === '/') {
       const discordReady = typeof client.isReady === 'function' ? client.isReady() : false;
+      const statusLabel = discordReady ? '[ ONLINE ]' : '[ CONNECTING ]';
       sendHtml(res, 200, `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Yuma</title>
+  <title>YUMA // SYS</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       min-height: 100vh;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: #0f1117;
-      color: #e8eaf0;
+      background: #000;
       display: flex;
       align-items: center;
       justify-content: center;
       padding: 20px;
     }
-    .card {
-      width: min(380px, 100%);
-      background: #181b24;
-      border: 1px solid #2a2d3a;
-      border-radius: 16px;
+    #bg {
+      position: fixed; inset: 0;
+      background: url('/bg.gif') center/cover no-repeat;
+      opacity: 0.45;
+      z-index: 0;
+      pointer-events: none;
+    }
+    .terminal {
+      position: relative;
+      z-index: 1;
+      width: min(440px, 100%);
+      background: rgba(0,0,0,0.82);
+      border: 1px solid #0d3d14;
       padding: 28px 24px;
+      font-family: 'Courier New', Courier, monospace;
+      color: #00ff41;
+      font-size: 0.82rem;
+      line-height: 1.8;
     }
-    .header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
-    .avatar {
-      width: 40px; height: 40px;
-      background: #252836;
-      border-radius: 10px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 1.25rem;
-    }
-    .name { font-size: 1.1rem; font-weight: 600; color: #fff; }
-    .sub  { font-size: 0.78rem; color: #6b7280; margin-top: 2px; }
-    .badge {
-      display: inline-flex; align-items: center; gap: 6px;
-      padding: 5px 10px;
-      border-radius: 999px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-      margin-bottom: 20px;
-    }
-    .badge.ok  { background: rgba(52,211,153,0.12); color: #34d399; }
-    .badge.off { background: rgba(107,114,128,0.15); color: #6b7280; }
-    .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
-    hr { border: none; border-top: 1px solid #2a2d3a; margin-bottom: 20px; }
-    .links { display: flex; flex-direction: column; gap: 8px; }
-    a.row {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 10px 12px;
-      background: #0f1117;
-      border: 1px solid #2a2d3a;
-      border-radius: 9px;
+    .t-dim  { color: #1a6b22; }
+    .t-hi   { color: #00ff41; font-weight: bold; }
+    .t-warn { color: #ff3c3c; }
+    .t-amber{ color: #f59e0b; }
+    .blink  { animation: blink 1s step-end infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+    .divider { color: #1a6b22; }
+    .status-ok  { color: #00ff41; font-weight: bold; }
+    .status-off { color: #f59e0b; font-weight: bold; }
+    .links { margin-top: 10px; display: flex; flex-direction: column; gap: 4px; }
+    a.cmd {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      padding: 7px 0;
       text-decoration: none;
-      color: #e8eaf0;
-      font-size: 0.875rem;
-      transition: border-color .15s;
+      color: #00ff41;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 0.82rem;
+      border-bottom: 1px solid #0a2a0e;
+      transition: color .12s;
     }
-    a.row:hover { border-color: #4f6ef7; }
-    a.row .label { font-weight: 500; }
-    a.row .desc  { font-size: 0.75rem; color: #6b7280; margin-top: 2px; }
-    a.row .arrow { color: #4b5563; font-size: 0.9rem; }
-    a.row .left  { display: flex; flex-direction: column; }
+    a.cmd:last-child { border-bottom: none; }
+    a.cmd:hover { color: #fff; }
+    a.cmd:hover .cmd-arrow { color: #00ff41; }
+    .cmd-prompt { color: #1a6b22; flex-shrink: 0; }
+    .cmd-label  { flex: 1; }
+    .cmd-desc   { color: #1a6b22; font-size: 0.75rem; }
+    .cmd-arrow  { color: #0d3d14; font-size: 1rem; transition: color .12s; }
   </style>
 </head>
 <body>
-  <div class="card">
-    <div class="header">
-      <div class="avatar">🤖</div>
-      <div>
-        <div class="name">Yuma</div>
-        <div class="sub">Discord Bot</div>
-      </div>
-    </div>
-    <div class="badge ${discordReady ? 'ok' : 'off'}">
-      <span class="dot"></span>
-      ${discordReady ? 'Online' : 'Connecting'}
-    </div>
-    <hr>
+  <div id="bg"></div>
+  <div class="terminal">
+    <div class="divider">────────────────────────────────────────</div>
+    <div class="t-hi">  YUMA SYSTEM TERMINAL v1.0</div>
+    <div class="divider">────────────────────────────────────────</div>
+    <div>&nbsp;</div>
+    <div class="t-dim">  [SYS] host       &gt; discord.gg/yuma</div>
+    <div class="t-dim">  [SYS] process    &gt; node index.js</div>
+    <div>  [SYS] status     &gt; <span class="${discordReady ? 'status-ok' : 'status-off'}">${statusLabel}</span></div>
+    <div>&nbsp;</div>
+    <div class="divider">────────────────────────────────────────</div>
+    <div class="t-dim">  AVAILABLE COMMANDS</div>
+    <div class="divider">────────────────────────────────────────</div>
     <div class="links">
-      <a class="row" href="/listen">
-        <div class="left">
-          <span class="label">🎧 Listen Live</span>
-          <span class="desc">Stream the voice channel in your browser</span>
-        </div>
-        <span class="arrow">›</span>
+      <a class="cmd" href="/listen">
+        <span class="cmd-prompt">$</span>
+        <span class="cmd-label">./listen <span class="cmd-desc">-- stream voice channel live</span></span>
+        <span class="cmd-arrow">›</span>
       </a>
-      <a class="row" href="/health">
-        <div class="left">
-          <span class="label">Health</span>
-          <span class="desc">Process, DB, Discord, and voice diagnostics</span>
-        </div>
-        <span class="arrow">›</span>
+      <a class="cmd" href="/health">
+        <span class="cmd-prompt">$</span>
+        <span class="cmd-label">./health <span class="cmd-desc">-- process &amp; diagnostics</span></span>
+        <span class="cmd-arrow">›</span>
       </a>
-      <a class="row" href="/ping">
-        <div class="left">
-          <span class="label">Ping</span>
-          <span class="desc">Lightweight uptime check</span>
-        </div>
-        <span class="arrow">›</span>
+      <a class="cmd" href="/ping">
+        <span class="cmd-prompt">$</span>
+        <span class="cmd-label">./ping <span class="cmd-desc">-- uptime check</span></span>
+        <span class="cmd-arrow">›</span>
       </a>
     </div>
+    <div>&nbsp;</div>
+    <div class="t-dim">  root@yuma:~$ <span class="blink">▋</span></div>
   </div>
 </body>
 </html>`);
