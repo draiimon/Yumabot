@@ -187,8 +187,6 @@ const {
     return missing.map((p) => PermissionsBitField.Flags[p] || String(p));
   }
 
-  console.log("[VOICE] Dependency Report:\n" + generateDependencyReport());
-
   try {
     const sodium = require("libsodium-wrappers");
     await sodium.ready;
@@ -198,7 +196,6 @@ const {
   }
 
   if (!process.env.FFMPEG_PATH) process.env.FFMPEG_PATH = "ffmpeg";
-  console.log(`[TTS] FFmpeg path: ${process.env.FFMPEG_PATH}`);
 
   probeTtsEngines()
     .then((probe) => {
@@ -1887,8 +1884,6 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
     return player;
   }
 
-  const userVoicePrefs = new Map();
-
   // ============================================================
   // TTS ENGINE â€” Identical to gnslgbot2 (speech_recognition_cog)
   // edge_tts.Communicate(text, voice, rate="+10%", volume="+30%")
@@ -2156,7 +2151,6 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
               // Speech detected
               if (!isSpeaking) {
                 isSpeaking = true;
-                console.log(`[STT] ðŸ—£ï¸ Speech detected (amp: ${maxAmp})`);
               }
               silenceMs = 0;
               audioData.push(pcmChunk);
@@ -2167,9 +2161,6 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
 
               // gnslgbot2: if self.silence_duration > 0.8 â†’ process
               if (silenceMs >= SILENCE_NEEDED) {
-                console.log(
-                  `[STT] ðŸ”‡ Silence ${silenceMs}ms â€” processing audio`,
-                );
                 done();
               }
             }
@@ -2177,10 +2168,7 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
 
           // 15s safety timeout
           const timeout = setTimeout(() => {
-            if (!resolved) {
-              console.log("[STT] 15s timeout, resubscribing...");
-              done();
-            }
+            if (!resolved) done();
           }, 15000);
 
           await new Promise((resolve) => {
@@ -2204,15 +2192,9 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
           });
 
           const pcm = Buffer.concat(audioData);
-          console.log(
-            `[STT] Audio captured: ${pcm.length} bytes (${(pcm.length / 192000).toFixed(1)}s)`,
-          );
 
-          // gnslgbot2: skip if < 96000 bytes (~0.5s of 48k stereo PCM)
+          // skip if < 96000 bytes (~0.5s of 48k stereo PCM)
           if (pcm.length < 96000) {
-            console.log(
-              `[STT] Audio too short (${pcm.length} bytes), listening again...`,
-            );
             await new Promise((r) => setTimeout(r, 100));
             continue;
           }
@@ -2223,7 +2205,6 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
             `stt_${targetUserId}_${Date.now()}.wav`,
           );
           fs.writeFileSync(wavFile, pcmToWav(pcm));
-          console.log(`[STT] Processing audio (${pcm.length} bytes)...`);
 
           const { text: transcript } = await transcribeWithGroq(
             wavFile,
@@ -2237,7 +2218,6 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
             fs.unlinkSync(wavFile);
             wavFile = null;
           } catch {}
-          console.log(`[STT] Whisper transcription: "${transcript}"`);
 
           if (!transcript || transcript.length <= 2) {
             console.log("[STT] Transcript too short, listening again...");
@@ -3568,7 +3548,6 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
       String(userMessage || "").trim().length < 20;
     if (!skipThinking) {
       await performThinking();
-      console.log(`[THINKING] Yuma plan: ${internalThoughts}`);
     }
 
     // Clean up IDs from thoughts so JanJan doesn't see them
@@ -4682,7 +4661,7 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
         ) {
           if (!message.guild) {
             await message.reply(
-              "Teh, sa server lang to. Mention mo yung tao dito.",
+              "Bro, sa server lang to. Mention mo yung tao dito.",
             );
             return;
           }
