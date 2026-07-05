@@ -884,7 +884,8 @@ function createWebServer({ config, runtimeState, client, getDiagnostics, liveVoi
     if (requestUrl.pathname === '/bg.gif') {
       const fs = require('node:fs');
       const path = require('node:path');
-      const gifPath = path.join(__dirname, '../../public/bg.gif');
+      // Use process.cwd() so the path resolves correctly regardless of where the module is located (works on Render too)
+      const gifPath = path.join(process.cwd(), 'public/bg.gif');
       try {
         const data = fs.readFileSync(gifPath);
         res.writeHead(200, { 'Content-Type': 'image/gif', 'Cache-Control': 'public, max-age=86400' });

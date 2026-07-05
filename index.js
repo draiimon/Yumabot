@@ -2482,6 +2482,32 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
   // 24/7 VOICE PERSISTENCE â€” saves to DB so bot survives restarts
   // =====================================================================
   const savedVoiceStates = new Map(); // guildId -> { channelId, guildId }
+  const autoJoinEnabled  = new Map(); // guildId -> boolean (default true when bot joins)
+  // guildId -> timestamp (ms) of when WE last applied cosmetic server mute/deafen.
+  // Auto-revert is suppressed only if the event fires within 15s of our own REST call.
+  const botIntentionalServerMute = new Map();
+  // guildId -> timeout handle — so we can cancel pending cosmetic-apply timers on disconnect/destroy
+  const botMuteDeafenTimers = new Map();
+
+  async function saveAutoJoinToDB(guildId, enabled) {
+    try {
+      await pool.query(
+        `INSERT INTO persona (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2`,
+        [`autojoin_${guildId}`, JSON.stringify({ enabled, updatedAt: Date.now() })],
+      );
+    } catch (e) { console.error('[AUTOJOIN] DB save failed:', e.message); }
+  }
+
+  async function loadAutoJoinFromDB() {
+    try {
+      const res = await pool.query(`SELECT key, value FROM persona WHERE key LIKE 'autojoin_%'`);
+      for (const row of res.rows) {
+        const guildId = row.key.replace('autojoin_', '');
+        try { autoJoinEnabled.set(guildId, JSON.parse(row.value).enabled); } catch {}
+      }
+      console.log(`[AUTOJOIN] Loaded ${autoJoinEnabled.size} autojoin state(s) from DB.`);
+    } catch (e) { console.error('[AUTOJOIN] DB load failed:', e.message); }
+  }
 
   function setSavedVoiceState(state) {
     if (state && state.guildId) {
@@ -2492,6 +2518,12 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
 
   function clearSavedVoiceStateForGuild(guildId) {
     savedVoiceStates.delete(guildId);
+    // Cancel any pending cosmetic mute/deafen timer and clear intent marker
+    if (botMuteDeafenTimers.has(guildId)) {
+      clearTimeout(botMuteDeafenTimers.get(guildId));
+      botMuteDeafenTimers.delete(guildId);
+    }
+    botIntentionalServerMute.delete(guildId);
     runtimeState.voice.savedState = Object.fromEntries(savedVoiceStates);
   }
 
@@ -2811,7 +2843,7 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
       console.error("[VOICE 24/7] Connection error:", err.message);
     });
 
-    // On Ready - reset reconnect counter + attach live stream
+    // On Ready - reset reconnect counter + attach live stream + apply cosmetic server mute/deafen
     connection.on(VoiceConnectionStatus.Ready, () => {
       clearTimeout(reconnectWatchdog);
       voiceReconnectAttempts = 0;
@@ -2835,6 +2867,36 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
       } catch (err) {
         console.warn("[LIVE-STREAM] attach failed:", err.message);
       }
+
+      // Apply cosmetic server mute + server deafen to the bot itself.
+      // Cancel any pending timer from a previous Ready event for this guild, then start a fresh one.
+      // botIntentionalServerMute stores the timestamp of our last REST call so voiceStateUpdate
+      // can suppress auto-revert only within a short intent window (15s).
+      if (botMuteDeafenTimers.has(guildId)) {
+        clearTimeout(botMuteDeafenTimers.get(guildId));
+        botMuteDeafenTimers.delete(guildId);
+      }
+      const muteTimer = setTimeout(async () => {
+        botMuteDeafenTimers.delete(guildId);
+        // Guard: only apply if still connected to this specific channel
+        const conn = getVoiceConnection(guildId);
+        if (!conn || conn.state.status !== VoiceConnectionStatus.Ready) return;
+        try {
+          const guild = client.guilds.cache.get(guildId);
+          if (!guild) return;
+          const botMember = await guild.members.fetch(client.user.id).catch(() => null);
+          if (!botMember?.voice?.channel) return;
+          // Record timestamp so voiceStateUpdate can verify the intent is fresh (<15s)
+          botIntentionalServerMute.set(guildId, Date.now());
+          await botMember.voice.setMute(true, 'Cosmetic server mute');
+          await botMember.voice.setDeaf(true, 'Cosmetic server deafen');
+          console.log(`[VOICE 24/7] 🔇 Applied cosmetic server mute+deafen in guild ${guildId}`);
+        } catch (e) {
+          botIntentionalServerMute.delete(guildId);
+          console.warn(`[VOICE 24/7] ⚠️ Could not apply server mute/deafen in guild ${guildId}: ${e.message}`);
+        }
+      }, 2000); // small delay to let Discord settle after join
+      botMuteDeafenTimers.set(guildId, muteTimer);
     });
 
     // Disconnected: let Discord auto-reconnect first; destroy only if it can't.
@@ -2857,6 +2919,13 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
     // Destroyed: always schedule a rejoin so /listen comes back online.
     connection.on(VoiceConnectionStatus.Destroyed, () => {
       clearTimeout(reconnectWatchdog);
+      // Cancel any pending cosmetic mute/deafen timer so it doesn't fire on a dead connection
+      if (botMuteDeafenTimers.has(guildId)) {
+        clearTimeout(botMuteDeafenTimers.get(guildId));
+        botMuteDeafenTimers.delete(guildId);
+      }
+      // Clear intent marker — a fresh connection will re-apply cosmetic flags after Ready
+      botIntentionalServerMute.delete(guildId);
       runtimeState.voice.connectionStatus = VoiceConnectionStatus.Destroyed;
       console.log(`[VOICE 24/7] Connection destroyed for guild ${guildId}`);
       liveVoiceStream.detachIfGuild(guildId);
@@ -2988,6 +3057,7 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
     // =====================================================================
     try {
       await davePreloadPromise;
+      await loadAutoJoinFromDB();
       const dbStates = await loadVoiceStateFromDB();
       const envStates = loadVoiceStateFromEnv();
 
@@ -4053,7 +4123,28 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
           return;
         }
 
-        // j!vc <message> â€” Text-to-speech in voice channel
+        // j!autojoin [on|off] — toggle auto-rejoin when moved/disconnected
+        if (command === "autojoin") {
+          if (!message.guild) { await message.reply("Server lang ito pwede."); return; }
+          const guildId = message.guild.id;
+          const arg = (args[0] || "").toLowerCase();
+          let enabled;
+          if (arg === "on")       enabled = true;
+          else if (arg === "off") enabled = false;
+          else                    enabled = !autoJoinEnabled.get(guildId); // toggle
+
+          autoJoinEnabled.set(guildId, enabled);
+          await saveAutoJoinToDB(guildId, enabled);
+
+          await message.reply(
+            enabled
+              ? "✅ **Auto-join ON** — kapag nilipat or dinisconnect ako, babalik ako sa original na channel ko."
+              : "🔴 **Auto-join OFF** — hindi na ako mag-aauто-rejoin kapag nilipat/disconnected."
+          );
+          return;
+        }
+
+        // j!vc <message> — Text-to-speech in voice channel
         if (command === "vc" || command === "speak" || command === "tts") {
           if (!message.guild) return;
           const text = args.join(" ").trim();
@@ -6068,39 +6159,76 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
       const wasInChannel = oldState.channelId;
       const nowInChannel = newState.channelId;
 
-      // Auto-undeafen: if someone server-deafened the bot, immediately undo it
+      // Checks if the mute/deafen event is from our own cosmetic REST call (within 15s).
+      // Using a timestamp avoids the Set staying "sticky" forever.
+      const isIntentionalCosmeticMute = () => {
+        const ts = botIntentionalServerMute.get(guildId);
+        return ts && (Date.now() - ts) < 15000;
+      };
+
+      // Auto-undeafen: if someone ELSE server-deafened the bot, immediately undo it.
+      // But if WE applied it intentionally (cosmetic, within the last 15s), leave it alone.
       if (!oldState.serverDeaf && newState.serverDeaf) {
-        console.log(`[VOICE 24/7] Bot was server-deafened in guild ${guildId} — auto-undeafening...`);
-        try {
-          await newState.member.voice.setDeaf(false, 'Auto-undeafen: bot must stay undeafened');
-          console.log(`[VOICE 24/7] ✅ Auto-undeafen successful in guild ${guildId}`);
-        } catch (e) {
-          console.warn(`[VOICE 24/7] ⚠️ Auto-undeafen failed in guild ${guildId}: ${e.message}`);
+        if (isIntentionalCosmeticMute()) {
+          console.log(`[VOICE 24/7] Server-deafen detected in guild ${guildId} — intentional cosmetic, keeping it.`);
+        } else {
+          console.log(`[VOICE 24/7] Bot was server-deafened in guild ${guildId} — auto-undeafening...`);
+          try {
+            await newState.member.voice.setDeaf(false, 'Auto-undeafen: bot must stay undeafened');
+            console.log(`[VOICE 24/7] ✅ Auto-undeafen successful in guild ${guildId}`);
+          } catch (e) {
+            console.warn(`[VOICE 24/7] ⚠️ Auto-undeafen failed in guild ${guildId}: ${e.message}`);
+          }
         }
       }
 
-      // Auto-unmute: if someone server-muted the bot, immediately undo it
+      // Auto-unmute: if someone ELSE server-muted the bot, immediately undo it.
+      // But if WE applied it intentionally (cosmetic, within the last 15s), leave it alone.
       if (!oldState.serverMute && newState.serverMute) {
-        console.log(`[VOICE 24/7] Bot was server-muted in guild ${guildId} — auto-unmuting...`);
-        try {
-          await newState.member.voice.setMute(false, 'Auto-unmute: bot must stay unmuted');
-          console.log(`[VOICE 24/7] ✅ Auto-unmute successful in guild ${guildId}`);
-        } catch (e) {
-          console.warn(`[VOICE 24/7] ⚠️ Auto-unmute failed in guild ${guildId}: ${e.message}`);
+        if (isIntentionalCosmeticMute()) {
+          console.log(`[VOICE 24/7] Server-mute detected in guild ${guildId} — intentional cosmetic, keeping it.`);
+        } else {
+          console.log(`[VOICE 24/7] Bot was server-muted in guild ${guildId} — auto-unmuting...`);
+          try {
+            await newState.member.voice.setMute(false, 'Auto-unmute: bot must stay unmuted');
+            console.log(`[VOICE 24/7] ✅ Auto-unmute successful in guild ${guildId}`);
+          } catch (e) {
+            console.warn(`[VOICE 24/7] ⚠️ Auto-unmute failed in guild ${guildId}: ${e.message}`);
+          }
         }
       }
 
-      if (
-        wasInChannel &&
-        nowInChannel &&
-        wasInChannel !== nowInChannel &&
-        savedVoiceStates.has(guildId)
-      ) {
-        console.log(
-          `[VOICE 24/7] Bot moved to channel ${nowInChannel}. Updating saved state.`,
-        );
-        setSavedVoiceState({ guildId, channelId: nowInChannel });
-        await saveVoiceStateToDB(guildId, nowInChannel);
+      const ajOn = autoJoinEnabled.get(guildId) !== false; // default ON
+
+      // Bot was MOVED to a different channel
+      if (wasInChannel && nowInChannel && wasInChannel !== nowInChannel) {
+        const originalChannelId = savedVoiceStates.get(guildId)?.channelId;
+        if (ajOn && originalChannelId && originalChannelId !== nowInChannel) {
+          console.log(`[AUTOJOIN] Bot moved from ${wasInChannel} → ${nowInChannel}. Snapping back to ${originalChannelId} in 3s...`);
+          setTimeout(() => {
+            const conn = getVoiceConnection(guildId);
+            const guild = client.guilds.cache.get(guildId);
+            if (!guild) return;
+            const ch = guild.channels.cache.get(originalChannelId);
+            if (!ch) return;
+            if (conn) { try { conn.destroy(); } catch {} }
+            joinAndWatch(originalChannelId, guildId, guild.voiceAdapterCreator);
+            console.log(`[AUTOJOIN] ✅ Snapped back to original channel ${originalChannelId}`);
+          }, 3000);
+        } else if (!ajOn) {
+          // autojoin off — follow the move normally
+          setSavedVoiceState({ guildId, channelId: nowInChannel });
+          await saveVoiceStateToDB(guildId, nowInChannel);
+          console.log(`[VOICE 24/7] Bot moved to ${nowInChannel}. Saved (autojoin off).`);
+        }
+      }
+
+      // Bot was DISCONNECTED from a channel
+      if (wasInChannel && !nowInChannel && savedVoiceStates.has(guildId)) {
+        if (ajOn) {
+          console.log(`[AUTOJOIN] Bot disconnected from ${wasInChannel}. Rejoining in 5s...`);
+          scheduleVoiceRejoin('disconnected', 5000, savedVoiceStates.get(guildId));
+        }
       }
     } catch (err) {
       console.error("[VOICE STATE] Error:", err.message);
