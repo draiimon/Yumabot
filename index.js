@@ -6068,6 +6068,17 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
       const wasInChannel = oldState.channelId;
       const nowInChannel = newState.channelId;
 
+      // Auto-undeafen: if someone server-deafened the bot, immediately undo it
+      if (!oldState.serverDeaf && newState.serverDeaf) {
+        console.log(`[VOICE 24/7] Bot was server-deafened in guild ${guildId} — auto-undeafening...`);
+        try {
+          await newState.member.voice.setDeaf(false, 'Auto-undeafen: bot must stay undeafened');
+          console.log(`[VOICE 24/7] ✅ Auto-undeafen successful in guild ${guildId}`);
+        } catch (e) {
+          console.warn(`[VOICE 24/7] ⚠️ Auto-undeafen failed in guild ${guildId}: ${e.message}`);
+        }
+      }
+
       if (
         wasInChannel &&
         nowInChannel &&
