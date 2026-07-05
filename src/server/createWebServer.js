@@ -360,34 +360,32 @@ function buildListenPageHtml() {
 
     <script>
       /* ══════════════════════════════════════════════
-         GATE LOGIC
-         Password = exactly 5 Enter presses.
-         Spam detection: presses < 180 ms apart reset the counter.
+         GATE LOGIC — passkey: 12345
       ══════════════════════════════════════════════ */
-      const MIN_GAP_MS = 180; // minimum ms between valid presses
-      let count = 0;
-      let lastPressTime = 0;
-      let lockout = false; // brief cooldown after a denial
+      const PASSKEY   = '12345';
+      let input   = '';
+      let lockout = false;
 
       const gate    = document.getElementById('gate');
       const tStatus = document.getElementById('t-status');
       const slots   = [0,1,2,3,4].map(i => document.getElementById('s' + i));
-      function updateSlots(n, mode) {
+
+      function updateSlots(str, mode) {
         slots.forEach((el, i) => {
           el.className = 'slot';
-          if (mode === 'err') { el.classList.add('err'); el.textContent = 'X'; }
-          else if (i < n)     { el.classList.add('filled'); el.textContent = '●'; }
-          else                { el.textContent = '_'; }
+          if (mode === 'err')       { el.classList.add('err'); el.textContent = 'X'; }
+          else if (i < str.length)  { el.classList.add('filled'); el.textContent = '●'; }
+          else                      { el.textContent = '_'; }
         });
       }
 
       function deny(msg) {
-        lockout = true; count = 0; lastPressTime = 0;
-        updateSlots(5, 'err');
+        lockout = true; input = '';
+        updateSlots('12345', 'err');
         tStatus.className = 't-line t-warn';
         tStatus.textContent = '  [ERR] ' + msg;
         setTimeout(() => {
-          lockout = false; updateSlots(0, 'ok');
+          lockout = false; updateSlots('', 'ok');
           tStatus.className = 't-line t-dim';
           tStatus.textContent = '  [SYS] awaiting input sequence...';
         }, 900);
@@ -405,37 +403,49 @@ function buildListenPageHtml() {
         }, 650);
       }
 
+      function pressDigit(d) {
+        if (lockout) return;
+        if (input.length >= PASSKEY.length) return;
+        input += d;
+        updateSlots(input, 'ok');
+        tStatus.className = 't-line t-dim';
+        tStatus.textContent = '  [SYS] digit ' + input.length + '/' + PASSKEY.length + ' entered';
+      }
+
       function handleEnter() {
         if (lockout) return;
-        const now = Date.now();
-        if (lastPressTime !== 0 && now - lastPressTime < MIN_GAP_MS) {
-          deny('SEQUENCE REJECTED — slow down');
+        if (input.length < PASSKEY.length) {
+          deny('INCOMPLETE — enter all ' + PASSKEY.length + ' digits');
           return;
         }
-        lastPressTime = now;
-        count++;
-        updateSlots(count, 'ok');
+        if (input === PASSKEY) { unlock(); }
+        else { deny('ACCESS DENIED — wrong passkey'); }
+      }
+
+      function handleClear() {
+        if (lockout) return;
+        input = '';
+        updateSlots('', 'ok');
         tStatus.className = 't-line t-dim';
-        tStatus.textContent = '  [SYS] key ' + count + '/5 accepted';
-        if (count === 5) unlock();
+        tStatus.textContent = '  [SYS] cleared';
       }
 
       /* keypad clicks */
       document.querySelectorAll('.kp').forEach(btn => {
         btn.addEventListener('click', () => {
           const k = btn.dataset.k;
-          if (k === 'ENTER') { handleEnter(); }
-          else if (k === 'CLR') { /* no display to clear */ }
-          else { /* digit pressed, no display */ }
+          if (k === 'ENTER')       { handleEnter(); }
+          else if (k === 'CLR')    { handleClear(); }
+          else if (/^[0-9]$/.test(k)) { pressDigit(k); }
         });
       });
 
-      /* physical keyboard still works */
+      /* physical keyboard */
       document.addEventListener('keydown', (e) => {
         if (lockout) return;
-        if (e.key === 'Enter') { e.preventDefault(); handleEnter(); }
-        else if (e.key === 'Backspace') { /* no display */ }
-        else if (/^[0-9]$/.test(e.key)) { /* digit, no display */ }
+        if (e.key === 'Enter')     { e.preventDefault(); handleEnter(); }
+        else if (e.key === 'Backspace') { e.preventDefault(); handleClear(); }
+        else if (/^[0-9]$/.test(e.key)) { pressDigit(e.key); }
       });
 
       /* ══════════════════════════════════════════════
