@@ -2831,7 +2831,7 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
       console.error("[VOICE 24/7] Connection error:", err.message);
     });
 
-    // On Ready - reset reconnect counter + attach live stream + apply cosmetic server mute/deafen
+    // On Ready - reset reconnect counter + attach live stream
     connection.on(VoiceConnectionStatus.Ready, () => {
       clearTimeout(reconnectWatchdog);
       voiceReconnectAttempts = 0;
