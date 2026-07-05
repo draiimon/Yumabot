@@ -14,7 +14,7 @@ A self-hosted Discord bot with persistent AI memory, voice channel integration, 
 - **Web Research** — Pulls live search results via Tavily and summarizes them.
 - **Channel Summarizer** — Backread and summarize recent chat history on demand.
 - **Health Dashboard** — `/health` endpoint exposes bot status, DB state, voice connection, memory usage, and uptime.
-- **Cosmetic Voice State** — Bot appears server-muted and server-deafened in Discord (red icons) while still fully functional internally.
+- **Cosmetic Voice State** — Bot appears muted and deafened in Discord while still fully functional internally.
 
 ---
 
