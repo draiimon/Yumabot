@@ -6079,6 +6079,17 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
         }
       }
 
+      // Auto-unmute: if someone server-muted the bot, immediately undo it
+      if (!oldState.serverMute && newState.serverMute) {
+        console.log(`[VOICE 24/7] Bot was server-muted in guild ${guildId} — auto-unmuting...`);
+        try {
+          await newState.member.voice.setMute(false, 'Auto-unmute: bot must stay unmuted');
+          console.log(`[VOICE 24/7] ✅ Auto-unmute successful in guild ${guildId}`);
+        } catch (e) {
+          console.warn(`[VOICE 24/7] ⚠️ Auto-unmute failed in guild ${guildId}: ${e.message}`);
+        }
+      }
+
       if (
         wasInChannel &&
         nowInChannel &&

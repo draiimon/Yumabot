@@ -168,6 +168,13 @@ function buildListenPageHtml() {
         gap: 0;
       }
 
+      /* icon row */
+      .status-icons {
+        display: flex;
+        gap: 16px;
+        margin-bottom: 14px;
+      }
+
       /* deafen icon circle — always pulsing red */
       .deafen-icon {
         width: 72px; height: 72px;
@@ -344,21 +351,37 @@ function buildListenPageHtml() {
     <div id="app">
       <div class="app-panel">
 
-        <!-- deafen icon -->
-        <div class="deafen-icon" id="deafenIcon">
-          <svg viewBox="0 0 38 38" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <!-- headphone arc -->
-            <path d="M7 20 C7 12.3 12.5 7 19 7 C25.5 7 31 12.3 31 20" stroke="#cc3333" stroke-width="2.5" stroke-linecap="round"/>
-            <!-- left ear cup -->
-            <rect x="4.5" y="19" width="6" height="9" rx="2.5" fill="#cc3333"/>
-            <!-- right ear cup -->
-            <rect x="27.5" y="19" width="6" height="9" rx="2.5" fill="#cc3333"/>
-            <!-- slash -->
-            <line x1="5" y1="5" x2="33" y2="33" stroke="#f04747" stroke-width="3" stroke-linecap="round"/>
-          </svg>
+        <!-- mute + deafen icons side by side -->
+        <div class="status-icons">
+          <!-- server muted icon -->
+          <div class="deafen-icon">
+            <svg viewBox="0 0 38 38" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <!-- mic body -->
+              <rect x="13" y="5" width="12" height="18" rx="6" fill="#cc3333"/>
+              <!-- mic stand -->
+              <path d="M9 19 C9 26.2 29 26.2 29 19" stroke="#cc3333" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+              <line x1="19" y1="26" x2="19" y2="32" stroke="#cc3333" stroke-width="2.5" stroke-linecap="round"/>
+              <line x1="14" y1="32" x2="24" y2="32" stroke="#cc3333" stroke-width="2.5" stroke-linecap="round"/>
+              <!-- slash -->
+              <line x1="5" y1="5" x2="33" y2="33" stroke="#f04747" stroke-width="3" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <!-- server deafened icon -->
+          <div class="deafen-icon">
+            <svg viewBox="0 0 38 38" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <!-- headphone arc -->
+              <path d="M7 20 C7 12.3 12.5 7 19 7 C25.5 7 31 12.3 31 20" stroke="#cc3333" stroke-width="2.5" stroke-linecap="round"/>
+              <!-- left ear cup -->
+              <rect x="4.5" y="19" width="6" height="9" rx="2.5" fill="#cc3333"/>
+              <!-- right ear cup -->
+              <rect x="27.5" y="19" width="6" height="9" rx="2.5" fill="#cc3333"/>
+              <!-- slash -->
+              <line x1="5" y1="5" x2="33" y2="33" stroke="#f04747" stroke-width="3" stroke-linecap="round"/>
+            </svg>
+          </div>
         </div>
 
-        <div class="deafen-badge">SERVER DEAFENED</div>
+        <div class="deafen-badge">SERVER MUTED &nbsp;•&nbsp; SERVER DEAFENED</div>
 
         <hr class="deafen-divider">
 
