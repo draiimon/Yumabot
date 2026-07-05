@@ -1,83 +1,128 @@
-# Yuma
+# Yuma — Discord AI Bot
 
-Discord bot na may AI chat, boses (TTS/STT), at memory per user gamit ang Postgres. Bad boy attitude, Taglish replies, medyo masungit pero helpful pag kailangan.
+A self-hosted Discord bot with persistent AI memory, voice channel integration, live audio streaming, and a terminal-style web dashboard. Built for 24/7 deployment on Render (Docker).
 
-## Ano meron
+---
 
-- AI replies gamit ang Groq
-- Voice: makikinig at makakausap sa VC (text-to-speech / speech-to-text)
-- Naka-save ang memory ng bawat user sa Postgres (di malilimutan pag nagpalit ka topic)
-- Health checks para sa Render
-- Auto rejoin sa VC pag na-disconnect o na-restart ang server
+## Features
 
-## Kailangan bago patakbuhin
+- **AI Chat** — Context-aware replies powered by Groq (LLaMA / Mixtral). Per-user memory stored in PostgreSQL — the bot remembers conversation history across sessions.
+- **Voice — TTS & STT** — Speaks responses aloud in voice channels via TTS. Listens and transcribes speech via Groq Whisper (STT).
+- **24/7 Voice Persistence** — Saves the last joined voice channel to the database. Auto-rejoins on restart, disconnect, or kick. Configurable auto-rejoin toggle per server.
+- **Live Audio Stream** — Web dashboard at `/listen` streams the bot's voice channel audio in real-time over WebSocket to any browser.
+- **Image Generation** — Generates images via Leonardo AI on command.
+- **Web Research** — Pulls live search results via Tavily and summarizes them.
+- **Channel Summarizer** — Backread and summarize recent chat history on demand.
+- **Health Dashboard** — `/health` endpoint exposes bot status, DB state, voice connection, memory usage, and uptime.
+- **Cosmetic Voice State** — Bot appears server-muted and server-deafened in Discord (red icons) while still fully functional internally.
+
+---
+
+## Requirements
 
 - Node.js 22+
-- Python 3
+- Python 3.11+
 - FFmpeg
+- PostgreSQL database
 - Discord bot token
-- Postgres database URL
-- Groq API key (isa man lang)
+- Groq API key (supports key rotation: `GROQ_API_KEY1` through `GROQ_API_KEY6`)
 
-## Setup
+Optional:
+- `TAVILY_API_KEY` — web research
+- `LEONARDO_API_KEY` — image generation
+- `DEEPSEEK_API_KEY` — fallback AI model
 
-Kopyahin muna ang `.env.example` bilang `.env` tapos punuan:
+---
 
-- `DISCORD_TOKEN`
-- `DATABASE_URL`
-- `GROQ_API_KEY` (o `GROQ_API_KEY1`, `GROQ_API_KEY2`, ... kung marami ka)
+## Environment Variables
 
-Optional na env vars:
+Copy `.env.example` to `.env` and fill in:
 
-- `WEB_ENABLED`
-- `PUBLIC_BASE_URL`
-- `SELF_PING_ENABLED`
-- `SELF_PING_INTERVAL_MS`
+| Variable | Required | Description |
+|---|---|---|
+| `DISCORD_TOKEN` | ✅ | Bot token from Discord Developer Portal |
+| `DATABASE_URL` | ✅ | PostgreSQL connection string |
+| `GROQ_API_KEY` | ✅ | Groq API key (or use `GROQ_API_KEY1`–`GROQ_API_KEY6`) |
+| `TAVILY_API_KEY` | ❌ | For web research commands |
+| `LEONARDO_API_KEY` | ❌ | For image generation |
+| `DEEPSEEK_API_KEY` | ❌ | Fallback AI model |
+| `WEB_ENABLED` | ❌ | Set to `true` to enable the web dashboard |
+| `SELF_PING_ENABLED` | ❌ | Set to `true` to keep Render free tier awake |
 
-## Patakbuhin sa local
+---
+
+## Running Locally
 
 ```bash
 npm install
 npm start
 ```
 
-## Deploy sa Render
+The bot connects to Discord and optionally starts a web server on port `3000` (or `PORT` env var).
 
-May kasama nang `render.yaml` sa repo na ito para sa isang Docker web service.
+---
 
-1. Gawa ng bagong service galing sa `render.yaml`.
-2. Punan ang env vars sa dashboard ng Render:
-   - `DISCORD_TOKEN`
-   - `DATABASE_URL`
-   - `GROQ_API_KEY` (at extras kung meron)
-   - optional: `TAVILY_API_KEY`, iba pang API keys na ginagamit mo
-3. Deploy na.
+## Deploying to Render
 
-Kung `WEB_ENABLED=true`, meron health endpoints:
+A `render.yaml` is included for one-click Docker deployment.
 
-- `/health` — status ng bot, DB, at voice
-- `/ready` — kung ready na ang Discord client
-- `/ping` — pang-uptime lang
+1. Create a new service from `render.yaml` in your Render dashboard.
+2. Add all required environment variables.
+3. Deploy — the bot starts automatically and reconnects to the last saved voice channel.
 
-## Voice / VC behavior
+Web endpoints (when `WEB_ENABLED=true`):
 
-- Naaalala kung saang VC huling sumali gamit ang Postgres
-- Babalik sa parehong VC pagkatapos ma-restart
-- Auto rejoin pag na-disconnect o na-kick
-- Makikita ang current voice state sa `/health`
+| Endpoint | Description |
+|---|---|
+| `/` | Terminal-style status dashboard |
+| `/listen` | Live voice channel audio stream |
+| `/health` | Full diagnostics JSON |
+| `/ping` | Uptime check |
+| `/ready` | Discord client readiness check |
 
-Kung walang `DATABASE_URL`, hindi gagana ang mga naka-save na state na ito.
+---
 
 ## Commands
 
-- `j!join` — sumali sa VC
-- `j!leave` — umalis sa VC
-- `j!vc <text>` — magsalita sa VC
-- `j!ask <tanong>` — magtanong
-- `j!listen` — pakinggan ang boses
-- `j!stop` — itigil ang pagsasalita
-- `j!voice <m|f>` — palitan ang boses
-- `j!view @user` — tignan ang impormasyon ng user
-- `j!status <text>` — palitan ang status
-- `j!admin` — admin panel
-- `j!help` — listahan ng commands
+| Command | Description |
+|---|---|
+| `j!join` | Join your current voice channel |
+| `j!leave` | Leave the voice channel |
+| `j!autojoin on/off` | Toggle auto-rejoin when moved or disconnected |
+| `j!vc <text>` | Speak text aloud in the voice channel (TTS) |
+| `j!autotts on/off` | Toggle automatic TTS for all messages |
+| `j!ask <question>` | Ask the bot a question (STT-aware) |
+| `j!listen` | Start listening / transcribing voice |
+| `j!stop` | Stop listening or TTS |
+| `j!chat <message>` | Direct AI chat message |
+| `j!research <query>` | Web search + AI summary |
+| `j!summarize` | Summarize recent channel messages |
+| `j!img <prompt>` | Generate an image |
+| `j!portray <prompt>` | Generate a portrait-style image |
+| `j!view [@user]` | View user profile and memory summary |
+| `j!status <text>` | Set bot status/activity |
+| `j!stats` | Server statistics |
+| `j!ping` | Latency check |
+| `j!help` | Full command list |
+| `j!admin` | Admin panel (restricted) |
+
+---
+
+## Project Structure
+
+```
+index.js              # Main bot entry — all Discord logic, commands, event handlers
+src/
+  voice/              # Voice connection, TTS, STT, live audio streaming
+  server/             # HTTP web server and dashboard
+scripts/              # Utility and setup scripts
+public/               # Static assets (background, etc.)
+data/                 # Runtime data (gitignored)
+docs/                 # Additional documentation
+```
+
+---
+
+## License
+
+MIT

@@ -41,3 +41,13 @@ scripts/*asus*
 scripts/_apply-boot*
 scripts/_elevate-fix*
 
+# Replit-specific — never push these
+.replit
+replit.nix
+.local/
+.agents/
+.cache/
+.upm/
+.pythonlibs/
+attached_assets/
+
