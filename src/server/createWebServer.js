@@ -168,27 +168,20 @@ function buildListenPageHtml() {
         gap: 0;
       }
 
-      /* deafen icon circle */
+      /* deafen icon circle — always pulsing red */
       .deafen-icon {
         width: 72px; height: 72px;
-        background: rgba(240,71,71,0.15);
+        background: rgba(240,71,71,0.18);
         border: 2px solid #f04747;
         border-radius: 50%;
         display: flex; align-items: center; justify-content: center;
         margin-bottom: 14px;
-        position: relative;
+        animation: deafen-pulse 2s ease-in-out infinite;
       }
       .deafen-icon svg { width: 38px; height: 38px; }
-
-      /* pulsing red glow when intercepting */
-      .deafen-icon.intercepting {
-        animation: deafen-pulse 2s ease-in-out infinite;
-        border-color: #f04747;
-        background: rgba(240,71,71,0.22);
-      }
       @keyframes deafen-pulse {
-        0%,100% { box-shadow: 0 0 0 0 rgba(240,71,71,0.4); }
-        50%      { box-shadow: 0 0 0 10px rgba(240,71,71,0); }
+        0%,100% { box-shadow: 0 0 0 0 rgba(240,71,71,0.5); background: rgba(240,71,71,0.18); }
+        50%      { box-shadow: 0 0 0 12px rgba(240,71,71,0); background: rgba(240,71,71,0.28); }
       }
 
       /* badge */
