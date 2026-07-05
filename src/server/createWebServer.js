@@ -155,11 +155,11 @@ function buildListenPageHtml() {
       }
       #app.visible { display: flex; }
 
-      /* ── deafen panel ── */
+      /* ── app panel ── */
       .app-panel {
         width: min(340px, 92vw);
         background: rgba(0,0,0,0.88);
-        border: 1px solid #3a0a0a;
+        border: 1px solid #0d3d14;
         font-family: 'Courier New', Courier, monospace;
         padding: 32px 24px 24px;
         display: flex;
@@ -168,58 +168,23 @@ function buildListenPageHtml() {
         gap: 0;
       }
 
-      /* icon row */
-      .status-icons {
-        display: flex;
-        gap: 6px;
-        margin-bottom: 14px;
-        background: rgba(240,71,71,0.12);
-        border: 1px solid rgba(240,71,71,0.25);
-        border-radius: 4px;
-        padding: 8px 14px;
-        animation: deafen-pulse 2.5s ease-in-out infinite;
-      }
-      .deafen-icon {
-        width: 40px; height: 40px;
-        background: rgba(240,71,71,0.2);
-        border-radius: 50%;
-        display: flex; align-items: center; justify-content: center;
-      }
-      .deafen-icon svg { width: 22px; height: 22px; }
-      @keyframes deafen-pulse {
-        0%,100% { box-shadow: 0 0 0 0 rgba(240,71,71,0.4); }
-        50%      { box-shadow: 0 0 0 8px rgba(240,71,71,0); }
-      }
-
-      /* badge */
-      .deafen-badge {
-        font-size: 0.72rem;
-        font-weight: bold;
-        letter-spacing: 0.12em;
-        color: #f04747;
-        background: rgba(240,71,71,0.12);
-        border: 1px solid #6b1515;
-        padding: 3px 10px;
-        margin-bottom: 18px;
-      }
-
       /* channel row */
       .deafen-divider {
         width: 100%;
         border: none;
-        border-top: 1px solid #1a0808;
+        border-top: 1px solid #0a2a0e;
         margin: 4px 0 14px;
       }
       .deafen-row {
         width: 100%;
         font-size: 0.78rem;
-        color: #6b2222;
+        color: #1a6b22;
         margin-bottom: 5px;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
       }
-      .deafen-row span { color: #cc3333; }
+      .deafen-row span { color: #00ff41; }
 
       /* intercept status line */
       .intercept-status {
@@ -259,9 +224,9 @@ function buildListenPageHtml() {
       select {
         width: 100%;
         padding: 6px 10px;
-        background: #0a0000;
-        color: #cc3333;
-        border: 1px solid #3a0a0a;
+        background: #000a00;
+        color: #00ff41;
+        border: 1px solid #0d3d14;
         font-family: 'Courier New', Courier, monospace;
         font-size: 0.78rem;
         outline: none;
@@ -269,17 +234,17 @@ function buildListenPageHtml() {
         appearance: none;
         -webkit-appearance: none;
       }
-      select:focus { border-color: #f04747; }
-      select option { background: #000; color: #cc3333; }
+      select:focus { border-color: #00ff41; }
+      select option { background: #000; color: #00ff41; }
 
       /* action button */
       .cmd-btn {
         margin-top: 16px;
         width: 100%;
         padding: 11px 14px;
-        background: rgba(240,71,71,0.08);
-        color: #f04747;
-        border: 1px solid #f04747;
+        background: rgba(0,255,65,0.06);
+        color: #00ff41;
+        border: 1px solid #00ff41;
         font-family: 'Courier New', Courier, monospace;
         font-size: 0.82rem;
         font-weight: bold;
@@ -289,20 +254,20 @@ function buildListenPageHtml() {
         transition: background .12s, color .12s;
       }
       .cmd-btn:disabled {
-        border-color: #3a0a0a;
-        color: #3a0a0a;
+        border-color: #0d3d14;
+        color: #0d3d14;
         background: transparent;
         cursor: not-allowed;
       }
-      .cmd-btn:not(:disabled):hover { background: #f04747; color: #000; }
-      .cmd-btn.stop { border-color: #ff6b6b; color: #ff6b6b; background: rgba(240,71,71,0.15); }
-      .cmd-btn.stop:not(:disabled):hover { background: #ff6b6b; color: #000; }
+      .cmd-btn:not(:disabled):hover { background: #00ff41; color: #000; }
+      .cmd-btn.stop { border-color: #00ff41; color: #00ff41; background: rgba(0,255,65,0.12); }
+      .cmd-btn.stop:not(:disabled):hover { background: #00ff41; color: #000; }
 
-      .blink-r { animation: blink 1s step-end infinite; color: #f04747; }
+      .blink-r { animation: blink 1s step-end infinite; color: #00ff41; }
       .app-prompt {
         margin-top: 14px;
         font-size: 0.72rem;
-        color: #3a0a0a;
+        color: #1a6b22;
         font-family: 'Courier New', Courier, monospace;
         align-self: flex-start;
       }
@@ -320,10 +285,6 @@ function buildListenPageHtml() {
         .kp-clr, .kp-enter { font-size: 0.95rem; }
         #t-status { font-size: 0.75rem; }
         .app-panel { padding: 24px 16px 20px; }
-        .deafen-icon { width: 36px; height: 36px; }
-        .deafen-icon svg { width: 20px; height: 20px; }
-        .status-icons { padding: 6px 10px; gap: 8px; }
-        .deafen-badge { font-size: 0.65rem; letter-spacing: 0.08em; }
         .deafen-row { font-size: 0.72rem; }
         .cmd-btn { padding: 14px; font-size: 0.85rem; }
         select { font-size: 16px; /* prevents iOS zoom */ }
@@ -372,29 +333,6 @@ function buildListenPageHtml() {
     <!-- ═══════════════════  APP  ═══════════════════ -->
     <div id="app">
       <div class="app-panel">
-
-        <!-- mute + deafen icons — Discord style -->
-        <div class="status-icons">
-          <!-- server muted: mic with slash -->
-          <div class="deafen-icon">
-            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M12 2a4 4 0 0 0-4 4v5.172l7.758 7.758A4 4 0 0 0 16 15V6a4 4 0 0 0-4-4Z" fill="#f04747"/>
-              <path d="M8 11.172V6a4 4 0 0 0-.076 7.62L8 11.172ZM5.293 5.293a1 1 0 0 1 1.414 0l12 12a1 1 0 0 1-1.414 1.414l-12-12a1 1 0 0 1 0-1.414Z" fill="#f04747"/>
-              <path d="M6.827 16.82A7 7 0 0 0 19 12a1 1 0 1 0-2 0 5 5 0 0 1-8.357 3.707L6.827 16.82ZM12 19a1 1 0 0 0 1 1h-2a1 1 0 0 0 1-1Zm-3 0v2H11v-2H9Zm4 0v2h2v-2h-2Z" fill="#f04747"/>
-              <path d="M7 12a5 5 0 0 0 .932 2.914L6.465 16.38A7 7 0 0 1 5 12a1 1 0 0 1 2 0Z" fill="#f04747"/>
-            </svg>
-          </div>
-          <!-- server deafened: headphones with slash -->
-          <div class="deafen-icon">
-            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M5.293 5.293a1 1 0 0 1 1.414 0l12 12a1 1 0 0 1-1.414 1.414l-12-12a1 1 0 0 1 0-1.414Z" fill="#f04747"/>
-              <path d="M4 12a8 8 0 0 1 12.484-6.638L14.95 6.897A6 6 0 0 0 6 12v3H4v-3ZM18 14.172V12a6 6 0 0 0-.348-2.027L19.2 8.417A7.97 7.97 0 0 1 20 12v2h-2v.172Z" fill="#f04747"/>
-              <path d="M4 14a1 1 0 0 1 1-1h1.5A1.5 1.5 0 0 1 8 14.5v2A1.5 1.5 0 0 1 6.5 18H6a2 2 0 0 1-2-2v-2Zm16 0a1 1 0 0 0-1-1h-1.5A1.5 1.5 0 0 0 16 14.5v2a1.5 1.5 0 0 0 1.5 1.5h.5a2 2 0 0 0 2-2v-2Z" fill="#f04747"/>
-            </svg>
-          </div>
-        </div>
-
-        <div class="deafen-badge">SERVER MUTED &nbsp;•&nbsp; SERVER DEAFENED</div>
 
         <hr class="deafen-divider">
 
