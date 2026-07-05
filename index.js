@@ -2483,12 +2483,6 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
   // =====================================================================
   const savedVoiceStates = new Map(); // guildId -> { channelId, guildId }
   const autoJoinEnabled  = new Map(); // guildId -> boolean (default true when bot joins)
-  // guildId -> timestamp (ms) of when WE last applied cosmetic server mute/deafen.
-  // Auto-revert is suppressed only if the event fires within 15s of our own REST call.
-  const botIntentionalServerMute = new Map();
-  // guildId -> timeout handle — so we can cancel pending cosmetic-apply timers on disconnect/destroy
-  const botMuteDeafenTimers = new Map();
-
   async function saveAutoJoinToDB(guildId, enabled) {
     try {
       await pool.query(
@@ -2518,12 +2512,6 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
 
   function clearSavedVoiceStateForGuild(guildId) {
     savedVoiceStates.delete(guildId);
-    // Cancel any pending cosmetic mute/deafen timer and clear intent marker
-    if (botMuteDeafenTimers.has(guildId)) {
-      clearTimeout(botMuteDeafenTimers.get(guildId));
-      botMuteDeafenTimers.delete(guildId);
-    }
-    botIntentionalServerMute.delete(guildId);
     runtimeState.voice.savedState = Object.fromEntries(savedVoiceStates);
   }
 
@@ -2868,61 +2856,6 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
         console.warn("[LIVE-STREAM] attach failed:", err.message);
       }
 
-      // Apply cosmetic server mute + server deafen to the bot itself.
-      // Cancel any pending timer from a previous Ready event for this guild, then start a fresh one.
-      // botIntentionalServerMute stores the timestamp of our last REST call so voiceStateUpdate
-      // can suppress auto-revert only within a short intent window (15s).
-      if (botMuteDeafenTimers.has(guildId)) {
-        clearTimeout(botMuteDeafenTimers.get(guildId));
-        botMuteDeafenTimers.delete(guildId);
-      }
-      // Apply cosmetic server mute + deafen — shows red icons in Discord.
-      // Uses guild.members.edit() directly (no voice-cache dependency).
-      // Retries once after 4s in case Discord hasn't settled yet.
-      const applyCosmetic = async (attempt = 1) => {
-        const conn = getVoiceConnection(guildId);
-        if (!conn || conn.state.status !== VoiceConnectionStatus.Ready) return;
-        try {
-          const guild = client.guilds.cache.get(guildId);
-          if (!guild) return;
-
-          const me = guild.members.me;
-          if (!me) return;
-
-          // Permission check — needs MUTE_MEMBERS + DEAFEN_MEMBERS
-          const hasMute   = me.permissions.has('MuteMembers');
-          const hasDeafen = me.permissions.has('DeafenMembers');
-          if (!hasMute || !hasDeafen) {
-            console.warn(
-              `[COSMETIC] ⚠️ Guild ${guildId}: bot is missing ${!hasMute ? 'MuteMembers ' : ''}${!hasDeafen ? 'DeafenMembers' : ''} permission.` +
-              ` Go to Server Settings → Roles → [Bot role] → Voice Permissions and enable them.`
-            );
-            return;
-          }
-
-          // Record intent timestamp BEFORE the REST call so voiceStateUpdate
-          // doesn't auto-revert our own server mute/deafen (15s window).
-          botIntentionalServerMute.set(guildId, Date.now());
-          // Single PATCH — mute + deaf together, no voice-state dependency
-          await guild.members.edit(client.user.id, { mute: true, deaf: true }, 'Cosmetic server mute+deafen');
-          console.log(`[COSMETIC] ✅ Red server mute+deafen applied in guild ${guildId}`);
-        } catch (e) {
-          botIntentionalServerMute.delete(guildId);
-          console.warn(`[COSMETIC] ⚠️ Failed in guild ${guildId} (attempt ${attempt}): ${e.message}${e.code ? ` [code ${e.code}]` : ''}`);
-          if (e.code === 50013) console.warn(`[COSMETIC] → Missing Permissions. Grant MuteMembers + DeafenMembers to the bot role.`);
-          // Retry once after 4s
-          if (attempt === 1) {
-            const retryTimer = setTimeout(() => applyCosmetic(2), 4000);
-            botMuteDeafenTimers.set(guildId, retryTimer);
-          }
-        }
-      };
-
-      const muteTimer = setTimeout(() => {
-        botMuteDeafenTimers.delete(guildId);
-        applyCosmetic(1);
-      }, 2000);
-      botMuteDeafenTimers.set(guildId, muteTimer);
     });
 
     // Disconnected: let Discord auto-reconnect first; destroy only if it can't.
@@ -2945,13 +2878,6 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
     // Destroyed: always schedule a rejoin so /listen comes back online.
     connection.on(VoiceConnectionStatus.Destroyed, () => {
       clearTimeout(reconnectWatchdog);
-      // Cancel any pending cosmetic mute/deafen timer so it doesn't fire on a dead connection
-      if (botMuteDeafenTimers.has(guildId)) {
-        clearTimeout(botMuteDeafenTimers.get(guildId));
-        botMuteDeafenTimers.delete(guildId);
-      }
-      // Clear intent marker — a fresh connection will re-apply cosmetic flags after Ready
-      botIntentionalServerMute.delete(guildId);
       runtimeState.voice.connectionStatus = VoiceConnectionStatus.Destroyed;
       console.log(`[VOICE 24/7] Connection destroyed for guild ${guildId}`);
       liveVoiceStream.detachIfGuild(guildId);
@@ -6184,45 +6110,6 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
       const guildId = newState.guild.id;
       const wasInChannel = oldState.channelId;
       const nowInChannel = newState.channelId;
-
-      // Checks if the mute/deafen event is from our own cosmetic REST call (within 15s).
-      // Using a timestamp avoids the Set staying "sticky" forever.
-      const isIntentionalCosmeticMute = () => {
-        const ts = botIntentionalServerMute.get(guildId);
-        return ts && (Date.now() - ts) < 15000;
-      };
-
-      // Auto-undeafen: if someone ELSE server-deafened the bot, immediately undo it.
-      // But if WE applied it intentionally (cosmetic, within the last 15s), leave it alone.
-      if (!oldState.serverDeaf && newState.serverDeaf) {
-        if (isIntentionalCosmeticMute()) {
-          console.log(`[VOICE 24/7] Server-deafen detected in guild ${guildId} — intentional cosmetic, keeping it.`);
-        } else {
-          console.log(`[VOICE 24/7] Bot was server-deafened in guild ${guildId} — auto-undeafening...`);
-          try {
-            await newState.member.voice.setDeaf(false, 'Auto-undeafen: bot must stay undeafened');
-            console.log(`[VOICE 24/7] ✅ Auto-undeafen successful in guild ${guildId}`);
-          } catch (e) {
-            console.warn(`[VOICE 24/7] ⚠️ Auto-undeafen failed in guild ${guildId}: ${e.message}`);
-          }
-        }
-      }
-
-      // Auto-unmute: if someone ELSE server-muted the bot, immediately undo it.
-      // But if WE applied it intentionally (cosmetic, within the last 15s), leave it alone.
-      if (!oldState.serverMute && newState.serverMute) {
-        if (isIntentionalCosmeticMute()) {
-          console.log(`[VOICE 24/7] Server-mute detected in guild ${guildId} — intentional cosmetic, keeping it.`);
-        } else {
-          console.log(`[VOICE 24/7] Bot was server-muted in guild ${guildId} — auto-unmuting...`);
-          try {
-            await newState.member.voice.setMute(false, 'Auto-unmute: bot must stay unmuted');
-            console.log(`[VOICE 24/7] ✅ Auto-unmute successful in guild ${guildId}`);
-          } catch (e) {
-            console.warn(`[VOICE 24/7] ⚠️ Auto-unmute failed in guild ${guildId}: ${e.message}`);
-          }
-        }
-      }
 
       const ajOn = autoJoinEnabled.get(guildId) !== false; // default ON
 
