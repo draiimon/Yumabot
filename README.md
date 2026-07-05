@@ -47,7 +47,7 @@ Copy `.env.example` to `.env` and fill in:
 | `LEONARDO_API_KEY` | ❌ | For image generation |
 | `DEEPSEEK_API_KEY` | ❌ | Fallback AI model |
 | `WEB_ENABLED` | ❌ | Set to `true` to enable the web dashboard |
-| `SELF_PING_ENABLED` | ❌ | Set to `true` to keep Render free tier awake |
+
 
 ---
 
@@ -88,7 +88,6 @@ Web endpoints (when `WEB_ENABLED=true`):
 |---|---|
 | `j!join` | Join your current voice channel |
 | `j!leave` | Leave the voice channel |
-| `j!autojoin on/off` | Toggle auto-rejoin when moved or disconnected |
 | `j!vc <text>` | Speak text aloud in the voice channel (TTS) |
 | `j!autotts on/off` | Toggle automatic TTS for all messages |
 | `j!ask <question>` | Ask the bot a question (STT-aware) |
