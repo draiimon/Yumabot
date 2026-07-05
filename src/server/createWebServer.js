@@ -306,6 +306,28 @@ function buildListenPageHtml() {
         font-family: 'Courier New', Courier, monospace;
         align-self: flex-start;
       }
+
+      /* ── mobile ── */
+      * { -webkit-tap-highlight-color: transparent; }
+      body { overflow-x: hidden; }
+      .t-line { white-space: pre-wrap; word-break: break-word; }
+      @media (max-width: 480px) {
+        .terminal { padding: 20px 16px; font-size: 0.78rem; }
+        .slot { width: 32px; height: 32px; font-size: 1.1rem; }
+        .slots { gap: 8px; margin: 14px 0 4px; }
+        .kp { padding: 16px 0; font-size: 1.1rem; -webkit-tap-highlight-color: transparent; }
+        .keypad { gap: 8px; margin: 14px 0 6px; }
+        .kp-clr, .kp-enter { font-size: 0.95rem; }
+        #t-status { font-size: 0.75rem; }
+        .app-panel { padding: 24px 16px 20px; }
+        .deafen-icon { width: 36px; height: 36px; }
+        .deafen-icon svg { width: 20px; height: 20px; }
+        .status-icons { padding: 6px 10px; gap: 8px; }
+        .deafen-badge { font-size: 0.65rem; letter-spacing: 0.08em; }
+        .deafen-row { font-size: 0.72rem; }
+        .cmd-btn { padding: 14px; font-size: 0.85rem; }
+        select { font-size: 16px; /* prevents iOS zoom */ }
+      }
     </style>
   </head>
   <body>
@@ -782,6 +804,14 @@ function createWebServer({ config, runtimeState, client, getDiagnostics, liveVoi
     .cmd-label  { flex: 1; }
     .cmd-desc   { color: #1a6b22; font-size: 0.75rem; }
     .cmd-arrow  { color: #0d3d14; font-size: 1rem; transition: color .12s; }
+    * { -webkit-tap-highlight-color: transparent; }
+    body { overflow-x: hidden; }
+    @media (max-width: 480px) {
+      body { padding: 12px; align-items: flex-start; padding-top: 40px; }
+      .terminal { padding: 20px 16px; font-size: 0.78rem; }
+      a.cmd { font-size: 0.78rem; padding: 10px 0; }
+      .cmd-desc { display: none; }
+    }
   </style>
 </head>
 <body>
