@@ -2876,26 +2876,52 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
         clearTimeout(botMuteDeafenTimers.get(guildId));
         botMuteDeafenTimers.delete(guildId);
       }
-      const muteTimer = setTimeout(async () => {
-        botMuteDeafenTimers.delete(guildId);
-        // Guard: only apply if still connected to this specific channel
+      // Apply cosmetic server mute + deafen — shows red icons in Discord.
+      // Uses guild.members.edit() directly (no voice-cache dependency).
+      // Retries once after 4s in case Discord hasn't settled yet.
+      const applyCosmetic = async (attempt = 1) => {
         const conn = getVoiceConnection(guildId);
         if (!conn || conn.state.status !== VoiceConnectionStatus.Ready) return;
         try {
           const guild = client.guilds.cache.get(guildId);
           if (!guild) return;
-          const botMember = await guild.members.fetch(client.user.id).catch(() => null);
-          if (!botMember?.voice?.channel) return;
-          // Record timestamp so voiceStateUpdate can verify the intent is fresh (<15s)
+
+          const me = guild.members.me;
+          if (!me) return;
+
+          // Permission check — needs MUTE_MEMBERS + DEAFEN_MEMBERS
+          const hasMute   = me.permissions.has('MuteMembers');
+          const hasDeafen = me.permissions.has('DeafenMembers');
+          if (!hasMute || !hasDeafen) {
+            console.warn(
+              `[COSMETIC] ⚠️ Guild ${guildId}: bot is missing ${!hasMute ? 'MuteMembers ' : ''}${!hasDeafen ? 'DeafenMembers' : ''} permission.` +
+              ` Go to Server Settings → Roles → [Bot role] → Voice Permissions and enable them.`
+            );
+            return;
+          }
+
+          // Record intent timestamp BEFORE the REST call so voiceStateUpdate
+          // doesn't auto-revert our own server mute/deafen (15s window).
           botIntentionalServerMute.set(guildId, Date.now());
-          await botMember.voice.setMute(true, 'Cosmetic server mute');
-          await botMember.voice.setDeaf(true, 'Cosmetic server deafen');
-          console.log(`[VOICE 24/7] 🔇 Applied cosmetic server mute+deafen in guild ${guildId}`);
+          // Single PATCH — mute + deaf together, no voice-state dependency
+          await guild.members.edit(client.user.id, { mute: true, deaf: true }, 'Cosmetic server mute+deafen');
+          console.log(`[COSMETIC] ✅ Red server mute+deafen applied in guild ${guildId}`);
         } catch (e) {
           botIntentionalServerMute.delete(guildId);
-          console.warn(`[VOICE 24/7] ⚠️ Could not apply server mute/deafen in guild ${guildId}: ${e.message}`);
+          console.warn(`[COSMETIC] ⚠️ Failed in guild ${guildId} (attempt ${attempt}): ${e.message}${e.code ? ` [code ${e.code}]` : ''}`);
+          if (e.code === 50013) console.warn(`[COSMETIC] → Missing Permissions. Grant MuteMembers + DeafenMembers to the bot role.`);
+          // Retry once after 4s
+          if (attempt === 1) {
+            const retryTimer = setTimeout(() => applyCosmetic(2), 4000);
+            botMuteDeafenTimers.set(guildId, retryTimer);
+          }
         }
-      }, 2000); // small delay to let Discord settle after join
+      };
+
+      const muteTimer = setTimeout(() => {
+        botMuteDeafenTimers.delete(guildId);
+        applyCosmetic(1);
+      }, 2000);
       botMuteDeafenTimers.set(guildId, muteTimer);
     });
 
