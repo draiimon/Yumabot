@@ -45,6 +45,7 @@ function buildHealthPayload({ runtimeState, client, getDiagnostics }) {
 }
 
 function buildListenPageHtml() {
+  const passkey = '12345';
   return `<!doctype html>
 <html lang="en">
   <head>
