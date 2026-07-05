@@ -6111,6 +6111,26 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
       const wasInChannel = oldState.channelId;
       const nowInChannel = newState.channelId;
 
+      // Auto-undeafen: if anyone server-deafens the bot, immediately undo it.
+      if (!oldState.serverDeaf && newState.serverDeaf) {
+        try {
+          await newState.member.voice.setDeaf(false, 'Auto-undeafen: bot must stay undeafened');
+          console.log(`[VOICE 24/7] ✅ Auto-undeafen in guild ${guildId}`);
+        } catch (e) {
+          console.warn(`[VOICE 24/7] ⚠️ Auto-undeafen failed in guild ${guildId}: ${e.message}`);
+        }
+      }
+
+      // Auto-unmute: if anyone server-mutes the bot, immediately undo it.
+      if (!oldState.serverMute && newState.serverMute) {
+        try {
+          await newState.member.voice.setMute(false, 'Auto-unmute: bot must stay unmuted');
+          console.log(`[VOICE 24/7] ✅ Auto-unmute in guild ${guildId}`);
+        } catch (e) {
+          console.warn(`[VOICE 24/7] ⚠️ Auto-unmute failed in guild ${guildId}: ${e.message}`);
+        }
+      }
+
       const ajOn = autoJoinEnabled.get(guildId) !== false; // default ON
 
       // Bot was MOVED to a different channel
