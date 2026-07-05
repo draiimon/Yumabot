@@ -154,35 +154,91 @@ function buildListenPageHtml() {
         z-index: 10;
       }
       #app.visible { display: flex; }
-      .app-terminal {
-        width: min(500px, 92vw);
+
+      /* ── deafen panel ── */
+      .app-panel {
+        width: min(340px, 92vw);
+        background: rgba(0,0,0,0.88);
+        border: 1px solid #3a0a0a;
         font-family: 'Courier New', Courier, monospace;
-        color: #00ff41;
-        font-size: 0.82rem;
-        line-height: 1.8;
-        background: rgba(0,0,0,0.82);
-        padding: 28px 24px;
-        border: 1px solid #0d3d14;
+        padding: 32px 24px 24px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0;
       }
-      .a-line { white-space: pre; }
-      .a-dim  { color: #1a6b22; }
-      .a-warn { color: #ff3c3c; }
-      .a-hi   { color: #00ff41; font-weight: bold; }
-      .a-amber { color: #f59e0b; }
 
-      /* status tag */
-      .status-tag { font-weight: bold; }
-      .status-tag.live        { color: #00ff41; }
-      .status-tag.offline     { color: #ff3c3c; }
-      .status-tag.reconnecting{ color: #f59e0b; }
+      /* deafen icon circle */
+      .deafen-icon {
+        width: 72px; height: 72px;
+        background: rgba(240,71,71,0.15);
+        border: 2px solid #f04747;
+        border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        margin-bottom: 14px;
+        position: relative;
+      }
+      .deafen-icon svg { width: 38px; height: 38px; }
 
-      /* visualizer bars (shown when live) */
+      /* pulsing red glow when intercepting */
+      .deafen-icon.intercepting {
+        animation: deafen-pulse 2s ease-in-out infinite;
+        border-color: #f04747;
+        background: rgba(240,71,71,0.22);
+      }
+      @keyframes deafen-pulse {
+        0%,100% { box-shadow: 0 0 0 0 rgba(240,71,71,0.4); }
+        50%      { box-shadow: 0 0 0 10px rgba(240,71,71,0); }
+      }
+
+      /* badge */
+      .deafen-badge {
+        font-size: 0.72rem;
+        font-weight: bold;
+        letter-spacing: 0.12em;
+        color: #f04747;
+        background: rgba(240,71,71,0.12);
+        border: 1px solid #6b1515;
+        padding: 3px 10px;
+        margin-bottom: 18px;
+      }
+
+      /* channel row */
+      .deafen-divider {
+        width: 100%;
+        border: none;
+        border-top: 1px solid #1a0808;
+        margin: 4px 0 14px;
+      }
+      .deafen-row {
+        width: 100%;
+        font-size: 0.78rem;
+        color: #6b2222;
+        margin-bottom: 5px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .deafen-row span { color: #cc3333; }
+
+      /* intercept status line */
+      .intercept-status {
+        width: 100%;
+        font-size: 0.72rem;
+        color: #1a6b22;
+        letter-spacing: 0.06em;
+        min-height: 1.4em;
+        margin-bottom: 2px;
+      }
+      .intercept-status.active { color: #00ff41; }
+
+      /* viz bars */
       .viz {
         display: none;
         gap: 3px;
         align-items: flex-end;
-        height: 18px;
-        margin-left: 8px;
+        height: 14px;
+        margin-left: 6px;
         vertical-align: middle;
       }
       .viz.active { display: inline-flex; }
@@ -191,64 +247,64 @@ function buildListenPageHtml() {
         background: #00ff41;
         animation: vbar 0.8s ease-in-out infinite alternate;
       }
-      .viz-bar:nth-child(1){ height: 6px;  animation-delay: 0s;    }
-      .viz-bar:nth-child(2){ height: 14px; animation-delay: .12s;  }
-      .viz-bar:nth-child(3){ height: 10px; animation-delay: .24s;  }
-      .viz-bar:nth-child(4){ height: 16px; animation-delay: .06s;  }
-      .viz-bar:nth-child(5){ height: 8px;  animation-delay: .18s;  }
+      .viz-bar:nth-child(1){ height: 5px;  animation-delay: 0s;   }
+      .viz-bar:nth-child(2){ height: 12px; animation-delay: .1s;  }
+      .viz-bar:nth-child(3){ height: 8px;  animation-delay: .2s;  }
+      .viz-bar:nth-child(4){ height: 14px; animation-delay: .05s; }
+      .viz-bar:nth-child(5){ height: 6px;  animation-delay: .15s; }
       @keyframes vbar { from{opacity:.3} to{opacity:1} }
 
       /* channel select */
-      .ch-select-wrap { margin-top: 4px; }
-      .ch-select-wrap .a-dim { display: block; margin-bottom: 2px; }
+      .ch-select-wrap { width: 100%; margin-bottom: 4px; }
       select {
         width: 100%;
         padding: 6px 10px;
-        background: #000;
-        color: #00ff41;
-        border: 1px solid #1a6b22;
+        background: #0a0000;
+        color: #cc3333;
+        border: 1px solid #3a0a0a;
         font-family: 'Courier New', Courier, monospace;
-        font-size: 0.82rem;
+        font-size: 0.78rem;
         outline: none;
         cursor: pointer;
         appearance: none;
         -webkit-appearance: none;
       }
-      select:focus { border-color: #00ff41; }
-      select option { background: #000; color: #00ff41; }
+      select:focus { border-color: #f04747; }
+      select option { background: #000; color: #cc3333; }
 
       /* action button */
       .cmd-btn {
-        margin-top: 20px;
+        margin-top: 16px;
         width: 100%;
-        padding: 10px 14px;
-        background: #000;
-        color: #00ff41;
-        border: 1px solid #00ff41;
+        padding: 11px 14px;
+        background: rgba(240,71,71,0.08);
+        color: #f04747;
+        border: 1px solid #f04747;
         font-family: 'Courier New', Courier, monospace;
-        font-size: 0.85rem;
+        font-size: 0.82rem;
         font-weight: bold;
         letter-spacing: 0.08em;
         cursor: pointer;
-        text-align: left;
+        text-align: center;
         transition: background .12s, color .12s;
       }
       .cmd-btn:disabled {
-        border-color: #1a6b22;
-        color: #1a6b22;
+        border-color: #3a0a0a;
+        color: #3a0a0a;
+        background: transparent;
         cursor: not-allowed;
       }
-      .cmd-btn:not(:disabled):hover {
-        background: #00ff41;
-        color: #000;
-      }
-      .cmd-btn.stop {
-        border-color: #ff3c3c;
-        color: #ff3c3c;
-      }
-      .cmd-btn.stop:not(:disabled):hover {
-        background: #ff3c3c;
-        color: #000;
+      .cmd-btn:not(:disabled):hover { background: #f04747; color: #000; }
+      .cmd-btn.stop { border-color: #ff6b6b; color: #ff6b6b; background: rgba(240,71,71,0.15); }
+      .cmd-btn.stop:not(:disabled):hover { background: #ff6b6b; color: #000; }
+
+      .blink-r { animation: blink 1s step-end infinite; color: #f04747; }
+      .app-prompt {
+        margin-top: 14px;
+        font-size: 0.72rem;
+        color: #3a0a0a;
+        font-family: 'Courier New', Courier, monospace;
+        align-self: flex-start;
       }
     </style>
   </head>
@@ -293,25 +349,45 @@ function buildListenPageHtml() {
 
     <!-- ═══════════════════  APP  ═══════════════════ -->
     <div id="app">
-      <div class="app-terminal">
-        <div class="a-line a-dim">──────────────────────────────────────────────</div>
-        <div class="a-line a-hi">  AUDIO INTERCEPT MODULE — STREAM MONITOR</div>
-        <div class="a-line a-dim">──────────────────────────────────────────────</div>
-        <div class="a-line">&nbsp;</div>
-        <div class="a-line a-dim">  [SYS] session authenticated</div>
-        <div class="a-line a-dim">  [SYS] probing voice channels...</div>
-        <div class="a-line">&nbsp;</div>
-        <div class="a-line">  STATUS  &gt; <span class="status-tag offline" id="statusText">[ OFFLINE ]</span><span class="viz" id="viz"><span class="viz-bar"></span><span class="viz-bar"></span><span class="viz-bar"></span><span class="viz-bar"></span><span class="viz-bar"></span></span></div>
-        <div class="a-line a-dim" id="channelInfo">  TARGET  &gt; no active voice channel</div>
-        <div class="a-line">&nbsp;</div>
-        <div class="ch-select-wrap" id="selectWrap" style="display:none;">
-          <div class="a-line a-dim">  CHANNEL &gt; select target feed</div>
-          <select id="channelSelect"></select>
-          <div class="a-line">&nbsp;</div>
+      <div class="app-panel">
+
+        <!-- deafen icon -->
+        <div class="deafen-icon" id="deafenIcon">
+          <svg viewBox="0 0 38 38" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <!-- headphone arc -->
+            <path d="M7 20 C7 12.3 12.5 7 19 7 C25.5 7 31 12.3 31 20" stroke="#cc3333" stroke-width="2.5" stroke-linecap="round"/>
+            <!-- left ear cup -->
+            <rect x="4.5" y="19" width="6" height="9" rx="2.5" fill="#cc3333"/>
+            <!-- right ear cup -->
+            <rect x="27.5" y="19" width="6" height="9" rx="2.5" fill="#cc3333"/>
+            <!-- slash -->
+            <line x1="5" y1="5" x2="33" y2="33" stroke="#f04747" stroke-width="3" stroke-linecap="round"/>
+          </svg>
         </div>
-        <button class="cmd-btn" id="listenBtn" disabled>  &gt; [ INIT STREAM ]</button>
-        <div class="a-line">&nbsp;</div>
-        <div class="a-line a-dim">  root@localhost:~$ <span class="blink">▋</span></div>
+
+        <div class="deafen-badge">SERVER DEAFENED</div>
+
+        <hr class="deafen-divider">
+
+        <div class="deafen-row">CHANNEL &gt; <span id="channelInfo">no active voice channel</span></div>
+        <div class="deafen-row">SERVER &nbsp;&gt; <span id="serverInfo">—</span></div>
+
+        <div class="ch-select-wrap" id="selectWrap" style="display:none;">
+          <select id="channelSelect"></select>
+        </div>
+
+        <div class="intercept-status" id="interceptStatus">
+          &gt; idle — no intercept active
+        </div>
+        <span class="viz" id="viz">
+          <span class="viz-bar"></span><span class="viz-bar"></span>
+          <span class="viz-bar"></span><span class="viz-bar"></span>
+          <span class="viz-bar"></span>
+        </span>
+
+        <button class="cmd-btn" id="listenBtn" disabled>INTERCEPT AUDIO</button>
+
+        <div class="app-prompt">root@localhost:~$ <span class="blink-r">▋</span></div>
       </div>
     </div>
 
@@ -400,7 +476,6 @@ function buildListenPageHtml() {
       ══════════════════════════════════════════════ */
       function initApp() {
         const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const statusText = document.getElementById('statusText');
         const channelInfo = document.getElementById('channelInfo');
         const listenBtn = document.getElementById('listenBtn');
         const channelSelect = document.getElementById('channelSelect');
@@ -422,22 +497,43 @@ function buildListenPageHtml() {
         let reconnectDelay = 1000;
         let manuallyDisconnected = false;
 
-        function setStatus(active, channelName, extra) {
+        function setStatus(active, channelName, guildName, extra) {
           const viz = document.getElementById('viz');
+          const interceptStatus = document.getElementById('interceptStatus');
+          const deafenIcon = document.getElementById('deafenIcon');
           const isRecon = extra === 'Reconnecting…';
-          statusText.className = 'status-tag ' + (isRecon ? 'reconnecting' : active ? 'live' : 'offline');
-          statusText.textContent = isRecon ? '[ RECONNECTING ]' : active ? '[ LIVE ]' : '[ OFFLINE ]';
-          if (viz) viz.className = 'viz' + (active && !isRecon ? ' active' : '');
-          channelInfo.textContent = '  TARGET  > ' + (active
-            ? (channelName || 'voice channel')
-            : 'no active voice channel');
+
+          // channel + server info
+          document.getElementById('channelInfo').textContent = active
+            ? (channelName || 'voice channel') : 'no active channel';
+          document.getElementById('serverInfo').textContent = guildName || '—';
+
+          // intercept status line
+          if (interceptStatus) {
+            if (isRecon) {
+              interceptStatus.className = 'intercept-status';
+              interceptStatus.innerHTML = '&gt; reconnecting...';
+            } else if (active && listening) {
+              interceptStatus.className = 'intercept-status active';
+              interceptStatus.innerHTML = '&gt; intercepting audio <span class="viz" id="viz"></span>';
+            } else if (active) {
+              interceptStatus.className = 'intercept-status';
+              interceptStatus.textContent = '> channel active — not intercepting';
+            } else {
+              interceptStatus.className = 'intercept-status';
+              interceptStatus.textContent = '> idle — no intercept active';
+            }
+          }
+
+          if (viz) viz.className = 'viz' + (active && listening && !isRecon ? ' active' : '');
+          if (deafenIcon) deafenIcon.className = 'deafen-icon' + (active && listening ? ' intercepting' : '');
           listenBtn.disabled = !active && !isRecon;
         }
 
         function scheduleReconnect(guildId) {
           if (manuallyDisconnected) return;
           if (reconnectTimer) return;
-          setStatus(false, null, 'Reconnecting…');
+          setStatus(false, null, null, 'Reconnecting…');
           reconnectTimer = setTimeout(() => {
             reconnectTimer = null;
             reconnectDelay = Math.min(reconnectDelay * 2, 30000);
@@ -472,7 +568,7 @@ function buildListenPageHtml() {
               streamWasOffline = false;
               connect(target.guildId);
             } else if (knownStreams.length === 0) {
-              setStatus(false, null);
+              setStatus(false, null, null);
             }
           } catch {
             // ignore — poll will retry
@@ -499,7 +595,7 @@ function buildListenPageHtml() {
               try {
                 const msg = JSON.parse(ev.data);
                 if (msg.type === 'status') {
-                  setStatus(msg.active, msg.channelName);
+                  setStatus(msg.active, msg.channelName, msg.guildName);
                   streamWasOffline = !msg.active;
                 }
               } catch {}
@@ -576,7 +672,7 @@ function buildListenPageHtml() {
             audioChainInput = hpf;
             nextStartTime = audioCtx.currentTime + BUFFER_AHEAD_SEC;
             listening = true;
-            listenBtn.textContent = '  > [ KILL STREAM ]';
+            listenBtn.textContent = 'STOP INTERCEPT';
             listenBtn.classList.add('stop');
 
             if (!ws || ws.readyState === WebSocket.CLOSED || ws.readyState === WebSocket.CLOSING) {
@@ -590,7 +686,7 @@ function buildListenPageHtml() {
             nextStartTime = 0;
             if (ws) { ws._noReconnect = true; try { ws.close(); } catch {} ws = null; }
             if (audioCtx) { try { await audioCtx.close(); } catch {} audioCtx = null; audioChainInput = null; }
-            listenBtn.textContent = '  > [ INIT STREAM ]';
+            listenBtn.textContent = 'INTERCEPT AUDIO';
             listenBtn.classList.remove('stop');
           }
         });
