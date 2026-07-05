@@ -171,24 +171,24 @@ function buildListenPageHtml() {
       /* icon row */
       .status-icons {
         display: flex;
-        gap: 16px;
+        gap: 6px;
         margin-bottom: 14px;
+        background: rgba(240,71,71,0.12);
+        border: 1px solid rgba(240,71,71,0.25);
+        border-radius: 4px;
+        padding: 8px 14px;
+        animation: deafen-pulse 2.5s ease-in-out infinite;
       }
-
-      /* deafen icon circle — always pulsing red */
       .deafen-icon {
-        width: 72px; height: 72px;
-        background: rgba(240,71,71,0.18);
-        border: 2px solid #f04747;
+        width: 40px; height: 40px;
+        background: rgba(240,71,71,0.2);
         border-radius: 50%;
         display: flex; align-items: center; justify-content: center;
-        margin-bottom: 14px;
-        animation: deafen-pulse 2s ease-in-out infinite;
       }
-      .deafen-icon svg { width: 38px; height: 38px; }
+      .deafen-icon svg { width: 22px; height: 22px; }
       @keyframes deafen-pulse {
-        0%,100% { box-shadow: 0 0 0 0 rgba(240,71,71,0.5); background: rgba(240,71,71,0.18); }
-        50%      { box-shadow: 0 0 0 12px rgba(240,71,71,0); background: rgba(240,71,71,0.28); }
+        0%,100% { box-shadow: 0 0 0 0 rgba(240,71,71,0.4); }
+        50%      { box-shadow: 0 0 0 8px rgba(240,71,71,0); }
       }
 
       /* badge */
@@ -351,32 +351,23 @@ function buildListenPageHtml() {
     <div id="app">
       <div class="app-panel">
 
-        <!-- mute + deafen icons side by side -->
+        <!-- mute + deafen icons — Discord style -->
         <div class="status-icons">
-          <!-- server muted icon -->
+          <!-- server muted: mic with slash -->
           <div class="deafen-icon">
-            <svg viewBox="0 0 38 38" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <!-- mic body -->
-              <rect x="13" y="5" width="12" height="18" rx="6" fill="#cc3333"/>
-              <!-- mic stand -->
-              <path d="M9 19 C9 26.2 29 26.2 29 19" stroke="#cc3333" stroke-width="2.5" stroke-linecap="round" fill="none"/>
-              <line x1="19" y1="26" x2="19" y2="32" stroke="#cc3333" stroke-width="2.5" stroke-linecap="round"/>
-              <line x1="14" y1="32" x2="24" y2="32" stroke="#cc3333" stroke-width="2.5" stroke-linecap="round"/>
-              <!-- slash -->
-              <line x1="5" y1="5" x2="33" y2="33" stroke="#f04747" stroke-width="3" stroke-linecap="round"/>
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 2a4 4 0 0 0-4 4v5.172l7.758 7.758A4 4 0 0 0 16 15V6a4 4 0 0 0-4-4Z" fill="#f04747"/>
+              <path d="M8 11.172V6a4 4 0 0 0-.076 7.62L8 11.172ZM5.293 5.293a1 1 0 0 1 1.414 0l12 12a1 1 0 0 1-1.414 1.414l-12-12a1 1 0 0 1 0-1.414Z" fill="#f04747"/>
+              <path d="M6.827 16.82A7 7 0 0 0 19 12a1 1 0 1 0-2 0 5 5 0 0 1-8.357 3.707L6.827 16.82ZM12 19a1 1 0 0 0 1 1h-2a1 1 0 0 0 1-1Zm-3 0v2H11v-2H9Zm4 0v2h2v-2h-2Z" fill="#f04747"/>
+              <path d="M7 12a5 5 0 0 0 .932 2.914L6.465 16.38A7 7 0 0 1 5 12a1 1 0 0 1 2 0Z" fill="#f04747"/>
             </svg>
           </div>
-          <!-- server deafened icon -->
+          <!-- server deafened: headphones with slash -->
           <div class="deafen-icon">
-            <svg viewBox="0 0 38 38" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <!-- headphone arc -->
-              <path d="M7 20 C7 12.3 12.5 7 19 7 C25.5 7 31 12.3 31 20" stroke="#cc3333" stroke-width="2.5" stroke-linecap="round"/>
-              <!-- left ear cup -->
-              <rect x="4.5" y="19" width="6" height="9" rx="2.5" fill="#cc3333"/>
-              <!-- right ear cup -->
-              <rect x="27.5" y="19" width="6" height="9" rx="2.5" fill="#cc3333"/>
-              <!-- slash -->
-              <line x1="5" y1="5" x2="33" y2="33" stroke="#f04747" stroke-width="3" stroke-linecap="round"/>
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M5.293 5.293a1 1 0 0 1 1.414 0l12 12a1 1 0 0 1-1.414 1.414l-12-12a1 1 0 0 1 0-1.414Z" fill="#f04747"/>
+              <path d="M4 12a8 8 0 0 1 12.484-6.638L14.95 6.897A6 6 0 0 0 6 12v3H4v-3ZM18 14.172V12a6 6 0 0 0-.348-2.027L19.2 8.417A7.97 7.97 0 0 1 20 12v2h-2v.172Z" fill="#f04747"/>
+              <path d="M4 14a1 1 0 0 1 1-1h1.5A1.5 1.5 0 0 1 8 14.5v2A1.5 1.5 0 0 1 6.5 18H6a2 2 0 0 1-2-2v-2Zm16 0a1 1 0 0 0-1-1h-1.5A1.5 1.5 0 0 0 16 14.5v2a1.5 1.5 0 0 0 1.5 1.5h.5a2 2 0 0 0 2-2v-2Z" fill="#f04747"/>
             </svg>
           </div>
         </div>
