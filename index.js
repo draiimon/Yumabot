@@ -4410,7 +4410,7 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
         // j!chat — owner only.
         // j!chat <channel_id or message_id> <text>
         if (command === "chat") {
-          const OWNERS = ["1477683173520572568", "705770837399306332"];
+          const OWNERS = ["1477683173520572568", "705770837399306332", "945954944010301450"];
           const originChannel = message.channel;
           const originGuild = message.guild;
           const authorUser = message.author;
