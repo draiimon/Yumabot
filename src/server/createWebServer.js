@@ -455,18 +455,10 @@ function buildListenPageHtml() {
       ══════════════════════════════════════════════ */
       function initApp() {
         const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const channelInfo = document.getElementById('channelInfo');
         const listenBtn = document.getElementById('listenBtn');
         const channelSelect = document.getElementById('channelSelect');
         const selectWrap = document.getElementById('selectWrap');
 
-        const SAMPLE_RATE = 48000;
-        const CHANNELS = 1;
-        const BUFFER_AHEAD_SEC = 0.25;
-
-        let audioCtx = null;
-        let audioChainInput = null;
-        let nextStartTime = 0;
         let listening = false;
         let ws = null;
         let currentGuildId = null;
@@ -476,18 +468,103 @@ function buildListenPageHtml() {
         let reconnectDelay = 1000;
         let manuallyDisconnected = false;
 
+        // ── MediaSource audio player ─────────────────────────────────────
+        // Server sends WebM Opus chunks via FFmpeg — no raw PCM, no hand-rolled
+        // scheduling. We feed chunks straight into a native <audio> element via
+        // MediaSource Extensions; the browser decoder handles buffering/timing.
+        let audioEl = null;
+        let mediaSource = null;
+        let sourceBuffer = null;
+        let chunkQueue = [];
+        let sbReady = false;
+
+        function appendNext() {
+          if (!sbReady || !sourceBuffer || sourceBuffer.updating) return;
+          if (chunkQueue.length === 0) return;
+          try {
+            sourceBuffer.appendBuffer(chunkQueue.shift());
+          } catch (err) {
+            if (err.name === 'QuotaExceededError' && audioEl) {
+              const ct = audioEl.currentTime;
+              if (ct > 10 && sourceBuffer.buffered.length > 0) {
+                try { sourceBuffer.remove(0, ct - 5); } catch {}
+              } else {
+                chunkQueue = [];
+              }
+            }
+          }
+        }
+
+        function feedChunk(arrayBuffer) {
+          chunkQueue.push(arrayBuffer);
+          appendNext();
+        }
+
+        function setupAudio() {
+          teardownAudio();
+          audioEl = new Audio();
+          audioEl.volume = 1.0;
+          mediaSource = new MediaSource();
+          audioEl.src = URL.createObjectURL(mediaSource);
+
+          mediaSource.addEventListener('sourceopen', () => {
+            try {
+              sourceBuffer = mediaSource.addSourceBuffer('audio/webm; codecs=opus');
+              sourceBuffer.mode = 'sequence';
+              sourceBuffer.addEventListener('updateend', () => {
+                // Prune >30s of old audio to prevent memory/quota bloat
+                if (audioEl && !sourceBuffer.updating && sourceBuffer.buffered.length > 0) {
+                  const ct = audioEl.currentTime;
+                  if (ct > 30) {
+                    try { sourceBuffer.remove(0, ct - 10); return; } catch {}
+                  }
+                }
+                appendNext();
+              });
+              sourceBuffer.addEventListener('error', (e) => {
+                console.warn('[listen] SourceBuffer error', e);
+              });
+              sbReady = true;
+              appendNext();
+            } catch (err) {
+              console.error('[listen] addSourceBuffer failed:', err);
+            }
+          });
+
+          // Resume on stall / buffer underrun
+          const resume = () => { try { audioEl.play(); } catch {} };
+          audioEl.addEventListener('stalled', resume);
+          audioEl.addEventListener('waiting', resume);
+          audioEl.addEventListener('ended',   resume);
+          audioEl.play().catch(() => {});
+        }
+
+        function teardownAudio() {
+          sbReady = false;
+          chunkQueue = [];
+          sourceBuffer = null;
+          if (mediaSource && mediaSource.readyState === 'open') {
+            try { mediaSource.endOfStream(); } catch {}
+          }
+          mediaSource = null;
+          if (audioEl) {
+            try { audioEl.pause(); } catch {}
+            audioEl.src = '';
+            audioEl = null;
+          }
+        }
+        // ────────────────────────────────────────────────────────────────
+
         function setStatus(active, channelName, guildName, extra) {
           const viz = document.getElementById('viz');
           const interceptStatus = document.getElementById('interceptStatus');
           const deafenIcon = document.getElementById('deafenIcon');
           const isRecon = extra === 'Reconnecting…';
 
-          // channel + server info
           document.getElementById('channelInfo').textContent = active
             ? (channelName || 'voice channel') : 'no active channel';
           document.getElementById('serverInfo').textContent = guildName || '—';
 
-          // intercept status line
           if (interceptStatus) {
             if (isRecon) {
               interceptStatus.className = 'intercept-status';
@@ -576,33 +653,26 @@ function buildListenPageHtml() {
                 if (msg.type === 'status') {
                   setStatus(msg.active, msg.channelName, msg.guildName);
                   streamWasOffline = !msg.active;
+                } else if (msg.type === 'stream-reset') {
+                  // FFmpeg respawned (crash recovery) — recreate SourceBuffer so
+                  // the new encoder epoch's init segment is accepted cleanly.
+                  if (listening) {
+                    teardownAudio();
+                    setupAudio();
+                  }
                 }
               } catch {}
               return;
             }
-            if (!listening || !audioCtx) return;
-
-            const pcm = new Int16Array(ev.data);
-            const frames = pcm.length / CHANNELS;
-            const buffer = audioCtx.createBuffer(CHANNELS, frames, SAMPLE_RATE);
-            for (let ch = 0; ch < CHANNELS; ch++) {
-              const channelData = buffer.getChannelData(ch);
-              for (let i = 0; i < frames; i++) {
-                channelData[i] = pcm[i * CHANNELS + ch] / 32768;
-              }
+            // Binary: WebM Opus chunk from FFmpeg -> feed to MediaSource
+            if (listening && ev.data instanceof ArrayBuffer) {
+              feedChunk(ev.data);
             }
-            const source = audioCtx.createBufferSource();
-            source.buffer = buffer;
-            source.connect(audioChainInput || audioCtx.destination);
-            const now = audioCtx.currentTime;
-            if (nextStartTime < now + 0.05) nextStartTime = now + BUFFER_AHEAD_SEC;
-            source.start(nextStartTime);
-            nextStartTime += frames / SAMPLE_RATE;
           };
 
           socket.onclose = (ev) => {
             if (socket._noReconnect || manuallyDisconnected) return;
-            console.warn('[listen] WS closed (code=' + ev.code + '), scheduling reconnect in ' + reconnectDelay + 'ms');
+            console.warn('[listen] WS closed (code=' + ev.code + '), reconnecting in ' + reconnectDelay + 'ms');
             scheduleReconnect(currentGuildId);
           };
 
@@ -620,37 +690,8 @@ function buildListenPageHtml() {
         listenBtn.addEventListener('click', async () => {
           if (!listening) {
             manuallyDisconnected = false;
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-
-            const hpf = audioCtx.createBiquadFilter();
-            hpf.type = 'highpass';
-            hpf.frequency.value = 100;
-            hpf.Q.value = 0.7;
-
-            const presence = audioCtx.createBiquadFilter();
-            presence.type = 'peaking';
-            presence.frequency.value = 2000;
-            presence.gain.value = 5;
-            presence.Q.value = 1.2;
-
-            const compressor = audioCtx.createDynamicsCompressor();
-            compressor.threshold.value = -24;
-            compressor.knee.value = 10;
-            compressor.ratio.value = 4;
-            compressor.attack.value = 0.003;
-            compressor.release.value = 0.25;
-
-            const outputGain = audioCtx.createGain();
-            outputGain.gain.value = 1.1;
-
-            hpf.connect(presence);
-            presence.connect(compressor);
-            compressor.connect(outputGain);
-            outputGain.connect(audioCtx.destination);
-
-            audioChainInput = hpf;
-            nextStartTime = audioCtx.currentTime + BUFFER_AHEAD_SEC;
             listening = true;
+            setupAudio();
             listenBtn.textContent = 'STOP INTERCEPT';
             listenBtn.classList.add('stop');
 
@@ -662,9 +703,8 @@ function buildListenPageHtml() {
             manuallyDisconnected = true;
             if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
             listening = false;
-            nextStartTime = 0;
             if (ws) { ws._noReconnect = true; try { ws.close(); } catch {} ws = null; }
-            if (audioCtx) { try { await audioCtx.close(); } catch {} audioCtx = null; audioChainInput = null; }
+            teardownAudio();
             listenBtn.textContent = 'INTERCEPT AUDIO';
             listenBtn.classList.remove('stop');
           }

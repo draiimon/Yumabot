@@ -1,19 +1,21 @@
 const { EndBehaviorType } = require('@discordjs/voice');
 const { WebSocketServer } = require('ws');
+const { spawn } = require('child_process');
 
 // Discord / Opus decode: 48kHz stereo 16-bit PCM (must stay 48kHz for prism decoder)
 const SAMPLE_RATE = 48000;
 const CHANNELS = 2;
 const FRAME_SAMPLES = 960; // 20ms @ 48kHz
-const TICK_MS = 20;
 
-// Output to browser: downmix stereo→mono at full 48kHz — no decimation.
-// 48kHz is the native Discord/Opus decode rate so no resampling artifacts.
-// Bandwidth: 1920 bytes/frame @ 50fps ≈ 96 KB/s per client (was 32 KB/s @ 16kHz)
+// Output to FFmpeg: downmix stereo→mono
 const OUT_CHANNELS = 1;
-const OUT_SAMPLE_RATE = 48000; // same as input — zero decimation loss
-const OUT_FRAME_SAMPLES = FRAME_SAMPLES;  // 960 samples (20ms @ 48kHz)
+const OUT_FRAME_SAMPLES = FRAME_SAMPLES;
 const OUT_FRAME_BYTES = OUT_FRAME_SAMPLES * OUT_CHANNELS * 2; // 1920 bytes
+
+// WebM Cluster element ID — marks boundary between init segment and media data
+const CLUSTER_ID = Buffer.from([0x1f, 0x43, 0xb6, 0x75]);
+
+const TICK_MS = 20;
 
 function createLiveVoiceStream() {
   let prism = null;
@@ -25,7 +27,7 @@ function createLiveVoiceStream() {
 
   const wss = new WebSocketServer({ noServer: true });
 
-  // guildId -> { guildId, channelId, channelName, speakingSubs: Map, tickTimer, clients: Set }
+  // guildId -> stream state object
   const streams = new Map();
 
   function listStatus() {
@@ -88,10 +90,104 @@ function createLiveVoiceStream() {
     }
   }
 
+  // ─── FFmpeg subprocess ────────────────────────────────────────────────────
+  // Reads raw PCM (s16le, 48 kHz, mono) from stdin.
+  // Outputs WebM Opus to stdout; chunks forwarded to browser via MSE.
+  //
+  // On restart (crash recovery), only NEW clients get the new init segment —
+  // existing clients receive a "stream-reset" control message so they can
+  // tear down and recreate their SourceBuffer before we start feeding them
+  // chunks from the new encoder epoch.
+  function killFfmpeg(ff) {
+    if (!ff || ff.killed) return;
+    try { ff.stdin.end(); } catch { /* ignore */ }
+    const t = setTimeout(() => {
+      if (!ff.killed) {
+        try { ff.kill('SIGKILL'); } catch { /* ignore */ }
+      }
+    }, 800);
+    ff.once('exit', () => clearTimeout(t));
+    try { ff.kill('SIGTERM'); } catch { /* ignore */ }
+  }
+
+  function spawnFfmpeg(s, isRespawn) {
+    const ff = spawn('ffmpeg', [
+      '-loglevel', 'error',
+      '-f', 's16le',
+      '-ar', String(SAMPLE_RATE),
+      '-ac', String(OUT_CHANNELS),
+      '-i', 'pipe:0',
+      '-c:a', 'libopus',
+      '-b:a', '128k',
+      '-application', 'audio',      // full-range music mode, not voip
+      '-frame_duration', '20',      // 20ms Opus frames (native Discord size)
+      '-cluster_time_limit', '100', // new WebM Cluster every 100ms (MSE chunk boundary)
+      '-f', 'webm',
+      'pipe:1',
+    ], { stdio: ['pipe', 'pipe', 'pipe'] });
+
+    // Stdin flow-control: pause writes when the pipe is full; resume on drain.
+    // This bounds memory and prevents unbounded Node buffering under load.
+    ff.stdin.on('drain', () => { s.ffmpegPaused = false; });
+    s.ffmpegPaused = false;
+
+    // Reset init-segment state for this encoder epoch
+    s.initBuf = Buffer.alloc(0);
+    s.initSegment = null;
+    // Bump epoch so existing clients know to reset their SourceBuffer
+    s.epoch = (s.epoch || 0) + 1;
+    const myEpoch = s.epoch;
+
+    if (isRespawn) {
+      // Tell existing clients: close your SourceBuffer, new stream epoch starting.
+      const resetMsg = JSON.stringify({ type: 'stream-reset' });
+      for (const ws of s.clients) {
+        if (ws.readyState === ws.OPEN) {
+          try { ws.send(resetMsg); } catch { /* ignore */ }
+        }
+      }
+    }
+
+    ff.stdout.on('data', (chunk) => {
+      // If the stream was replaced (s.epoch changed), stop processing stale output
+      if (s.epoch !== myEpoch) return;
+
+      if (!s.initSegment) {
+        s.initBuf = Buffer.concat([s.initBuf, chunk]);
+        const pos = s.initBuf.indexOf(CLUSTER_ID);
+        if (pos !== -1) {
+          s.initSegment = s.initBuf.slice(0, pos);
+          const remaining = s.initBuf.slice(pos);
+          s.initBuf = null;
+          // Send init + first media cluster to clients that joined before FFmpeg
+          // was ready (they got the status message but no audio yet).
+          // Clients that joined mid-stream receive initSegment separately on connect.
+          if (remaining.length > 0) {
+            broadcastFrame(s, Buffer.concat([s.initSegment, remaining]));
+          }
+        }
+        return;
+      }
+      broadcastFrame(s, chunk);
+    });
+
+    ff.stderr.on('data', (d) => {
+      const msg = d.toString().trim();
+      if (msg) console.error('[LIVE-STREAM] FFmpeg:', msg);
+    });
+
+    ff.on('exit', (code, signal) => {
+      if (!s.active || s.ffmpeg !== ff) return; // already replaced / detached
+      console.warn(`[LIVE-STREAM] FFmpeg exited (code=${code} signal=${signal}), respawning…`);
+      s.ffmpeg = null;
+      setTimeout(() => { if (s.active) spawnFfmpeg(s, true); }, 1000);
+    });
+
+    s.ffmpeg = ff;
+  }
+
+  // ─── PCM mixer tick ───────────────────────────────────────────────────────
   function mixTick(s) {
-    // Mix incoming speakers into a 48kHz stereo int32 accumulator.
-    // Consume ONE frame per user per call. Caller (the self-correcting tick loop)
-    // may call this multiple times in a row to drain catch-up frames.
     const out = new Int32Array(FRAME_SAMPLES * CHANNELS);
     let anyData = false;
 
@@ -105,35 +201,34 @@ function createLiveVoiceStream() {
       }
     }
 
-    // Skip silence entirely — saves bandwidth and CPU when nobody is speaking
-    if (!anyData) return;
-
-    // Downmix stereo→mono at full 48kHz — no decimation, no resampling.
-    // We stay at the native Discord/Opus decode rate so there are zero
-    // resampling artifacts (no aliasing, no triangular filter needed).
-    // Soft-clip before final clamp to handle multi-speaker peaks gracefully.
+    // Build mono output (silence = zeroed buffer, which FFmpeg encodes as silence)
     const outBuf = Buffer.alloc(OUT_FRAME_BYTES);
-    for (let j = 0; j < OUT_FRAME_SAMPLES; j++) {
-      const idx = j * CHANNELS;
-      let sample = (out[idx] + out[idx + 1]) >> 1; // average L+R → mono
-      // Soft-clip knee at 75% FS — rounds loud peaks instead of hard-clipping.
-      if (sample > 24576) {
-        sample = 24576 + Math.round((sample - 24576) * 0.25);
-      } else if (sample < -24576) {
-        sample = -24576 + Math.round((sample + 24576) * 0.25);
+    if (anyData) {
+      for (let j = 0; j < OUT_FRAME_SAMPLES; j++) {
+        const idx = j * CHANNELS;
+        let sample = (out[idx] + out[idx + 1]) >> 1;
+        if (sample > 24576)  sample = 24576  + Math.round((sample - 24576)  * 0.25);
+        else if (sample < -24576) sample = -24576 + Math.round((sample + 24576) * 0.25);
+        if (sample > 32767)  sample = 32767;
+        else if (sample < -32768) sample = -32768;
+        outBuf.writeInt16LE(sample, j * 2);
       }
-      if (sample > 32767) sample = 32767;
-      else if (sample < -32768) sample = -32768;
-      outBuf.writeInt16LE(sample, j * 2);
     }
-    broadcastFrame(s, outBuf);
+
+    // Write to FFmpeg stdin with backpressure: if the pipe buffer is full,
+    // set the paused flag and drop this frame rather than buffering unboundedly.
+    if (s.ffmpeg && !s.ffmpegPaused) {
+      const ok = s.ffmpeg.stdin.writable
+        ? (() => { try { return s.ffmpeg.stdin.write(outBuf); } catch { return false; } })()
+        : false;
+      if (!ok) s.ffmpegPaused = true; // wait for 'drain' event
+    }
   }
 
+  // ─── User subscription ────────────────────────────────────────────────────
   function subscribeUser(s, receiver, userId) {
     if (s.speakingSubs.has(userId) || !prism) return;
 
-    // Use Manual end behavior — keeps stream alive through silence so music
-    // bots don't get unsubscribed during brief quiet gaps between tracks.
     const audioStream = receiver.subscribe(userId, {
       end: { behavior: EndBehaviorType.Manual },
     });
@@ -145,9 +240,7 @@ function createLiveVoiceStream() {
 
     decoder.on('data', (pcmChunk) => {
       sub.queue.push(pcmChunk);
-      // 25 frames = ~500ms cap. Keeps latency tight for live streaming.
-      // Drop the OLDEST frame so we always serve the freshest audio.
-      if (sub.queue.length > 25) sub.queue.shift();
+      if (sub.queue.length > 25) sub.queue.shift(); // 500ms cap, drop oldest
     });
 
     const cleanup = () => {
@@ -161,19 +254,9 @@ function createLiveVoiceStream() {
     decoder.on('error', cleanup);
   }
 
-  // Subscribe every user currently in the same VC as the bot — catches music
-  // bots and users who don't fire speaking events before the bot joined.
-  function subscribeAllInChannel(s, receiver, connection) {
+  function subscribeAllInChannel(s, receiver) {
     if (!prism) return;
     try {
-      const channelId = connection?.joinConfig?.channelId;
-      if (!channelId) return;
-      const channel = connection?.joinConfig?.group
-        ? null
-        : receiver?.speaking?.eventNames
-          ? null
-          : null; // accessed below via receiver.ssrcMap
-      // Iterate known SSRCs from the receiver
       const ssrcMap = receiver.ssrcMap;
       if (!ssrcMap) return;
       for (const [, { userId }] of ssrcMap) {
@@ -181,18 +264,15 @@ function createLiveVoiceStream() {
           try { subscribeUser(s, receiver, userId); } catch { /* ignore */ }
         }
       }
-    } catch { /* ignore — ssrcMap may not exist in all versions */ }
+    } catch { /* ssrcMap may not exist in all library versions */ }
   }
 
+  // ─── Attach / Detach ─────────────────────────────────────────────────────
   function attach(connection, guildId, channelName, guildName) {
     const receiver = connection.receiver;
     const existing = streams.get(guildId);
 
-    // DAVE renegotiation reuses the same VoiceConnection/receiver object.
-    // Detect this case and skip the full tear-down/rebuild — just update
-    // metadata and rebroadcast status so browser clients see the correct
-    // channel name. This prevents accumulating a new speaking listener
-    // (and new AudioReceiveStream subscriptions) on every renegotiation cycle.
+    // DAVE renegotiation: same connection object — skip full rebuild
     if (existing && existing.receiver === receiver) {
       existing.channelId = connection?.joinConfig?.channelId || null;
       existing.channelName = channelName || null;
@@ -202,17 +282,12 @@ function createLiveVoiceStream() {
       return;
     }
 
-    // New or replaced connection — harvest surviving browser WS clients so we
-    // can migrate them and avoid an "Offline" flash during reconnects.
     const survivingClients = new Set();
     if (existing) {
       for (const ws of existing.clients) {
         if (ws.readyState === ws.OPEN) survivingClients.add(ws);
       }
     }
-
-    // Tear down the old stream silently when there are migrated clients so
-    // they never see a false Offline status during the handover.
     detach(guildId, { silent: survivingClients.size > 0 });
 
     const s = {
@@ -222,23 +297,27 @@ function createLiveVoiceStream() {
       channelName: channelName || null,
       speakingSubs: new Map(),
       tickTimer: null,
-      clients: survivingClients, // migrate surviving browser connections
-      receiver,                  // stored so detach() can remove the speaking listener
-      speakingListener: null,    // filled in below
+      scanTimer: null,
+      clients: survivingClients,
+      receiver,
+      speakingListener: null,
+      active: true,
+      ffmpeg: null,
+      ffmpegPaused: false,
+      initSegment: null,
+      initBuf: null,
+      epoch: 0,
     };
     streams.set(guildId, s);
 
-    // Re-wire cleanup for migrated clients so they properly leave this stream.
     for (const ws of survivingClients) {
       ws.removeAllListeners('close');
       ws.removeAllListeners('error');
-      const migratedCleanup = () => s.clients.delete(ws);
-      ws.on('close', migratedCleanup);
-      ws.on('error', migratedCleanup);
+      const cleanup = () => s.clients.delete(ws);
+      ws.on('close', cleanup);
+      ws.on('error', cleanup);
     }
 
-    // Store the listener so detach() can remove it precisely — prevents
-    // listener accumulation when the connection object is replaced.
     const speakingListener = (userId) => {
       try { subscribeUser(s, receiver, userId); } catch (err) {
         console.warn('[LIVE-STREAM] subscribe failed:', err.message);
@@ -247,44 +326,41 @@ function createLiveVoiceStream() {
     s.speakingListener = speakingListener;
     receiver.speaking.on('start', speakingListener);
 
-    // Self-correcting tick loop — compensates for Node.js timer drift so the
-    // audio mixer stays phase-locked to real wall-clock time.
-    // If a tick fires late (event loop was busy), it calculates how many 20ms
-    // frames were missed (floor — only fully elapsed intervals) and drains them
-    // immediately so music-bot audio never falls behind.
-    s.active = true;
-    (function startSelfCorrectingTick() {
+    subscribeAllInChannel(s, receiver);
+
+    // Periodic re-scan for music bots that start playing after attach
+    s.scanTimer = setInterval(() => subscribeAllInChannel(s, receiver), 3000);
+
+    // Spawn FFmpeg (not a respawn — first time)
+    spawnFfmpeg(s, false);
+
+    // Self-correcting tick loop: feeds PCM to FFmpeg at a steady 20ms cadence
+    (function startTick() {
       let nextExpected = Date.now() + TICK_MS;
 
       function tick() {
-        // Lifecycle guard — prevents late-firing callbacks from rescheduling
-        // after detach() has already torn down this stream.
         if (!s.active) return;
 
         const now = Date.now();
         const lag = now - nextExpected;
 
-        // If we are wildly behind (e.g. process was suspended), reset the
-        // clock rather than hammering zero-delay timeouts to catch up.
-        // This avoids CPU bursts after a stall; audio gap is already done.
         if (lag > 500) {
+          // Long stall (GC pause / suspend) — reset clock, avoid burst
           nextExpected = now + TICK_MS;
-          mixTick(s); // send one frame to keep things flowing
+          mixTick(s);
         } else {
-          // Count only FULLY elapsed missed intervals (floor, not round) so we
-          // don't over-drain on normal jitter that's just past the half-frame mark.
           const behind = Math.max(0, Math.floor(lag / TICK_MS));
           const framesToSend = Math.min(1 + behind, 5);
           for (let i = 0; i < framesToSend; i++) mixTick(s);
           nextExpected += framesToSend * TICK_MS;
         }
 
-        const delay = Math.max(0, nextExpected - Date.now());
-        s.tickTimer = setTimeout(tick, delay);
+        s.tickTimer = setTimeout(tick, Math.max(0, nextExpected - Date.now()));
       }
 
       s.tickTimer = setTimeout(tick, TICK_MS);
     })();
+
     broadcastStatusFor(s);
     console.log(`[LIVE-STREAM] Attached to guild ${guildId}${channelName ? ` (#${channelName})` : ''}`);
   }
@@ -293,11 +369,10 @@ function createLiveVoiceStream() {
     const s = streams.get(guildId);
     if (!s) return;
 
-    s.active = false; // lifecycle guard — stops any in-flight tick from rescheduling
+    s.active = false;
     if (s.tickTimer) clearTimeout(s.tickTimer);
+    if (s.scanTimer) clearInterval(s.scanTimer);
 
-    // Remove the speaking listener we registered — prevents accumulation across
-    // DAVE renegotiations where a new connection replaces the old one.
     if (s.receiver && s.speakingListener) {
       try { s.receiver.speaking.off('start', s.speakingListener); } catch { /* ignore */ }
     }
@@ -307,8 +382,11 @@ function createLiveVoiceStream() {
       try { sub.decoder.destroy(); } catch { /* ignore */ }
     }
 
-    // Notify listeners the stream is gone — skip when called from attach()
-    // so migrated clients never see an Offline flash during DAVE renegotiation.
+    // Retain local reference so the delayed kill still works after s.ffmpeg is nulled
+    const ff = s.ffmpeg;
+    s.ffmpeg = null;
+    if (ff) killFfmpeg(ff);
+
     if (!silent) {
       const payload = JSON.stringify({ type: 'status', active: false, guildId, channelId: null, channelName: null });
       for (const ws of s.clients) {
@@ -322,22 +400,16 @@ function createLiveVoiceStream() {
     console.log(`[LIVE-STREAM] Detached from guild ${guildId}`);
   }
 
-  function detachIfGuild(guildId) {
-    detach(guildId);
-  }
+  function detachIfGuild(guildId) { detach(guildId); }
 
+  // ─── WebSocket server ─────────────────────────────────────────────────────
   wss.on('connection', (ws, req) => {
     const requestUrl = new URL(req.url || '/', 'http://localhost');
     const requestedGuildId = requestUrl.searchParams.get('guildId');
 
-    // Pick the requested guild's stream, or fall back to the first active one.
     let s = requestedGuildId ? streams.get(requestedGuildId) : null;
-    if (!s && !requestedGuildId) {
-      s = streams.values().next().value || null;
-    }
+    if (!s && !requestedGuildId) s = streams.values().next().value || null;
 
-    // Keepalive ping every 25s — prevents Render's proxy from dropping
-    // idle WebSocket connections when nobody is speaking (no binary frames flowing).
     const pingTimer = setInterval(() => {
       if (ws.readyState === ws.OPEN) {
         try { ws.ping(); } catch { /* ignore */ }
@@ -353,6 +425,7 @@ function createLiveVoiceStream() {
 
     if (s) {
       s.clients.add(ws);
+
       ws.send(JSON.stringify({
         type: 'status',
         active: true,
@@ -360,6 +433,12 @@ function createLiveVoiceStream() {
         channelId: s.channelId,
         channelName: s.channelName,
       }));
+
+      // Send cached WebM init segment so the client can decode from the start
+      if (s.initSegment && ws.readyState === ws.OPEN) {
+        try { ws.send(s.initSegment, { binary: true }); } catch { /* ignore */ }
+      }
+
       ws.on('close', cleanup);
       ws.on('error', cleanup);
     } else {
