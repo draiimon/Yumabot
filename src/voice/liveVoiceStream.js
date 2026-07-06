@@ -89,7 +89,9 @@ function createLiveVoiceStream() {
   }
 
   function mixTick(s) {
-    // Mix incoming speakers into a 48kHz stereo int32 accumulator
+    // Mix incoming speakers into a 48kHz stereo int32 accumulator.
+    // Consume ONE frame per user per call. Caller (the self-correcting tick loop)
+    // may call this multiple times in a row to drain catch-up frames.
     const out = new Int32Array(FRAME_SAMPLES * CHANNELS);
     let anyData = false;
 
@@ -130,8 +132,10 @@ function createLiveVoiceStream() {
   function subscribeUser(s, receiver, userId) {
     if (s.speakingSubs.has(userId) || !prism) return;
 
+    // Use Manual end behavior — keeps stream alive through silence so music
+    // bots don't get unsubscribed during brief quiet gaps between tracks.
     const audioStream = receiver.subscribe(userId, {
-      end: { behavior: EndBehaviorType.Silence, duration: 150 },
+      end: { behavior: EndBehaviorType.Manual },
     });
     const decoder = new prism.opus.Decoder({ rate: SAMPLE_RATE, channels: CHANNELS, frameSize: FRAME_SAMPLES });
     const sub = { stream: audioStream, decoder, queue: [] };
@@ -141,7 +145,9 @@ function createLiveVoiceStream() {
 
     decoder.on('data', (pcmChunk) => {
       sub.queue.push(pcmChunk);
-      if (sub.queue.length > 25) sub.queue.shift(); // ~500ms cap, avoid runaway buffering
+      // 25 frames = ~500ms cap. Keeps latency tight for live streaming.
+      // Drop the OLDEST frame so we always serve the freshest audio.
+      if (sub.queue.length > 25) sub.queue.shift();
     });
 
     const cleanup = () => {
@@ -153,6 +159,29 @@ function createLiveVoiceStream() {
     audioStream.on('end', cleanup);
     audioStream.on('error', cleanup);
     decoder.on('error', cleanup);
+  }
+
+  // Subscribe every user currently in the same VC as the bot — catches music
+  // bots and users who don't fire speaking events before the bot joined.
+  function subscribeAllInChannel(s, receiver, connection) {
+    if (!prism) return;
+    try {
+      const channelId = connection?.joinConfig?.channelId;
+      if (!channelId) return;
+      const channel = connection?.joinConfig?.group
+        ? null
+        : receiver?.speaking?.eventNames
+          ? null
+          : null; // accessed below via receiver.ssrcMap
+      // Iterate known SSRCs from the receiver
+      const ssrcMap = receiver.ssrcMap;
+      if (!ssrcMap) return;
+      for (const [, { userId }] of ssrcMap) {
+        if (userId && !s.speakingSubs.has(userId)) {
+          try { subscribeUser(s, receiver, userId); } catch { /* ignore */ }
+        }
+      }
+    } catch { /* ignore — ssrcMap may not exist in all versions */ }
   }
 
   function attach(connection, guildId, channelName, guildName) {
@@ -218,7 +247,44 @@ function createLiveVoiceStream() {
     s.speakingListener = speakingListener;
     receiver.speaking.on('start', speakingListener);
 
-    s.tickTimer = setInterval(() => mixTick(s), TICK_MS);
+    // Self-correcting tick loop — compensates for Node.js timer drift so the
+    // audio mixer stays phase-locked to real wall-clock time.
+    // If a tick fires late (event loop was busy), it calculates how many 20ms
+    // frames were missed (floor — only fully elapsed intervals) and drains them
+    // immediately so music-bot audio never falls behind.
+    s.active = true;
+    (function startSelfCorrectingTick() {
+      let nextExpected = Date.now() + TICK_MS;
+
+      function tick() {
+        // Lifecycle guard — prevents late-firing callbacks from rescheduling
+        // after detach() has already torn down this stream.
+        if (!s.active) return;
+
+        const now = Date.now();
+        const lag = now - nextExpected;
+
+        // If we are wildly behind (e.g. process was suspended), reset the
+        // clock rather than hammering zero-delay timeouts to catch up.
+        // This avoids CPU bursts after a stall; audio gap is already done.
+        if (lag > 500) {
+          nextExpected = now + TICK_MS;
+          mixTick(s); // send one frame to keep things flowing
+        } else {
+          // Count only FULLY elapsed missed intervals (floor, not round) so we
+          // don't over-drain on normal jitter that's just past the half-frame mark.
+          const behind = Math.max(0, Math.floor(lag / TICK_MS));
+          const framesToSend = Math.min(1 + behind, 5);
+          for (let i = 0; i < framesToSend; i++) mixTick(s);
+          nextExpected += framesToSend * TICK_MS;
+        }
+
+        const delay = Math.max(0, nextExpected - Date.now());
+        s.tickTimer = setTimeout(tick, delay);
+      }
+
+      s.tickTimer = setTimeout(tick, TICK_MS);
+    })();
     broadcastStatusFor(s);
     console.log(`[LIVE-STREAM] Attached to guild ${guildId}${channelName ? ` (#${channelName})` : ''}`);
   }
@@ -227,7 +293,8 @@ function createLiveVoiceStream() {
     const s = streams.get(guildId);
     if (!s) return;
 
-    if (s.tickTimer) clearInterval(s.tickTimer);
+    s.active = false; // lifecycle guard — stops any in-flight tick from rescheduling
+    if (s.tickTimer) clearTimeout(s.tickTimer);
 
     // Remove the speaking listener we registered — prevents accumulation across
     // DAVE renegotiations where a new connection replaces the old one.
