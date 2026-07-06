@@ -696,7 +696,7 @@ function createWebServer({ config, runtimeState, client, getDiagnostics, liveVoi
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤖</text></svg>">
-  <title>YUMA // SYS</title>
+  <title>JANJAN // SYS</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -769,10 +769,10 @@ function createWebServer({ config, runtimeState, client, getDiagnostics, liveVoi
   <div id="bg"></div>
   <div class="terminal">
     <div class="divider">────────────────────────────────────────</div>
-    <div class="t-hi">  YUMA SYSTEM TERMINAL v1.0</div>
+    <div class="t-hi">  JANJAN SYSTEM TERMINAL v1.0</div>
     <div class="divider">────────────────────────────────────────</div>
     <div>&nbsp;</div>
-    <div class="t-dim">  [SYS] host       &gt; discord.gg/yuma</div>
+    <div class="t-dim">  [SYS] host       &gt; discord.gg/janjan</div>
     <div class="t-dim">  [SYS] process    &gt; node index.js</div>
     <div>  [SYS] status     &gt; <span class="${discordReady ? 'status-ok' : 'status-off'}">${statusLabel}</span></div>
     <div>&nbsp;</div>
@@ -797,7 +797,7 @@ function createWebServer({ config, runtimeState, client, getDiagnostics, liveVoi
       </a>
     </div>
     <div>&nbsp;</div>
-    <div class="t-dim">  root@yuma:~$ <span class="blink">▋</span></div>
+    <div class="t-dim">  root@janjan:~$ <span class="blink">▋</span></div>
   </div>
 </body>
 </html>`);
