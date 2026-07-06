@@ -1,5 +1,5 @@
 {
-  "name": "yuma-discord-ai-bot",
+  "name": "janjan-discord-ai-bot",
   "version": "1.1.0",
   "description": "Yuma Discord bot - AI chat, voice, and per-user memory, deployed on Render.",
   "main": "index.js",

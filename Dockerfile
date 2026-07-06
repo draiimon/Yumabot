@@ -11,6 +11,12 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     libopus-dev \
     libsodium-dev \
     libfontconfig1 \
+    libcairo2 \
+    libpango-1.0-0 \
+    libpangocairo-1.0-0 \
+    libgdk-pixbuf-2.0-0 \
+    librsvg2-2 \
+    libharfbuzz0b \
     && pip3 install --no-cache-dir edge-tts --break-system-packages
 
 FROM base AS deps
