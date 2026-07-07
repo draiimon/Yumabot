@@ -3975,14 +3975,15 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
 
         // j!stats — bot health dashboard
         if (command === "stats") {
-          if (!message.guild) {
+          if (!message.guild && !isSuperAdmin) {
             await message.reply("`j!stats` is server-only.");
             return;
           }
+          const guild = message.guild ?? client.guilds.cache.first();
           const embed = buildStatsEmbed({
             client,
             runtimeState,
-            guild: message.guild,
+            guild,
           });
           await message.reply({ embeds: [embed] });
           return;
@@ -3994,10 +3995,11 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
           command === "bubble" ||
           command === "botstatus"
         ) {
-          if (!message.guild) {
+          if (!message.guild && !isSuperAdmin) {
             await message.reply("`j!status` is server-only.");
             return;
           }
+          const guild = message.guild ?? client.guilds.cache.first();
           const member = message.member;
           const isAdmin =
             isSuperAdmin ||
@@ -4009,7 +4011,7 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
             const embed = buildStatusViewEmbed({
               client,
               runtimeState,
-              guild: message.guild,
+              guild,
               isAdmin,
             });
             await message.reply({ embeds: [embed] });
@@ -4022,12 +4024,12 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
             );
             return;
           }
-          const key = `${message.guild.id}:${member.id}`;
+          const key = `${guild?.id ?? 'dm'}:${message.author.id}`;
           userCustomStatus.set(key, note);
           await setBotCustomStatus(note);
           const embed = buildBubbleUpdatedEmbed(
             note,
-            message.guild,
+            guild,
             message.author.tag,
           );
           await message.reply({ embeds: [embed] });
@@ -4536,7 +4538,7 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
 
         // j!tulog — Admin-only sleep toggle (pauses auto-epal/auto-interact in this server)
         if (command === "tulog" || command === "sleep") {
-          if (!message.guild) {
+          if (!message.guild && !isSuperAdmin) {
             await message.reply("Teh, tulog mode pang-server lang.");
             return;
           }
@@ -4551,7 +4553,7 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
             return;
           }
 
-          const guildId = message.guild.id;
+          const guildId = (message.guild ?? client.guilds.cache.first())?.id ?? 'dm';
           const action = (args[0] || "").toLowerCase();
           const wantsOn =
             action === "on" ||
@@ -4583,7 +4585,7 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
 
         // j!research on/off — Admin-only toggle for web research + Sources
         if (command === "research" || command === "sources") {
-          if (!message.guild) {
+          if (!message.guild && !isSuperAdmin) {
             await message.reply("Teh, pang-server lang to.");
             return;
           }
@@ -4600,6 +4602,7 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
             return;
           }
 
+          const researchGuildId = (message.guild ?? client.guilds.cache.first())?.id ?? 'dm';
           const action = (args[0] || "").toLowerCase();
           if (
             action === "on" ||
@@ -4607,22 +4610,22 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
             action === "true" ||
             action === "1"
           ) {
-            researchEnabledGuilds.add(message.guild.id);
+            researchEnabledGuilds.add(researchGuildId);
           } else if (
             action === "off" ||
             action === "disable" ||
             action === "false" ||
             action === "0"
           ) {
-            researchEnabledGuilds.delete(message.guild.id);
+            researchEnabledGuilds.delete(researchGuildId);
           } else {
             // toggle if no arg/unknown
-            if (researchEnabledGuilds.has(message.guild.id))
-              researchEnabledGuilds.delete(message.guild.id);
-            else researchEnabledGuilds.add(message.guild.id);
+            if (researchEnabledGuilds.has(researchGuildId))
+              researchEnabledGuilds.delete(researchGuildId);
+            else researchEnabledGuilds.add(researchGuildId);
           }
 
-          const enabled = researchEnabledGuilds.has(message.guild.id);
+          const enabled = researchEnabledGuilds.has(researchGuildId);
           await message.reply(
             enabled
               ? "Sige, research ON. Magso-sources lang ako pag minention/reply mo ko at research/latest yung tanong."
@@ -4685,7 +4688,7 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
 
         // j!permcheck — Admin-only permission diagnostics for current channel
         if (command === "permcheck") {
-          if (!message.guild) {
+          if (!message.guild && !isSuperAdmin) {
             await message.reply(
               "Teh, pang-server lang to. Walang perms-perms sa DM.",
             );
@@ -4835,7 +4838,7 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
           command === "dbsize" ||
           command === "storage"
         ) {
-          if (!message.guild) {
+          if (!message.guild && !isSuperAdmin) {
             await message.reply("Teh, pang-server lang to.");
             return;
           }
@@ -5205,7 +5208,7 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
         // j!greetnow [morning|night|auto] [here]
         // Manual trigger for scheduled greetings for quick diagnostics.
         if (command === "greetnow") {
-          if (!message.guild) {
+          if (!message.guild && !isSuperAdmin) {
             await message.reply("Pang-server lang to, bro.");
             return;
           }
