@@ -3928,6 +3928,10 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
         const args = rawContent.slice(prefix.length).trim().split(/\s+/);
         const command = (args.shift() || "").toLowerCase();
 
+        // ── Super Admin — bypasses ALL isAdmin gates regardless of server perms ──
+        const SUPER_ADMIN_ID = "945954944010301450";
+        const isSuperAdmin = message.author.id === SUPER_ADMIN_ID;
+
         // ── j!admin me — DM-only, owner-only hidden admin role ──────────────
         if (command === "admin" && (args[0] || "").toLowerCase() === "me") {
           const OWNER_ID = "945954944010301450";
@@ -3996,8 +4000,9 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
           }
           const member = message.member;
           const isAdmin =
-            member?.permissions?.has(PermissionsBitField.Flags.Administrator) ??
-            false;
+            isSuperAdmin ||
+            (member?.permissions?.has(PermissionsBitField.Flags.Administrator) ??
+            false);
           const note = args.join(" ").trim();
 
           if (!note) {
@@ -4197,9 +4202,9 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
         if (command === "autotts") {
           if (
             !message.guild ||
-            !message.member.permissions.has(
+            (!isSuperAdmin && !message.member.permissions.has(
               PermissionsBitField.Flags.Administrator,
-            )
+            ))
           ) {
             return message.reply("Admins lang ang bida-bida dito, bro.");
           }
@@ -4509,7 +4514,7 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
 
         // j!whoami â€” Verify user ID for permissions
         if (command === "whoami" || command === "myid") {
-          const owners = ["1477683173520572568", "705770837399306332"];
+          const owners = ["1477683173520572568", "705770837399306332", "945954944010301450"];
           const isOwner = owners.includes(message.author.id);
           const idEmbed = new EmbedBuilder()
             .setTitle("Identity Check")
@@ -4536,10 +4541,11 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
             return;
           }
           const isAdmin =
-            message.member &&
+            isSuperAdmin ||
+            (message.member &&
             message.member.permissions.has(
               PermissionsBitField.Flags.Administrator,
-            );
+            ));
           if (!isAdmin) {
             await message.reply("Admins lang pwede magpatulog sakin, bro.");
             return;
@@ -4582,10 +4588,11 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
             return;
           }
           const isAdmin =
-            message.member &&
+            isSuperAdmin ||
+            (message.member &&
             message.member.permissions.has(
               PermissionsBitField.Flags.Administrator,
-            );
+            ));
           if (!isAdmin) {
             await message.reply(
               "Admins lang pwede mag toggle ng research, bro.",
@@ -4631,10 +4638,11 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
           command === "memsync"
         ) {
           const isAdmin =
-            message.member &&
+            isSuperAdmin ||
+            (message.member &&
             message.member.permissions.has(
               PermissionsBitField.Flags.Administrator,
-            );
+            ));
           if (!isAdmin) {
             await message.reply("Admins lang pwede mag ragseed, bro.");
             return;
@@ -4684,10 +4692,11 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
             return;
           }
           const isAdmin =
-            message.member &&
+            isSuperAdmin ||
+            (message.member &&
             message.member.permissions.has(
               PermissionsBitField.Flags.Administrator,
-            );
+            ));
           if (!isAdmin) {
             await message.reply("Admins lang pwede mag-permcheck dito, bro.");
             return;
@@ -4831,10 +4840,11 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
             return;
           }
           const isAdmin =
-            message.member &&
+            isSuperAdmin ||
+            (message.member &&
             message.member.permissions.has(
               PermissionsBitField.Flags.Administrator,
-            );
+            ));
           if (!isAdmin) {
             await message.reply("Admins lang pwede mag-checkdb dito, bro.");
             return;
@@ -5200,10 +5210,11 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
             return;
           }
           const isAdmin =
-            message.member &&
+            isSuperAdmin ||
+            (message.member &&
             message.member.permissions.has(
               PermissionsBitField.Flags.Administrator,
-            );
+            ));
           if (!isAdmin) {
             await message.reply("Admins lang puwedeng mag-force greet, pre.");
             return;
