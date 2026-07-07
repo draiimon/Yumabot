@@ -73,11 +73,14 @@ function startGoodMorningScheduler(client) {
       const { hour, minute, dateKey } = getPHT();
       if (hour !== 8 || minute !== 0) return;
       if (_lastFiredKey === dateKey) return;   // already sent today
-      _lastFiredKey = dateKey;
 
       const channel = await client.channels.fetch(TARGET_CHANNEL_ID).catch(() => null);
       if (!channel) {
         console.error('[GM-SCHEDULER] Channel not found:', TARGET_CHANNEL_ID);
+        return;
+      }
+      if (!channel.isTextBased?.()) {
+        console.error('[GM-SCHEDULER] Channel is not text-based:', TARGET_CHANNEL_ID);
         return;
       }
 
@@ -85,14 +88,16 @@ function startGoodMorningScheduler(client) {
       const msg     = pickMessage(mention);
 
       await channel.send(msg);
+      _lastFiredKey = dateKey; // only mark as sent after successful send
       console.log(`[GM-SCHEDULER] Good morning sent for ${dateKey}`);
     } catch (err) {
       console.error('[GM-SCHEDULER] Error:', err.message);
     }
   };
 
-  // Check every minute
+  // Check every minute; fire immediately in case bot restarted during the 8:00 window
   setInterval(tick, 60_000).unref?.();
+  setTimeout(tick, 3_000);
   console.log('[GM-SCHEDULER] Started — fires daily at 08:00 PHT in channel', TARGET_CHANNEL_ID);
 }
 
