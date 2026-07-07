@@ -254,22 +254,19 @@ const {
     ],
   });
 
-  // NOTE: features below are commented out — they rely on hardcoded
-  // channel/guild/role IDs that haven't been configured yet.
-  // Keeping: AI chat + voice/listen only.
-  // registerVerifyHandlers(client);
-  // registerIntroHandlers(client);
-  // registerMemberLeaveCleanupHandlers(client);
-  // registerPlaygroundWelcomeHandlers(client);
-  // registerSapphireBlockHandlers(client);
-  // registerInviteCounterHandlers(client);
-  // registerMediaOnlyChannelHandlers(client);
-  // registerCommandChannelEnforcer(client);
-  // registerVerificationTicketHandlers(client);
-  // client.once(Events.ClientReady, () => {
-  //   registerRoleMenuHandlers(client);
-  //   console.log('[ROLE-MENU] Ready — buttons add/remove roles; reactions add/remove roles.');
-  // });
+  registerVerifyHandlers(client);
+  registerIntroHandlers(client);
+  registerMemberLeaveCleanupHandlers(client);
+  registerPlaygroundWelcomeHandlers(client);
+  registerSapphireBlockHandlers(client);
+  registerInviteCounterHandlers(client);
+  registerMediaOnlyChannelHandlers(client);
+  registerCommandChannelEnforcer(client);
+  registerVerificationTicketHandlers(client);
+  client.once(Events.ClientReady, () => {
+    registerRoleMenuHandlers(client);
+    console.log('[ROLE-MENU] Ready — buttons add/remove roles; reactions add/remove roles.');
+  });
 
   client.on("error", (err) => {
     runtimeState.process.lastUnhandledError = {
@@ -2998,11 +2995,11 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
       );
     }
 
-    // scanIntroChannelOnStartup(client, { limit: 200 }).catch((err) => {
-    //   console.warn('[INTRO] Startup scan failed:', err.message);
-    // });
+    scanIntroChannelOnStartup(client, { limit: 200 }).catch((err) => {
+      console.warn('[INTRO] Startup scan failed:', err.message);
+    });
 
-    // startVerifyReminderScheduler(client);
+    startVerifyReminderScheduler(client);
 
     // =====================================================================
     // 24/7 AUTO-JOIN ON STARTUP — merge DB states + VOICE_CHANNELS env fallback
