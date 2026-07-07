@@ -144,6 +144,7 @@ const {
   const {
     startVerifyReminderScheduler,
   } = require("./src/verify/verifyReminder");
+const { startGoodMorningScheduler } = require("./src/goodMorning/goodMorningScheduler");
 
   // TTS Queue System (per guild) â€” same as gnslgbot2
   const ttsQueues = new Map(); // guildId -> [{text, userId}]
@@ -2999,6 +3000,7 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
     });
 
     startVerifyReminderScheduler(client);
+    startGoodMorningScheduler(client);
 
     // =====================================================================
     // 24/7 AUTO-JOIN ON STARTUP — merge DB states + VOICE_CHANNELS env fallback
