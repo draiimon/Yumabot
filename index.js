@@ -244,7 +244,7 @@ const {
       GatewayIntentBits.GuildMembers,
       GatewayIntentBits.GuildVoiceStates,
       GatewayIntentBits.GuildMessageReactions,
-      // GatewayIntentBits.GuildInvites, // invite counter disabled
+      GatewayIntentBits.GuildInvites,
     ],
     partials: [
       Partials.Channel,
@@ -1515,13 +1515,12 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
     if (!guild || !rawName) return null;
     const needle = String(rawName).toLowerCase().trim();
     if (!needle) return null;
-    // Hans (partner) — PAUSED: on space/break; do not auto-resolve to partner user ID.
-    // if (needle === 'hans' || needle.includes('hans')) {
-    //   try {
-    //     const h = await guild.members.fetch('669047995009859604').catch(() => null);
-    //     if (h?.user) return h.user;
-    //   } catch {}
-    // }
+    if (needle === 'hans' || needle.includes('hans')) {
+      try {
+        const h = await guild.members.fetch('669047995009859604').catch(() => null);
+        if (h?.user) return h.user;
+      } catch {}
+    }
 
     const members = guild.members?.cache
       ? Array.from(guild.members.cache.values())
@@ -1630,9 +1629,9 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
       /\b(sino\s+mahal\s+mo|sino\s+bebe\s+mo|who\s+do\s+you\s+love|who\s+is\s+your\s+babe|boyfriend\s+mo\s+sino|may\s+jowa\s+ka\s+ba|may\s+bebe\s+ka\s+ba|sino\s+ang\s+pogi\s+mo|sino\s+pogi\s+mo|who\s+is\s+your\s+pogi)\b/i.test(
         lower,
       );
-    // const asksHans =
-    //   /\b(kilala\s+mo\s+ba\s+si\s+hans|do\s+you\s+know\s+hans|sino\s+si\s+hans)\b/i
-    //     .test(lower);
+    const asksHans =
+      /\b(kilala\s+mo\s+ba\s+si\s+hans|do\s+you\s+know\s+hans|sino\s+si\s+hans)\b/i
+        .test(lower);
     const asksAboutEx =
       /\bhans\b/i.test(lower) &&
       /\b(kilala|sino|who|san|nasaan|asawa|jowa|bebe|mahal|miss|balita)\b/i.test(
@@ -1649,9 +1648,9 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
     if (asksAboutEx) {
       return "tss, wag na nating pag-usapan yun. next topic na.";
     }
-    // if (asksHans) {
-    //   return 'oo kilala ko si Hans. mahal ko siya at partner ko siya, klaro na yan.';
-    // }
+    if (asksHans) {
+      return 'oo kilala ko si Hans. mahal ko siya at partner ko siya, klaro na yan.';
+    }
     if (asksWhoAmI && authorId) {
       return `ikaw si ${authorDisplay}. kilala kita, wag ka na magpa-quiz pa, pre.`;
     }
@@ -3346,16 +3345,14 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
     let behaviorPrompt = "";
 
     // Special personas based on who is talking
-    // Hans (669047995009859604) — partner mode PAUSED (on space). Same pokpok energy as everyone else.
-    // if (authorId === '669047995009859604') {
-    //   behaviorPrompt =
-    //     'You are talking to Hans. You deeply love him. ' +
-    //     'He is your partner/spouse. Be very sweet, affectionate, and soft with him. ' +
-    //     'Do not insult or roast him. Stay in "partner mode"—gentle, loving, but still with a light beki tone. ' +
-    //     'Occasionally use terms like "mahal", "my love", "baby", or "honey" or "sexy". ' +
-    //     'IMPORTANT: Stay concise and NEVER output raw Discord IDs.';
-    // } else
-    if (authorId === "930685023147933737") {
+    if (authorId === '669047995009859604') {
+      behaviorPrompt =
+        'You are talking to Hans. You deeply love him. ' +
+        'He is your partner/spouse. Be very sweet, affectionate, and soft with him. ' +
+        'Do not insult or roast him. Stay in "partner mode"—gentle, loving, but still with a light beki tone. ' +
+        'Occasionally use terms like "mahal", "my love", "baby", or "honey" or "sexy". ' +
+        'IMPORTANT: Stay concise and NEVER output raw Discord IDs.';
+    } else if (authorId === "930685023147933737") {
       // OG persona user – original close friend energy
       behaviorPrompt =
         "You are talking to your OG friend — most comfortable tao mo sa server. " +
