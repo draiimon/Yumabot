@@ -3002,6 +3002,10 @@ CONVERSATIONAL STYLE (bad boy energy stays, but talk like a real person, not a s
     startVerifyReminderScheduler(client);
     startGoodMorningScheduler(client);
 
+    // ── tulog ON by default on every restart ─────────────────────────────
+    for (const [guildId] of client.guilds.cache) sleepGuilds.add(guildId);
+    console.log(`[TULOG] Sleep mode defaulted ON for ${client.guilds.cache.size} guild(s).`);
+
     // =====================================================================
     // 24/7 AUTO-JOIN ON STARTUP — merge DB states + VOICE_CHANNELS env fallback
     // =====================================================================
