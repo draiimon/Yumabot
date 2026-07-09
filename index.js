@@ -257,8 +257,8 @@ const { startGoodMorningScheduler } = require("./src/goodMorning/goodMorningSche
 
   registerVerifyHandlers(client);
   registerIntroHandlers(client);
-  registerMemberLeaveCleanupHandlers(client);
-  registerPlaygroundWelcomeHandlers(client);
+  // registerMemberLeaveCleanupHandlers(client);
+  // registerPlaygroundWelcomeHandlers(client);
   registerSapphireBlockHandlers(client);
   registerInviteCounterHandlers(client);
   registerMediaOnlyChannelHandlers(client);
